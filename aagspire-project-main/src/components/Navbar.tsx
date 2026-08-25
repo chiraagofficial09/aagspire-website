@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export default function Navbar() {
+export default function Navbar({ visible = true }: { visible?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -32,7 +32,11 @@ export default function Navbar() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-[100] border-b backdrop-blur-xl transition-colors duration-300 ${
+      className={`fixed inset-x-0 top-0 z-[100] border-b backdrop-blur-xl transition-all duration-700 ease-out ${
+        visible
+          ? 'opacity-100 translate-y-0 pointer-events-auto'
+          : 'opacity-0 -translate-y-full pointer-events-none'
+      } ${
         scrolled
           ? 'border-white/10 bg-obsidian/95 shadow-[0_12px_40px_rgba(0,0,0,0.35)]'
           : 'border-white/5 bg-obsidian/90'

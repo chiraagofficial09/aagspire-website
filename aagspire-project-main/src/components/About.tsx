@@ -40,17 +40,37 @@ export default function About() {
             emotional connections with audiences.
           </p>
 
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { value: '120+', label: 'Projects' },
-              { value: '40+', label: 'Awards' },
-              { value: '98%', label: 'Retention' },
-            ].map((stat) => (
-              <div key={stat.label} className="glass-card rounded-2xl p-5 text-center">
-                <p className="text-2xl md:text-3xl font-bold text-gradient">{stat.value}</p>
-                <p className="text-[11px] text-white/40 mt-1 tracking-wide uppercase">{stat.label}</p>
-              </div>
-            ))}
+          <div className="space-y-3">
+            {/* Line 1: Projects & Clients */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { value: '1200+', label: 'Projects' },
+                { value: '540+', label: 'National Clients' },
+                { value: '50+', label: 'Global Clients' },
+              ].map((stat) => (
+                <div key={stat.label} className="glass-card rounded-2xl p-3.5 sm:p-4 text-center">
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gradient">{stat.value}</p>
+                  <p className="text-[10px] sm:text-[11px] text-white/40 mt-1 tracking-wide uppercase font-medium leading-tight">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Line 2: Awards & Satisfaction */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: '40+', label: 'Awards Won' },
+                { value: '98%', label: 'Client Satisfaction' },
+              ].map((stat) => (
+                <div key={stat.label} className="glass-card rounded-2xl p-3.5 sm:p-4 text-center">
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gradient">{stat.value}</p>
+                  <p className="text-[10px] sm:text-[11px] text-white/40 mt-1 tracking-wide uppercase font-medium leading-tight">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -42,7 +42,18 @@ export default function Process() {
       </div>
 
       <div className="relative">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+        {/* Desktop connecting line behind icons */}
+        <div className="hidden lg:block absolute top-12 left-[8%] right-[8%] h-[2px] -translate-y-1/2 z-0">
+          {/* Base background line */}
+          <div className="w-full h-full bg-gradient-to-r from-white/5 via-white/15 to-white/5" />
+          {/* Active progress glow line */}
+          <div
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-ember/40 to-ember transition-all duration-700 ease-out shadow-[0_0_10px_rgba(255,90,31,0.5)]"
+            style={{ width: `${(activeStep / (steps.length - 1)) * 100}%` }}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 relative z-10">
           {steps.map((step, i) => {
             const Icon = step.icon;
             const isActive = activeStep === i;
@@ -53,19 +64,16 @@ export default function Process() {
                 style={{ transitionDelay: `${i * 120}ms` }}
               >
                 <div
-                  className={`relative w-24 h-24 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500 ${
+                  className={`relative z-10 w-24 h-24 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500 bg-[#080808] border ${
                     isActive
-                      ? 'bg-ember/10 border-ember/40 ember-glow scale-110'
-                      : 'glass-card'
+                      ? 'border-ember/50 ember-glow scale-110 bg-ember/10'
+                      : 'border-white/10 hover:border-white/20'
                   }`}
                 >
                   <Icon className={`w-8 h-8 transition-colors duration-500 ${isActive ? 'text-ember' : 'text-white/40'}`} />
                   {isActive && (
                     <div className="absolute inset-0 rounded-3xl bg-ember/10 blur-xl animate-pulse-glow" />
                   )}
-                  <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-obsidian border border-white/10 text-xs font-bold flex items-center justify-center text-white/60">
-                    {i + 1}
-                  </span>
                 </div>
                 <h3 className={`text-lg font-bold mb-2 transition-colors ${isActive ? 'text-white' : 'text-white/60'}`}>
                   {step.title}

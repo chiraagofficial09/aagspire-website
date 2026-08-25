@@ -6,6 +6,7 @@ import {
   SiInstagram,
   SiPinterest,
 } from 'react-icons/si';
+import { MapPin } from 'lucide-react';
 
 export default function Footer() {
   const links = {
@@ -30,9 +31,9 @@ export default function Footer() {
   return (
     <footer className="relative border-t border-white/5 py-16 px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-16 grid grid-cols-2 gap-10 md:grid-cols-[1.5fr_1fr_1fr]">
+        <div className="mb-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.9fr_0.9fr_1.4fr] gap-10">
           {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
+          <div>
             <div className="flex items-center mb-4">
               <img
                 src="/Aagspire_Logo.png"
@@ -40,10 +41,10 @@ export default function Footer() {
                 className="h-8 w-auto object-contain"
               />
             </div>
-            <p className="text-sm text-white/40 leading-relaxed max-w-xs">
+            <p className="text-sm text-white/40 leading-relaxed max-w-xs mb-6">
               Turning sparks into fire. A premium branding and design studio.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3">
               {socialLinks.map((social) => {
                 const Icon = social.icon;
 
@@ -78,7 +79,7 @@ export default function Footer() {
                 {items.map((item) => (
                   <li key={item}>
                     <a
-                      href="#"
+                      href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
                       className="text-sm text-white/50 hover:text-ember transition-colors duration-300"
                     >
                       {item}
@@ -89,15 +90,35 @@ export default function Footer() {
             </div>
           ))}
 
+          {/* Location / Address */}
+          <div>
+            <p className="text-xs font-semibold text-white/30 tracking-widest uppercase mb-4">
+              Location
+            </p>
+            <div className="flex items-start gap-2.5">
+              <MapPin className="h-4 w-4 text-ember shrink-0 mt-1" />
+              <address className="not-italic text-sm text-white/50 leading-relaxed">
+                5, First Floor, Parmeshwar Arcade,
+                <br />
+                Halvad - Maliya Highway,
+                <br />
+                Halvad - 363330
+              </address>
+            </div>
+            <a
+              href="https://maps.app.goo.gl/jjAYk4USRPfAxCgH7"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-ember hover:text-ember-light transition-colors mt-3 pl-6"
+            >
+              View on Google Maps →
+            </a>
+          </div>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8 border-t border-white/5">
+        <div className="flex items-center justify-center pt-8 border-t border-white/5 text-center">
           <p className="text-xs text-white/30">
-            © {new Date().getFullYear()} Aagspire Studio. All rights reserved.
-          </p>
-          <p className="text-xs text-white/30 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-ember animate-pulse" />
-            Turning Sparks Into Fire
+            © {new Date().getFullYear()} <strong className="font-bold text-white/60">Aagspire</strong> . All rights reserved.
           </p>
         </div>
       </div>

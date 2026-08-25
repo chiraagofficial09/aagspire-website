@@ -11,9 +11,13 @@ interface FireParticle {
   hue: number;
 }
 
-export default function Hero() {
+interface HeroProps {
+  ignited: boolean;
+  onIgnite: () => void;
+}
+
+export default function Hero({ ignited, onIgnite }: HeroProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [ignited, setIgnited] = useState(false);
   const [showContent, setShowContent] = useState(false);
   const particles = useRef<FireParticle[]>([]);
   const animRef = useRef<number>(0);
@@ -96,14 +100,14 @@ export default function Hero() {
     };
   }, [ignited]);
 
-  const handleIgnite = () => {
+  const handleIgnite = (e?: React.MouseEvent | MouseEvent) => {
     if (ignited) return;
-    setIgnited(true);
-    // Big burst
+    onIgnite();
+    // Big burst from click position or center of screen
     const canvas = canvasRef.current;
     if (canvas) {
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
+      const cx = e && 'clientX' in e && e.clientX ? e.clientX : canvas.width / 2;
+      const cy = e && 'clientY' in e && e.clientY ? e.clientY : canvas.height / 2;
       for (let i = 0; i < 200; i++) {
         const angle = Math.random() * Math.PI * 2;
         const speed = Math.random() * 10 + 3;
@@ -122,10 +126,22 @@ export default function Hero() {
     setTimeout(() => setShowContent(true), 600);
   };
 
-
+  // Click anywhere on window to ignite
+  useEffect(() => {
+    if (ignited) return;
+    const onWindowClick = (e: MouseEvent) => {
+      handleIgnite(e);
+    };
+    window.addEventListener('click', onWindowClick);
+    return () => window.removeEventListener('click', onWindowClick);
+  }, [ignited]);
 
   return (
-    <section id="hero" className="relative min-h-screen w-full overflow-hidden">
+    <section
+      id="hero"
+      onClick={!ignited ? (e) => handleIgnite(e) : undefined}
+      className={`relative min-h-screen w-full overflow-hidden ${!ignited ? 'cursor-pointer select-none' : ''}`}
+    >
       <canvas
         ref={canvasRef}
         aria-hidden="true"
