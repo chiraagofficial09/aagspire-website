@@ -39,25 +39,18 @@ export default function Hero() {
       ctx.fillStyle = 'rgba(5, 5, 5, 0.15)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2 + 100;
-
-      // Ambient fire at base
-      if (ignited && frame % 2 === 0) {
-        for (let i = 0; i < 4; i++) {
-          const angle = (Math.random() - 0.5) * 0.6;
-          const speed = Math.random() * 2 + 1;
-          particles.current.push({
-            x: cx + (Math.random() - 0.5) * 400,
-            y: cy + Math.random() * 100,
-            vx: Math.sin(angle) * speed,
-            vy: -Math.random() * 4 - 2,
-            life: 1,
-            maxLife: Math.random() * 80 + 60,
-            size: Math.random() * 5 + 2,
-            hue: Math.random() * 40 + 10,
-          });
-        }
+      // Sparse, tiny ambient sparks across the hero background
+      if (frame % 10 === 0) {
+        particles.current.push({
+          x: canvas.width * (0.12 + Math.random() * 0.76),
+          y: canvas.height * (0.25 + Math.random() * 0.5),
+          vx: (Math.random() - 0.5) * 0.6,
+          vy: -Math.random() * 0.8 - 0.4,
+          life: 1,
+          maxLife: Math.random() * 150 + 120,
+          size: Math.random() * 0.9 + 0.5,
+          hue: Math.random() * 30 + 10,
+        });
       }
 
       particles.current = particles.current.filter((p) => {
@@ -69,13 +62,13 @@ export default function Hero() {
 
         if (p.life <= 0) return false;
 
-        const alpha = p.life * 0.6;
+        const alpha = p.life * 0.7;
         const size = p.size * (0.3 + p.life * 0.7);
         const lightness = 50 + p.life * 30;
 
         ctx.save();
         ctx.globalAlpha = alpha;
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 12;
         ctx.shadowColor = `hsl(${p.hue}, 100%, ${lightness}%)`;
         ctx.fillStyle = `hsl(${p.hue}, 100%, ${lightness}%)`;
         ctx.beginPath();
@@ -129,9 +122,15 @@ export default function Hero() {
     setTimeout(() => setShowContent(true), 600);
   };
 
+
+
   return (
     <section id="hero" className="relative min-h-screen w-full overflow-hidden">
-      <canvas ref={canvasRef} className="absolute inset-0 z-0" style={{ mixBlendMode: 'screen' }} />
+      <canvas
+        ref={canvasRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0"
+      />
 
       {/* Ambient gradient orbs */}
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-ember/10 blur-[120px] pointer-events-none" />
@@ -141,9 +140,9 @@ export default function Hero() {
         {!ignited ? (
           <div className="flex flex-col items-center gap-12">
             <div className="flex flex-col items-center gap-6">
-              <div className="relative w-20 h-20 flex items-center justify-center animate-spark-pulse">
-                <div className="absolute inset-0 rounded-full bg-ember/30 blur-xl" />
-                <div className="w-3 h-3 rounded-full bg-ember ember-glow" />
+              <div className="relative flex h-10 w-10 items-center justify-center animate-spark-pulse">
+                <div className="absolute inset-2 rounded-full bg-ember/30 blur-lg" />
+                <div className="h-1.5 w-1.5 rounded-full bg-ember shadow-[0_0_8px_rgba(255,90,31,0.9),0_0_18px_rgba(255,90,31,0.45)]" />
               </div>
               <p className="text-sm font-medium text-white/40 tracking-[0.3em] uppercase">
                 Turning Sparks Into Fire

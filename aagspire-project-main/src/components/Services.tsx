@@ -1,42 +1,42 @@
 import { useEffect, useRef, useState } from 'react';
-import { Palette, Layers, Code2, Sparkles, TrendingUp, Film } from 'lucide-react';
+import { Share2, PenTool, Image, Film, Monitor, Package } from 'lucide-react';
 
 const services = [
   {
-    icon: Palette,
-    title: 'Brand Identity',
-    desc: 'Distinctive visual systems that define how the world recognizes you.',
-    tags: ['Logo Design', 'Visual Identity', 'Brand Guidelines'],
-  },
-  {
-    icon: Layers,
-    title: 'UI / UX Design',
-    desc: 'Interfaces engineered for delight, conversion, and lasting engagement.',
-    tags: ['Product Design', 'Design Systems', 'Prototyping'],
-  },
-  {
-    icon: Code2,
-    title: 'Web Development',
-    desc: 'Pixel-perfect, performant builds with cinematic motion and depth.',
-    tags: ['React', 'WebGL', 'Motion'],
-  },
-  {
-    icon: Sparkles,
+    icon: Share2,
     title: 'Social Media Marketing',
-    desc: 'Strategic art direction that aligns every touchpoint with your vision.',
-    tags: ['Strategy', 'Art Direction', 'Concept'],
+    desc: 'Strategic content and campaigns that grow your reach, engagement, and community.',
+    tags: ['Content Strategy', 'Campaigns', 'Social Growth'],
   },
   {
-    icon: TrendingUp,
-    title: 'Brand Strategy',
-    desc: 'Positioning, messaging, and narrative frameworks that drive growth.',
-    tags: ['Positioning', 'Messaging', 'Research'],
+    icon: PenTool,
+    title: 'Logo Design',
+    desc: 'Distinctive and memorable logos crafted to express the heart of your brand.',
+    tags: ['Logo Concepts', 'Brand Marks', 'Visual Identity'],
+  },
+  {
+    icon: Image,
+    title: 'Poster Design',
+    desc: 'Bold, attention-grabbing posters designed for campaigns, events, and promotions.',
+    tags: ['Campaign Design', 'Print', 'Digital Posters'],
   },
   {
     icon: Film,
     title: 'Motion & Video',
-    desc: 'Cinematic motion design and brand films that move audiences.',
-    tags: ['Animation', 'Brand Films', '3D'],
+    desc: 'Engaging motion graphics and video content that bring your brand stories to life.',
+    tags: ['Motion Graphics', 'Video Editing', 'Animation'],
+  },
+  {
+    icon: Monitor,
+    title: 'UI/UX & Web Development',
+    desc: 'Intuitive interfaces and responsive websites built to look sharp and perform smoothly.',
+    tags: ['UI/UX Design', 'Web Design', 'Development'],
+  },
+  {
+    icon: Package,
+    title: 'Packaging Design',
+    desc: 'Standout packaging that protects your product and makes a lasting first impression.',
+    tags: ['Product Packaging', 'Labels', 'Print Ready'],
   },
 ];
 

@@ -58,32 +58,34 @@ export default function Testimonials() {
       </div>
 
       <div className={`section-reveal ${visible ? 'visible' : ''} relative max-w-4xl mx-auto`}>
-        <div className="glass-card rounded-3xl p-10 md:p-16 relative overflow-hidden">
-          <div className="absolute top-8 right-8 w-20 h-20 rounded-full bg-ember/5 blur-2xl" />
-          <Quote className="w-12 h-12 text-ember/30 mb-8" />
+        <div className="overflow-hidden">
+          <div
+            className="flex transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{ transform: `translateX(-${active * 100}%)` }}
+          >
+            {testimonials.map((t) => (
+              <div key={t.author} className="w-full shrink-0 px-1 md:px-2">
+                <article className="glass-card relative flex min-h-[340px] flex-col overflow-hidden rounded-3xl p-10 md:min-h-[320px] md:p-16">
+                  <div className="absolute right-8 top-8 h-20 w-20 rounded-full bg-ember/5 blur-2xl" />
+                  <Quote className="mb-8 h-12 w-12 shrink-0 text-ember/30" />
 
-          <div className="relative min-h-[180px]">
-            {testimonials.map((t, i) => (
-              <div
-                key={i}
-                className={`absolute inset-0 transition-all duration-700 ${
-                  active === i ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
-                }`}
-              >
-                <p className="text-xl md:text-2xl font-light leading-relaxed mb-8 text-white/80">
-                  "{t.quote}"
-                </p>
-                <div className="flex items-center gap-4">
-                  <img
-                    src={t.avatar}
-                    alt={t.author}
-                    className="w-12 h-12 rounded-full object-cover border-2 border-ember/30"
-                  />
-                  <div>
-                    <p className="font-semibold">{t.author}</p>
-                    <p className="text-sm text-white/40">{t.role}</p>
+                  <div className="flex flex-1 flex-col justify-between">
+                    <p className="mb-8 text-xl font-light leading-relaxed text-white/80 md:text-2xl">
+                      "{t.quote}"
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={t.avatar}
+                        alt={t.author}
+                        className="h-12 w-12 rounded-full border-2 border-ember/30 object-cover"
+                      />
+                      <div>
+                        <p className="font-semibold">{t.author}</p>
+                        <p className="text-sm text-white/40">{t.role}</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </article>
               </div>
             ))}
           </div>
@@ -95,6 +97,8 @@ export default function Testimonials() {
             <button
               key={i}
               onClick={() => setActive(i)}
+              aria-label={`Show testimonial ${i + 1}`}
+              aria-current={active === i}
               className={`h-1.5 rounded-full transition-all duration-500 ${
                 active === i ? 'w-10 bg-ember' : 'w-1.5 bg-white/20'
               }`}
