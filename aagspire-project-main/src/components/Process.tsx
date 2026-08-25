@@ -1,0 +1,81 @@
+import { useEffect, useRef, useState } from 'react';
+import { Flame, Lightbulb, PenTool, Rocket, TrendingUp, Zap } from 'lucide-react';
+
+const steps = [
+  { icon: Zap, title: 'Spark', desc: 'We discover the core idea — the initial spark that defines your brand.' },
+  { icon: Lightbulb, title: 'Strategy', desc: 'Research, positioning, and a roadmap built for measurable impact.' },
+  { icon: PenTool, title: 'Design', desc: 'Crafting every pixel, interaction, and motion with obsessive precision.' },
+  { icon: Rocket, title: 'Launch', desc: 'Ship with confidence — performant, polished, and ready to scale.' },
+  { icon: TrendingUp, title: 'Growth', desc: 'Iterate and optimize based on real data and audience behavior.' },
+  { icon: Flame, title: 'Fire', desc: 'Your brand becomes a movement — unforgettable and unstoppable.' },
+];
+
+export default function Process() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
+
+  useEffect(() => {
+    const obs = new IntersectionObserver(
+      ([entry]) => entry.isIntersecting && setVisible(true),
+      { threshold: 0.2 }
+    );
+    if (sectionRef.current) obs.observe(sectionRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    const interval = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % steps.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [visible]);
+
+  return (
+    <section ref={sectionRef} id="process" className="relative py-32 px-6 max-w-7xl mx-auto">
+      <div className={`section-reveal ${visible ? 'visible' : ''} mb-20 text-center`}>
+        <p className="section-label mb-4">How We Work</p>
+        <h2 className="section-title">
+          From spark to <span className="text-gradient">fire.</span>
+        </h2>
+      </div>
+
+      <div className="relative">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          {steps.map((step, i) => {
+            const Icon = step.icon;
+            const isActive = activeStep === i;
+            return (
+              <div
+                key={step.title}
+                className={`flex flex-col items-center text-center section-reveal ${visible ? 'visible' : ''}`}
+                style={{ transitionDelay: `${i * 120}ms` }}
+              >
+                <div
+                  className={`relative w-24 h-24 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500 ${
+                    isActive
+                      ? 'bg-ember/10 border-ember/40 ember-glow scale-110'
+                      : 'glass-card'
+                  }`}
+                >
+                  <Icon className={`w-8 h-8 transition-colors duration-500 ${isActive ? 'text-ember' : 'text-white/40'}`} />
+                  {isActive && (
+                    <div className="absolute inset-0 rounded-3xl bg-ember/10 blur-xl animate-pulse-glow" />
+                  )}
+                  <span className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-obsidian border border-white/10 text-xs font-bold flex items-center justify-center text-white/60">
+                    {i + 1}
+                  </span>
+                </div>
+                <h3 className={`text-lg font-bold mb-2 transition-colors ${isActive ? 'text-white' : 'text-white/60'}`}>
+                  {step.title}
+                </h3>
+                <p className="text-xs text-white/40 leading-relaxed max-w-[160px]">{step.desc}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
