@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Flame, Lightbulb, PenTool, Rocket, TrendingUp, Zap } from 'lucide-react';
+import { Flame, Lightbulb, PenTool, Rocket, TrendingUp, Zap, Sparkles } from 'lucide-react';
 
 const steps = [
   { icon: Zap, title: 'Spark', desc: 'We discover the core idea — the initial spark that defines your brand.' },
@@ -28,57 +28,99 @@ export default function Process() {
     if (!visible) return;
     const interval = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % steps.length);
-    }, 2500);
+    }, 2800);
     return () => clearInterval(interval);
   }, [visible]);
 
   return (
     <section ref={sectionRef} id="process" className="relative py-32 px-6 max-w-7xl mx-auto">
-      <div className={`section-reveal ${visible ? 'visible' : ''} mb-20 text-center`}>
-        <p className="section-label mb-4">How We Work</p>
+      <div className={`section-reveal ${visible ? 'visible' : ''} mb-24 text-center`}>
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Sparkles className="w-4 h-4 text-ember" />
+          <p className="section-label">How We Work</p>
+        </div>
         <h2 className="section-title">
           From spark to <span className="text-gradient">fire.</span>
         </h2>
+        <p className="text-sm text-white/40 max-w-md mx-auto mt-4">
+          A proven 6-stage blueprint engineered to ignite brands and scale them to market leaders.
+        </p>
       </div>
 
       <div className="relative">
-        {/* Desktop connecting line behind icons */}
-        <div className="hidden lg:block absolute top-12 left-[8%] right-[8%] h-[2px] -translate-y-1/2 z-0">
-          {/* Base background line */}
-          <div className="w-full h-full bg-gradient-to-r from-white/5 via-white/15 to-white/5" />
-          {/* Active progress glow line */}
+        {/* Signature Orange Ember Connecting Line Behind Cards (Desktop) */}
+        <div className="hidden lg:block absolute top-[48px] left-[7%] right-[7%] h-[3px] -translate-y-1/2 z-0 pointer-events-none">
+          {/* Base Orange Ambient Track */}
+          <div className="w-full h-full bg-ember/25 rounded-full shadow-[0_0_10px_rgba(255,90,31,0.3)]" />
+          
+          {/* Ambient Glowing Orange Aura */}
+          <div className="absolute inset-0 bg-gradient-to-r from-ember/40 via-ember-light/50 to-amber-500/40 blur-[4px]" />
+          
+          {/* Active Progress Glowing Orange Beam */}
           <div
-            className="absolute top-0 left-0 h-full bg-gradient-to-r from-ember/40 to-ember transition-all duration-700 ease-out shadow-[0_0_10px_rgba(255,90,31,0.5)]"
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#FF5A1F] via-[#FF7A45] to-[#FFB347] transition-all duration-700 ease-out rounded-full shadow-[0_0_20px_rgba(255,90,31,0.9),0_0_40px_rgba(255,90,31,0.5)]"
             style={{ width: `${(activeStep / (steps.length - 1)) * 100}%` }}
+          />
+
+          {/* Traveling Orange Spark Glow Bead */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 -ml-2 rounded-full bg-[#FFB347] shadow-[0_0_12px_#FFB347,0_0_25px_#FF5A1F,0_0_40px_#FF5A1F] transition-all duration-700 ease-out z-10"
+            style={{ left: `${(activeStep / (steps.length - 1)) * 100}%` }}
           />
         </div>
 
+        {/* Steps Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 relative z-10">
           {steps.map((step, i) => {
             const Icon = step.icon;
             const isActive = activeStep === i;
+            const isPassed = activeStep >= i;
+
             return (
               <div
                 key={step.title}
-                className={`flex flex-col items-center text-center section-reveal ${visible ? 'visible' : ''}`}
-                style={{ transitionDelay: `${i * 120}ms` }}
+                onClick={() => setActiveStep(i)}
+                className={`flex flex-col items-center text-center section-reveal cursor-pointer group ${
+                  visible ? 'visible' : ''
+                }`}
+                style={{ transitionDelay: `${i * 100}ms` }}
               >
+                {/* Step Icon Card with Solid Dark Backdrop to Frame the Line */}
                 <div
-                  className={`relative z-10 w-24 h-24 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500 bg-[#080808] border ${
+                  className={`relative z-10 w-24 h-24 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500 bg-[#0c0c0c] border ${
                     isActive
-                      ? 'border-ember/50 ember-glow scale-110 bg-ember/10'
-                      : 'border-white/10 hover:border-white/20'
+                      ? 'border-ember shadow-[0_0_25px_rgba(255,90,31,0.4)] scale-110 bg-ember/10'
+                      : isPassed
+                      ? 'border-ember/40 bg-white/[0.04] text-white/80'
+                      : 'border-white/10 hover:border-white/20 bg-white/[0.02]'
                   }`}
                 >
-                  <Icon className={`w-8 h-8 transition-colors duration-500 ${isActive ? 'text-ember' : 'text-white/40'}`} />
+                  <Icon
+                    className={`w-8 h-8 transition-all duration-500 ${
+                      isActive
+                        ? 'text-ember scale-110'
+                        : isPassed
+                        ? 'text-ember-light'
+                        : 'text-white/40 group-hover:text-white/70'
+                    }`}
+                  />
+
+                  {/* Active Pulse Glow Aura */}
                   {isActive && (
-                    <div className="absolute inset-0 rounded-3xl bg-ember/10 blur-xl animate-pulse-glow" />
+                    <div className="absolute inset-0 rounded-3xl bg-ember/15 blur-xl animate-pulse-glow -z-10" />
                   )}
                 </div>
-                <h3 className={`text-lg font-bold mb-2 transition-colors ${isActive ? 'text-white' : 'text-white/60'}`}>
+
+                <h3
+                  className={`text-base font-bold mb-1.5 transition-colors ${
+                    isActive ? 'text-white' : 'text-white/70 group-hover:text-white'
+                  }`}
+                >
                   {step.title}
                 </h3>
-                <p className="text-xs text-white/40 leading-relaxed max-w-[160px]">{step.desc}</p>
+                <p className="text-xs text-white/40 leading-relaxed max-w-[160px]">
+                  {step.desc}
+                </p>
               </div>
             );
           })}
@@ -87,3 +129,4 @@ export default function Process() {
     </section>
   );
 }
+

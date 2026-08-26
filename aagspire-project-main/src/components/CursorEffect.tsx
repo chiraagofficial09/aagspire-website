@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface Particle {
   x: number;
@@ -16,14 +16,14 @@ export default function CursorEffect() {
   const cursorRef = useRef<HTMLDivElement>(null);
   const trailRef = useRef<HTMLDivElement>(null);
   const particles = useRef<Particle[]>([]);
-  const mouse = useRef({ x: 0, y: 0 });
+  const mouse = useRef({ x: -100, y: -100 });
+  const lastSpawn = useRef({ x: -100, y: -100 });
   const animRef = useRef<number>(0);
-  const [isClicking, setIsClicking] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     const resize = () => {
@@ -33,65 +33,76 @@ export default function CursorEffect() {
     resize();
     window.addEventListener('resize', resize);
 
-    const colors = ['#FF5A1F', '#FF7A45', '#FFB347', '#FF3D00', '#FF6B35'];
+    const colors = ['#FF5A1F', '#FFFFFF', '#FF7A45', '#FFF5EB', '#FFB347', '#FFFFFF', '#FF3D00'];
 
     const spawnFireBurst = (x: number, y: number, count: number) => {
       for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 6 + 2;
+        const speed = Math.random() * 5 + 1.5;
         particles.current.push({
           x,
           y,
           vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed - Math.random() * 3,
+          vy: Math.sin(angle) * speed - Math.random() * 2,
           life: 1,
-          maxLife: Math.random() * 60 + 40,
-          size: Math.random() * 4 + 1,
+          maxLife: Math.random() * 40 + 25,
+          size: Math.random() * 3 + 1,
           color: colors[Math.floor(Math.random() * colors.length)],
         });
       }
     };
 
-    const spawnTrail = (x: number, y: number) => {
-      if (Math.random() > 0.3) return;
-      particles.current.push({
-        x: x + (Math.random() - 0.5) * 8,
-        y: y + (Math.random() - 0.5) * 8,
-        vx: (Math.random() - 0.5) * 1,
-        vy: -Math.random() * 1.5 - 0.5,
-        life: 1,
-        maxLife: Math.random() * 25 + 15,
-        size: Math.random() * 2 + 0.5,
-        color: colors[Math.floor(Math.random() * colors.length)],
-      });
+    let isAnimating = false;
+
+    const startAnimating = () => {
+      if (!isAnimating) {
+        isAnimating = true;
+        animRef.current = requestAnimationFrame(animate);
+      }
     };
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      spawnTrail(mouse.current.x, mouse.current.y);
+      if (particles.current.length === 0) {
+        isAnimating = false;
+        return;
+      }
 
-      particles.current = particles.current.filter(p => {
+      ctx.globalCompositeOperation = 'lighter';
+
+      particles.current = particles.current.filter((p) => {
         p.x += p.vx;
         p.y += p.vy;
-        p.vy -= 0.05;
-        p.vx *= 0.98;
+        p.vy -= 0.04;
+        p.vx *= 0.97;
         p.life -= 1 / p.maxLife;
 
         if (p.life <= 0) return false;
 
-        const alpha = p.life * 0.9;
+        const alpha = p.life * 0.85;
         const size = p.size * p.life;
 
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = p.color;
+        // Outer fiery aura / colored glow
         ctx.fillStyle = p.color;
+        ctx.globalAlpha = alpha * 0.45;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, size * 2.2, 0, Math.PI * 2);
         ctx.fill();
-        ctx.restore();
+
+        // Mid warm body
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Incandescent white spark core
+        ctx.fillStyle = '#FFFFFF';
+        ctx.globalAlpha = alpha * 0.95;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size * 0.65, 0, Math.PI * 2);
+        ctx.fill();
 
         return true;
       });
@@ -99,25 +110,52 @@ export default function CursorEffect() {
       animRef.current = requestAnimationFrame(animate);
     };
 
-    animate();
-
     const handleMove = (e: MouseEvent) => {
-      mouse.current = { x: e.clientX, y: e.clientY };
+      const x = e.clientX;
+      const y = e.clientY;
+      mouse.current = { x, y };
+
+      // Update cursor position directly via hardware-accelerated translate3d
       if (cursorRef.current) {
-        cursorRef.current.style.transform = `translate(${e.clientX - 6}px, ${e.clientY - 6}px)`;
+        cursorRef.current.style.transform = `translate3d(${x - 6}px, ${y - 6}px, 0)`;
       }
       if (trailRef.current) {
-        trailRef.current.style.transform = `translate(${e.clientX - 20}px, ${e.clientY - 20}px)`;
+        trailRef.current.style.transform = `translate3d(${x - 20}px, ${y - 20}px, 0)`;
+      }
+
+      // Spawn trail particle only if moved significantly
+      const dx = x - lastSpawn.current.x;
+      const dy = y - lastSpawn.current.y;
+      if (dx * dx + dy * dy > 49 && particles.current.length < 25) {
+        lastSpawn.current = { x, y };
+        particles.current.push({
+          x: x + (Math.random() - 0.5) * 4,
+          y: y + (Math.random() - 0.5) * 4,
+          vx: (Math.random() - 0.5) * 0.7,
+          vy: -Math.random() * 1.1 - 0.3,
+          life: 1,
+          maxLife: Math.random() * 18 + 10,
+          size: Math.random() * 2 + 0.6,
+          color: colors[Math.floor(Math.random() * colors.length)],
+        });
+        startAnimating();
       }
     };
 
     const handleClick = (e: MouseEvent) => {
-      spawnFireBurst(e.clientX, e.clientY, 60);
-      setIsClicking(true);
-      setTimeout(() => setIsClicking(false), 300);
+      spawnFireBurst(e.clientX, e.clientY, 18);
+      startAnimating();
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate3d(${e.clientX - 8}px, ${e.clientY - 8}px, 0) scale(1.3)`;
+        setTimeout(() => {
+          if (cursorRef.current) {
+            cursorRef.current.style.transform = `translate3d(${mouse.current.x - 6}px, ${mouse.current.y - 6}px, 0) scale(1)`;
+          }
+        }, 200);
+      }
     };
 
-    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mousemove', handleMove, { passive: true });
     window.addEventListener('click', handleClick);
 
     return () => {
@@ -137,26 +175,21 @@ export default function CursorEffect() {
       />
       <div
         ref={trailRef}
-        className="fixed top-0 left-0 w-10 h-10 pointer-events-none z-[9999] rounded-full transition-all duration-150"
+        className="fixed top-0 left-0 w-10 h-10 pointer-events-none z-[9999] rounded-full will-change-transform"
         style={{
-          border: '1px solid rgba(255,90,31,0.3)',
-          transition: 'transform 0.15s ease, width 0.2s ease, height 0.2s ease',
+          border: '1px solid rgba(255,90,31,0.35)',
+          transition: 'transform 0.1s ease-out',
         }}
       />
       <div
         ref={cursorRef}
-        className="fixed top-0 left-0 pointer-events-none z-[9999]"
+        className="fixed top-0 left-0 pointer-events-none z-[9999] rounded-full will-change-transform"
         style={{
-          width: isClicking ? '16px' : '12px',
-          height: isClicking ? '16px' : '12px',
-          background: isClicking
-            ? 'radial-gradient(circle, #FFB347, #FF5A1F)'
-            : 'radial-gradient(circle, #FF7A45, #FF5A1F)',
-          borderRadius: '50%',
-          boxShadow: isClicking
-            ? '0 0 20px rgba(255,90,31,0.8), 0 0 40px rgba(255,90,31,0.4)'
-            : '0 0 10px rgba(255,90,31,0.6)',
-          transition: 'width 0.15s ease, height 0.15s ease, box-shadow 0.15s ease',
+          width: '12px',
+          height: '12px',
+          background: 'radial-gradient(circle, #FF7A45, #FF5A1F)',
+          boxShadow: '0 0 10px rgba(255,90,31,0.6)',
+          transition: 'transform 0.05s ease-out',
         }}
       />
     </>

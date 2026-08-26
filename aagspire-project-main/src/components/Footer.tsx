@@ -15,21 +15,31 @@ export default function Footer() {
   };
 
   const socialLinks = [
-    { label: 'Fiverr', href: 'https://www.fiverr.com/s/K38YRwb', icon: SiFiverr, color: '#1DBF73' },
-    { label: 'Instagram', href: 'https://www.instagram.com/aagspire/', icon: SiInstagram, color: '#E4405F' },
-    { label: 'Pinterest', href: 'https://in.pinterest.com/aagspire/', icon: SiPinterest, color: '#E60023' },
-    { label: 'Behance', href: 'https://www.behance.net/Aagspire', icon: SiBehance, color: '#1769FF' },
-    { label: 'Google Maps', href: 'https://maps.app.goo.gl/jjAYk4USRPfAxCgH7', icon: SiGooglemaps, color: '#4285F4' },
+    { label: 'Fiverr', href: 'https://www.fiverr.com/s/K38YRwb', icon: SiFiverr },
+    { label: 'Instagram', href: 'https://www.instagram.com/aagspire/', icon: SiInstagram },
+    { label: 'Pinterest', href: 'https://in.pinterest.com/aagspire/', icon: SiPinterest },
+    { label: 'Behance', href: 'https://www.behance.net/Aagspire', icon: SiBehance },
+    { label: 'Google Maps', href: 'https://maps.app.goo.gl/jjAYk4USRPfAxCgH7', icon: SiGooglemaps },
     {
       label: 'Facebook',
       href: 'https://www.facebook.com/profile.php?id=61590180277142&sk=about',
       icon: SiFacebook,
-      color: '#1877F2',
     },
   ];
 
   return (
     <footer className="relative border-t border-white/5 py-16 px-6">
+      {/* SVG Gradient Definition for Social Icons */}
+      <svg width="0" height="0" className="absolute pointer-events-none" aria-hidden="true">
+        <defs>
+          <linearGradient id="ember-icon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FF5A1F" />
+            <stop offset="50%" stopColor="#FF7A45" />
+            <stop offset="100%" stopColor="#FFB347" />
+          </linearGradient>
+        </defs>
+      </svg>
+
       <div className="max-w-7xl mx-auto">
         <div className="mb-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.9fr_0.9fr_1.4fr] gap-10">
           {/* Brand */}
@@ -56,12 +66,12 @@ export default function Footer() {
                     rel="noreferrer"
                     aria-label={`Visit Aagspire on ${social.label}`}
                     title={social.label}
-                    className="group flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.07]"
+                    className="group flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-ember/50 hover:bg-gradient-to-br hover:from-ember/20 hover:via-ember-light/10 hover:to-transparent hover:shadow-[0_0_20px_rgba(255,90,31,0.3)]"
                   >
                     <Icon
                       aria-hidden="true"
-                      className="h-5 w-5 opacity-75 transition-all duration-300 group-hover:scale-110 group-hover:opacity-100"
-                      style={{ color: social.color }}
+                      className="h-5 w-5 transition-all duration-300 group-hover:scale-110"
+                      style={{ fill: 'url(#ember-icon-gradient)' }}
                     />
                   </a>
                 );

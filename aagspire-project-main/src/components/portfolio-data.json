@@ -1,0 +1,841 @@
+[
+  {
+    "id": "insta-1-sadbhavna-sankul-post-carousel-01",
+    "title": "Sadbhavna Sankul Carousel 01",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/1-sadbhavna-sankul-post-carousel-01.webp",
+    "originalName": "1. Sadbhavna Sankul Post Carousel 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-1-sadbhavna-sankul-post-carousel-02",
+    "title": "Sadbhavna Sankul Carousel 02",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/1-sadbhavna-sankul-post-carousel-02.webp",
+    "originalName": "1. Sadbhavna Sankul Post Carousel 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-aagspire-car-carousel-post-june-2026-02",
+    "title": "Car 02",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-car-carousel-post-june-2026-02.webp",
+    "originalName": "Aagspire Car Carousel Post June 2026 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-aagspire-car-carousel-post-june-2026-03",
+    "title": "Car 03",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-car-carousel-post-june-2026-03.webp",
+    "originalName": "Aagspire Car Carousel Post June 2026 03.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-aagspire-car-carousel-post-june-2026-04",
+    "title": "Car 04",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-car-carousel-post-june-2026-04.webp",
+    "originalName": "Aagspire Car Carousel Post June 2026 04.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-aagspire-car-carousel-post-june-2026-05",
+    "title": "Car 05",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-car-carousel-post-june-2026-05.webp",
+    "originalName": "Aagspire Car Carousel Post June 2026 05.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-aagspire-car-posts-01",
+    "title": "Car s 01",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-car-posts-01.webp",
+    "originalName": "Aagspire Car Posts 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "poster-design"
+    ],
+    "subCategory": "campaign",
+    "subCategoryLabel": "Posters & Campaigns"
+  },
+  {
+    "id": "insta-aagspire-car-posts-02",
+    "title": "Car s 02",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-car-posts-02.webp",
+    "originalName": "Aagspire Car Posts 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "poster-design"
+    ],
+    "subCategory": "campaign",
+    "subCategoryLabel": "Posters & Campaigns"
+  },
+  {
+    "id": "insta-aagspire-headphones-carousel-post-june-2026-01",
+    "title": "Headphones 01",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-headphones-carousel-post-june-2026-01.webp",
+    "originalName": "Aagspire Headphones Carousel Post June 2026 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-aagspire-headphones-carousel-post-june-2026-02",
+    "title": "Headphones 02",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-headphones-carousel-post-june-2026-02.webp",
+    "originalName": "Aagspire Headphones Carousel Post June 2026 02.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-aagspire-headphones-carousel-post-june-2026-03",
+    "title": "Headphones 03",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-headphones-carousel-post-june-2026-03.webp",
+    "originalName": "Aagspire Headphones Carousel Post June 2026 03.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-aagspire-headphones-carousel-post-june-2026-04",
+    "title": "Headphones 04",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-headphones-carousel-post-june-2026-04.webp",
+    "originalName": "Aagspire Headphones Carousel Post June 2026 04.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-aagspire-sevices-insta-post-may-2026",
+    "title": "Sevices",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/aagspire-sevices-insta-post-may-2026.webp",
+    "originalName": "Aagspire Sevices Insta Post May 2026.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "brand",
+    "subCategoryLabel": "Brand Graphics"
+  },
+  {
+    "id": "insta-ex-sizer-insta-post-june-2026-03",
+    "title": "Ex Sizer 03",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/ex-sizer-insta-post-june-2026-03.webp",
+    "originalName": "Ex-Sizer Insta Post June 2026 03.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "brand",
+    "subCategoryLabel": "Brand Graphics"
+  },
+  {
+    "id": "insta-phone-carousel-post-june-2026-01",
+    "title": "Phone 01",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/phone-carousel-post-june-2026-01.webp",
+    "originalName": "Phone Carousel Post June 2026 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-phone-carousel-post-june-2026-02",
+    "title": "Phone 02",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/phone-carousel-post-june-2026-02.webp",
+    "originalName": "Phone Carousel Post June 2026 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-phone-carousel-post-june-2026-03",
+    "title": "Phone 03",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/phone-carousel-post-june-2026-03.webp",
+    "originalName": "Phone Carousel Post June 2026 03.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-phone-carousel-post-june-2026-04",
+    "title": "Phone 04",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/phone-carousel-post-june-2026-04.webp",
+    "originalName": "Phone Carousel Post June 2026 04.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-plain-papad-insta-post-july-26-04",
+    "title": "Plain Papad 04",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/plain-papad-insta-post-july-26-04.webp",
+    "originalName": "Plain Papad Insta Post July 26 04.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-smart-phone-post-00",
+    "title": "Smart Phone 00",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/smart-phone-post-00.webp",
+    "originalName": "Smart Phone Post 00.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-smart-phone-post-01",
+    "title": "Smart Phone 01",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/smart-phone-post-01.webp",
+    "originalName": "Smart Phone Post 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-smart-phone-post-02",
+    "title": "Smart Phone 02",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/smart-phone-post-02.webp",
+    "originalName": "Smart Phone Post 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-smart-phone-post-03",
+    "title": "Smart Phone 03",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/smart-phone-post-03.webp",
+    "originalName": "Smart Phone Post 03.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-smart-phone-post-04",
+    "title": "Smart Phone 04",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/smart-phone-post-04.webp",
+    "originalName": "Smart Phone Post 04.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-vasaline-post-01",
+    "title": "Vasaline 01",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/vasaline-post-01.webp",
+    "originalName": "Vasaline Post 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-vasaline-post-02",
+    "title": "Vasaline 02",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/vasaline-post-02.webp",
+    "originalName": "Vasaline Post 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-watches-post-01",
+    "title": "Watches 01",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/watches-post-01.webp",
+    "originalName": "Watches Post 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-watches-post-02",
+    "title": "Watches 02",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/watches-post-02.webp",
+    "originalName": "Watches Post 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-watches-post-03",
+    "title": "Watches 03",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/watches-post-03.webp",
+    "originalName": "Watches Post 03.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-watches-post-04",
+    "title": "Watches 04",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/watches-post-04.webp",
+    "originalName": "Watches Post 04.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "product",
+    "subCategoryLabel": "Product Creatives"
+  },
+  {
+    "id": "insta-weffers-insta-post-crousal-01",
+    "title": "Weffers Crousal 01",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/weffers-insta-post-crousal-01.webp",
+    "originalName": "Weffers Insta Post Crousal 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "insta-weffers-insta-post-crousal-02",
+    "title": "Weffers Crousal 02",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/weffers-insta-post-crousal-02.webp",
+    "originalName": "Weffers Insta Post Crousal 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "carousel",
+    "subCategoryLabel": "Carousel Posts"
+  },
+  {
+    "id": "tshirt-1-human-being",
+    "title": "Human Being",
+    "type": "tshirt",
+    "folder": "tshirt",
+    "image": "/portfolio-optimized/tshirt/1-human-being.webp",
+    "originalName": "1. Human Being.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "apparel-graphics",
+      "poster-design"
+    ],
+    "subCategory": "apparel",
+    "subCategoryLabel": "Apparel Graphics"
+  },
+  {
+    "id": "tshirt-2-keep-life-simple",
+    "title": "Keep Life Simple",
+    "type": "tshirt",
+    "folder": "tshirt",
+    "image": "/portfolio-optimized/tshirt/2-keep-life-simple.webp",
+    "originalName": "2. Keep Life Simple.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "apparel-graphics",
+      "poster-design"
+    ],
+    "subCategory": "apparel",
+    "subCategoryLabel": "Apparel Graphics"
+  },
+  {
+    "id": "tshirt-3-prayer-the-god",
+    "title": "Prayer the God",
+    "type": "tshirt",
+    "folder": "tshirt",
+    "image": "/portfolio-optimized/tshirt/3-prayer-the-god.webp",
+    "originalName": "3. Prayer the God.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "apparel-graphics",
+      "poster-design"
+    ],
+    "subCategory": "apparel",
+    "subCategoryLabel": "Apparel Graphics"
+  },
+  {
+    "id": "tshirt-4-extremely-noisy",
+    "title": "Extremely Noisy",
+    "type": "tshirt",
+    "folder": "tshirt",
+    "image": "/portfolio-optimized/tshirt/4-extremely-noisy.webp",
+    "originalName": "4. Extremely Noisy.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "apparel-graphics",
+      "poster-design"
+    ],
+    "subCategory": "apparel",
+    "subCategoryLabel": "Apparel Graphics"
+  },
+  {
+    "id": "tshirt-5-never-mind",
+    "title": "Never Mind",
+    "type": "tshirt",
+    "folder": "tshirt",
+    "image": "/portfolio-optimized/tshirt/5-never-mind.webp",
+    "originalName": "5. Never Mind.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "apparel-graphics",
+      "poster-design"
+    ],
+    "subCategory": "apparel",
+    "subCategoryLabel": "Apparel Graphics"
+  },
+  {
+    "id": "tshirt-6-fallen",
+    "title": "Fallen",
+    "type": "tshirt",
+    "folder": "tshirt",
+    "image": "/portfolio-optimized/tshirt/6-fallen.webp",
+    "originalName": "6. Fallen.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "apparel-graphics",
+      "poster-design"
+    ],
+    "subCategory": "apparel",
+    "subCategoryLabel": "Apparel Graphics"
+  },
+  {
+    "id": "tshirt-7-the-beast",
+    "title": "The Beast",
+    "type": "tshirt",
+    "folder": "tshirt",
+    "image": "/portfolio-optimized/tshirt/7-the-beast.webp",
+    "originalName": "7. The Beast.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "apparel-graphics",
+      "poster-design"
+    ],
+    "subCategory": "apparel",
+    "subCategoryLabel": "Apparel Graphics"
+  },
+  {
+    "id": "tshirt-8-transform-into-force",
+    "title": "Transform Into Force",
+    "type": "tshirt",
+    "folder": "tshirt",
+    "image": "/portfolio-optimized/tshirt/8-transform-into-force.webp",
+    "originalName": "8. Transform Into Force.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "apparel-graphics",
+      "poster-design"
+    ],
+    "subCategory": "apparel",
+    "subCategoryLabel": "Apparel Graphics"
+  },
+  {
+    "id": "cards-visiting-card-samples-01",
+    "title": "Visiting Card Samples 01",
+    "type": "cards",
+    "folder": "cards",
+    "image": "/portfolio-optimized/cards/visiting-card-samples-01.webp",
+    "originalName": "Visiting Card Samples 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "identity",
+    "subCategoryLabel": "Identity & Cards"
+  },
+  {
+    "id": "cards-visiting-card-samples-02",
+    "title": "Visiting Card Samples 02",
+    "type": "cards",
+    "folder": "cards",
+    "image": "/portfolio-optimized/cards/visiting-card-samples-02.webp",
+    "originalName": "Visiting Card Samples 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "identity",
+    "subCategoryLabel": "Identity & Cards"
+  },
+  {
+    "id": "cards-visiting-card-samples-03",
+    "title": "Visiting Card Samples 03",
+    "type": "cards",
+    "folder": "cards",
+    "image": "/portfolio-optimized/cards/visiting-card-samples-03.webp",
+    "originalName": "Visiting Card Samples 03.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "identity",
+    "subCategoryLabel": "Identity & Cards"
+  },
+  {
+    "id": "cards-visiting-card-samples-04",
+    "title": "Visiting Card Samples 04",
+    "type": "cards",
+    "folder": "cards",
+    "image": "/portfolio-optimized/cards/visiting-card-samples-04.webp",
+    "originalName": "Visiting Card Samples 04.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "identity",
+    "subCategoryLabel": "Identity & Cards"
+  },
+  {
+    "id": "cards-visiting-card-samples-05",
+    "title": "Visiting Card Samples 05",
+    "type": "cards",
+    "folder": "cards",
+    "image": "/portfolio-optimized/cards/visiting-card-samples-05.webp",
+    "originalName": "Visiting Card Samples 05.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "identity",
+    "subCategoryLabel": "Identity & Cards"
+  },
+  {
+    "id": "cards-visiting-card-samples-06",
+    "title": "Visiting Card Samples 06",
+    "type": "cards",
+    "folder": "cards",
+    "image": "/portfolio-optimized/cards/visiting-card-samples-06.webp",
+    "originalName": "Visiting Card Samples 06.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "identity",
+    "subCategoryLabel": "Identity & Cards"
+  },
+  {
+    "id": "cards-visiting-card-samples-07",
+    "title": "Visiting Card Samples 07",
+    "type": "cards",
+    "folder": "cards",
+    "image": "/portfolio-optimized/cards/visiting-card-samples-07.webp",
+    "originalName": "Visiting Card Samples 07.jpg",
+    "width": 1600,
+    "height": 1200,
+    "ratio": 1.33,
+    "shape": "landscape",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "identity",
+    "subCategoryLabel": "Identity & Cards"
+  },
+  {
+    "id": "insta-gt-in-final-poster",
+    "title": "GT in Final er",
+    "type": "social",
+    "folder": "insta",
+    "image": "/portfolio-optimized/insta/gt-in-final-poster.webp",
+    "originalName": "GT in Final Poster.jpg",
+    "width": 1600,
+    "height": 2844,
+    "ratio": 0.56,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "poster-design"
+    ],
+    "subCategory": "campaign",
+    "subCategoryLabel": "Posters & Campaigns"
+  }
+]

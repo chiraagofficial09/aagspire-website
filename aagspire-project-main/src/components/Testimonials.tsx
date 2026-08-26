@@ -69,7 +69,7 @@ export default function Testimonials() {
               key={`${t.author}-${idx}`}
               className="w-[340px] sm:w-[400px] md:w-[460px] shrink-0"
             >
-              <article className="glass-card glass-card-hover group relative flex h-full min-h-[300px] flex-col justify-between overflow-hidden rounded-3xl p-8 md:p-10 border border-white/10 transition-all duration-300 hover:border-ember/40">
+              <article className="marquee-card glass-card-hover group relative flex h-full min-h-[300px] flex-col justify-between overflow-hidden rounded-3xl p-8 md:p-10 border border-white/10 transition-all duration-300 hover:border-ember/40">
                 <div className="absolute right-6 top-6 h-24 w-24 rounded-full bg-ember/5 blur-2xl group-hover:bg-ember/15 transition-all duration-500" />
                 
                 <div>
