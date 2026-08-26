@@ -49,7 +49,7 @@ export default function Process() {
 
       <div className="relative">
         {/* Signature Orange Ember Connecting Line Behind Cards (Desktop) */}
-        <div className="hidden lg:block absolute top-[48px] left-[7%] right-[7%] h-[3px] -translate-y-1/2 z-0 pointer-events-none">
+        <div className="hidden lg:block absolute top-[48px] left-[7%] right-[7%] h-[3px] -translate-y-1/2 -z-10 pointer-events-none">
           {/* Base Orange Ambient Track */}
           <div className="w-full h-full bg-ember/25 rounded-full shadow-[0_0_10px_rgba(255,90,31,0.3)]" />
           
@@ -64,7 +64,7 @@ export default function Process() {
 
           {/* Traveling Orange Spark Glow Bead */}
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 -ml-2 rounded-full bg-[#FFB347] shadow-[0_0_12px_#FFB347,0_0_25px_#FF5A1F,0_0_40px_#FF5A1F] transition-all duration-700 ease-out z-10"
+            className="absolute top-1/2 -translate-y-1/2 w-4 h-4 -ml-2 rounded-full bg-[#FFB347] shadow-[0_0_12px_#FFB347,0_0_25px_#FF5A1F,0_0_40px_#FF5A1F] transition-all duration-700 ease-out z-0"
             style={{ left: `${(activeStep / (steps.length - 1)) * 100}%` }}
           />
         </div>
@@ -87,12 +87,12 @@ export default function Process() {
               >
                 {/* Step Icon Card with Solid Dark Backdrop to Frame the Line */}
                 <div
-                  className={`relative z-10 w-24 h-24 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500 bg-[#0c0c0c] border ${
+                  className={`relative z-20 w-24 h-24 rounded-3xl flex items-center justify-center mb-6 transition-all duration-500 border ${
                     isActive
-                      ? 'border-ember shadow-[0_0_25px_rgba(255,90,31,0.4)] scale-110 bg-ember/10'
+                      ? 'border-ember shadow-[0_0_25px_rgba(255,90,31,0.4)] scale-110 bg-[#1a0d08]'
                       : isPassed
-                      ? 'border-ember/40 bg-white/[0.04] text-white/80'
-                      : 'border-white/10 hover:border-white/20 bg-white/[0.02]'
+                      ? 'border-ember/40 bg-[#0e0e0e]'
+                      : 'border-white/10 hover:border-white/20 bg-[#0c0c0c]'
                   }`}
                 >
                   <Icon

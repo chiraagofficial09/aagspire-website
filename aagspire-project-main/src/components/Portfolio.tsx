@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { ArrowUpRight, X, Sparkles, ChevronLeft, ChevronRight, Eye, Download } from 'lucide-react';
+import { ArrowUpRight, X, Sparkles, ChevronLeft, ChevronRight, Eye, Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import rawPortfolioData from './portfolio-data.json';
 
 interface ProjectItem {
@@ -14,6 +14,7 @@ interface ProjectItem {
   services?: string[];
   subCategory?: string;
   subCategoryLabel?: string;
+  ratio?: number;
 }
 
 // Enhance raw items with curated category tags & descriptions
@@ -27,6 +28,15 @@ const allProjects: ProjectItem[] = rawPortfolioData.map((item: any) => {
   } else if (item.folder === 'cards') {
     categoryName = 'Logo & Brand Identity';
     desc = 'Premium corporate stationery, tactile print finishes, and distinctive brand identity systems.';
+  } else if (item.folder === 'logos') {
+    categoryName = 'Brand & Logo Presentation';
+    desc = 'Complete brand identity systems, vector logo construction, visual guidelines, and real-world mockups.';
+  } else if (item.folder === 'websliders') {
+    categoryName = 'UI/UX & Web Design';
+    desc = 'Immersive web slider concept designs with premium visual storytelling and modern UI layouts.';
+  } else if (item.folder === 'posts' && item.title?.includes('FIFA')) {
+    categoryName = 'Sports & Campaign Poster';
+    desc = 'Cinematic sports poster design series featuring bold typography and dramatic visual composition.';
   } else if (item.title.toLowerCase().includes('car')) {
     categoryName = 'Automotive Launch & Carousel';
     desc = 'Dynamic automotive visual design showcasing speed, engineering precision, and sleek aesthetics.';
@@ -59,6 +69,7 @@ const categories = [
   { label: 'Poster Design', value: 'poster-design', count: allProjects.filter((p) => p.services?.includes('poster-design')).length },
   { label: 'Packaging Design', value: 'packaging-design', count: allProjects.filter((p) => p.services?.includes('packaging-design')).length },
   { label: 'T-Shirt & Apparel', value: 'apparel-graphics', count: allProjects.filter((p) => p.type === 'tshirt' || p.services?.includes('apparel-graphics')).length },
+  { label: 'UI/UX & Web', value: 'ui-ux-web-development', count: allProjects.filter((p) => p.services?.includes('ui-ux-web-development')).length },
 ];
 
 // Custom Icons matching user reference screenshot
@@ -103,6 +114,7 @@ export default function Portfolio() {
   const [viewMode, setViewMode] = useState<ViewMode>('masonry');
   const [activeProjectIndex, setActiveProjectIndex] = useState<number | null>(null);
   const [displayCount, setDisplayCount] = useState(16);
+  const [portfolioZoom, setPortfolioZoom] = useState<number>(1);
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -266,48 +278,69 @@ export default function Portfolio() {
       ) : (
         /* Standard Uniform 3-Column Grid with Best-Fit 4:5 Card Proportions */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {visibleProjects.map((project) => (
-            <div
-              key={project.id}
-              onClick={() => setActiveProjectIndex(filteredProjects.indexOf(project))}
-              className="group relative aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer bg-[#0e0e0e] border border-white/10 hover:border-ember/50 transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(255,90,31,0.22)] flex items-center justify-center"
-            >
-              {/* Image Centered and Contained within Uniform 4:5 Card */}
-              <img
-                src={project.image}
-                alt={project.title}
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-contain block transition-transform duration-700 group-hover:scale-105"
-              />
+          {visibleProjects.map((project) => {
+            const isCaseStudy = project.folder === 'logos' || project.subCategory === 'case-study';
 
-              {/* Hover Vignette Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-obsidian/90 via-obsidian/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            return (
+              <div
+                key={project.id}
+                onClick={() => {
+                  setActiveProjectIndex(filteredProjects.indexOf(project));
+                  setPortfolioZoom(1);
+                }}
+                className="group relative aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer bg-[#0e0e0e] border border-white/10 hover:border-ember/50 transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(255,90,31,0.22)] flex items-center justify-center"
+              >
+                {/* Image Centered and Contained or Top-Aligned for Case Studies */}
+                <img
+                  src={project.image}
+                  alt={project.title}
+                  loading="lazy"
+                  decoding="async"
+                  className={`w-full h-full block transition-transform duration-700 group-hover:scale-105 ${
+                    isCaseStudy ? 'object-cover object-top' : 'object-contain'
+                  }`}
+                />
 
-              {/* Floating Category Pill (Top Left) */}
-              <div className="absolute top-3.5 left-3.5 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform -translate-y-1 group-hover:translate-y-0">
-                <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/15 text-white/90 shadow-md">
-                  {project.categoryName.split('&')[0].trim()}
-                </span>
+                {/* Case Study Badge */}
+                {isCaseStudy && (
+                  <div className="absolute top-3.5 left-3.5 z-10">
+                    <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-black/85 backdrop-blur-md border border-ember/40 text-ember shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
+                      <Sparkles className="w-3 h-3" />
+                      <span>Full Case Study</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Hover Vignette Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-obsidian/90 via-obsidian/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                {/* Floating Category Pill (Top Left - when not case study) */}
+                {!isCaseStudy && (
+                  <div className="absolute top-3.5 left-3.5 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform -translate-y-1 group-hover:translate-y-0">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/15 text-white/90 shadow-md">
+                      {project.categoryName.split('&')[0].trim()}
+                    </span>
+                  </div>
+                )}
+
+                {/* Floating Action Pill (Bottom Right - Freepik Style) */}
+                <div className="absolute bottom-3.5 right-3.5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90 shadow-lg opacity-0 group-hover:opacity-100 group-hover:bg-ember group-hover:border-ember transition-all duration-300">
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>View</span>
+                </div>
+
+                {/* Project Title (Bottom Left Overlay on Hover) */}
+                <div className="absolute bottom-3.5 left-3.5 right-20 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
+                  <h3 className="text-sm font-bold text-white line-clamp-1 drop-shadow-md">
+                    {project.title}
+                  </h3>
+                  <p className="text-[11px] text-ember-light font-medium line-clamp-1">
+                    {project.categoryName}
+                  </p>
+                </div>
               </div>
-
-              {/* Floating Action Pill (Bottom Right - Freepik Style) */}
-              <div className="absolute bottom-3.5 right-3.5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90 shadow-lg opacity-0 group-hover:opacity-100 group-hover:bg-ember group-hover:border-ember transition-all duration-300">
-                <Eye className="w-3.5 h-3.5" />
-                <span>View</span>
-              </div>
-
-              {/* Project Title (Bottom Left Overlay on Hover) */}
-              <div className="absolute bottom-3.5 left-3.5 right-20 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
-                <h3 className="text-sm font-bold text-white line-clamp-1 drop-shadow-md">
-                  {project.title}
-                </h3>
-                <p className="text-[11px] text-ember-light font-medium line-clamp-1">
-                  {project.categoryName}
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -325,143 +358,230 @@ export default function Portfolio() {
       )}
 
       {/* Full-Screen Immersive Artwork Studio Viewer */}
-      {activeProjectIndex !== null && filteredProjects[activeProjectIndex] && (
-        <div
-          className="fixed inset-0 z-[200] bg-[#070707] flex flex-col w-screen h-screen overflow-hidden animate-fade-up"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Full-Width Top Bar */}
-          <div className="h-20 px-6 sm:px-10 border-b border-white/10 flex items-center justify-between bg-[#0a0a0a] shrink-0 z-30">
-            {/* Left: Project Title & Category */}
-            <div className="flex items-center gap-3">
-              <span className="text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-white/[0.05] border border-white/15 text-white/80">
-                {filteredProjects[activeProjectIndex].categoryName.split('&')[0].trim()}
-              </span>
-              <h3 className="text-base sm:text-xl font-bold text-white line-clamp-1">
-                {filteredProjects[activeProjectIndex].title}
-              </h3>
-            </div>
+      {activeProjectIndex !== null && filteredProjects[activeProjectIndex] && (() => {
+        const currentProject = filteredProjects[activeProjectIndex];
+        const isCaseStudy =
+          currentProject.folder === 'logos' ||
+          currentProject.subCategory === 'case-study' ||
+          (currentProject.ratio !== undefined && currentProject.ratio < 0.3);
 
-            {/* Center: Counter & Navigation Arrows */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  setActiveProjectIndex((prev) => (prev !== null ? (prev - 1 + filteredProjects.length) % filteredProjects.length : null));
-                }}
-                className="w-10 h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer"
-                aria-label="Previous artwork"
-              >
-                <ChevronLeft className="w-5 h-5 text-white" />
-              </button>
-
-              <span className="text-xs font-mono font-bold text-ember px-3 py-1 rounded-full bg-ember/10 border border-ember/30 shadow-[0_0_10px_rgba(255,90,31,0.2)]">
-                {activeProjectIndex + 1} / {filteredProjects.length}
-              </span>
-
-              <button
-                onClick={() => {
-                  setActiveProjectIndex((prev) => (prev !== null ? (prev + 1) % filteredProjects.length : null));
-                }}
-                className="w-10 h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer"
-                aria-label="Next artwork"
-              >
-                <ChevronRight className="w-5 h-5 text-white" />
-              </button>
-            </div>
-
-            {/* Right: Download, Inquiry & Close */}
-            <div className="flex items-center gap-3">
-              <a
-                href={filteredProjects[activeProjectIndex].image}
-                download={`${filteredProjects[activeProjectIndex].title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-aagspire.webp`}
-                className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border border-white/15 bg-white/[0.04] text-white hover:border-ember/50 hover:bg-ember/10 hover:text-ember transition-all text-xs font-semibold uppercase tracking-wider cursor-pointer"
-                title="Download High-Res Artwork"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download</span>
-              </a>
-
-              <a
-                href="#contact"
-                onClick={() => setActiveProjectIndex(null)}
-                className="hidden md:flex items-center gap-1.5 px-5 py-2 rounded-full bg-ember hover:bg-ember-light text-white text-xs font-semibold uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(255,90,31,0.3)] cursor-pointer"
-              >
-                <span>Start Project</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </a>
-
-              <button
-                onClick={() => setActiveProjectIndex(null)}
-                className="w-10 h-10 rounded-full glass-card border border-white/20 flex items-center justify-center hover:bg-white/15 transition-colors cursor-pointer"
-                aria-label="Close viewer"
-              >
-                <X className="w-5 h-5 text-white/90" />
-              </button>
-            </div>
-          </div>
-
-          {/* Full-Screen Main Content Body */}
-          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-            {/* Left/Center: Immense Artwork Canvas */}
-            <div className="flex-1 bg-[#050505] p-4 sm:p-8 lg:p-12 flex items-center justify-center overflow-hidden relative">
-              <img
-                src={filteredProjects[activeProjectIndex].image}
-                alt={filteredProjects[activeProjectIndex].title}
-                className="max-h-[82vh] max-w-full w-auto object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)]"
-              />
-            </div>
-
-            {/* Right: Full Details Sidebar Panel */}
-            <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-white/10 bg-[#0a0a0a] p-6 sm:p-8 flex flex-col justify-between overflow-y-auto shrink-0 max-h-[35vh] lg:max-h-full">
-              <div>
-                <p className="text-xs font-semibold text-ember uppercase tracking-wider mb-2">
-                  {filteredProjects[activeProjectIndex].categoryName}
-                </p>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-tight">
-                  {filteredProjects[activeProjectIndex].title}
-                </h2>
-                <p className="text-sm text-white/60 leading-relaxed mb-6">
-                  {filteredProjects[activeProjectIndex].desc}
-                </p>
-
-                {/* Studio Quality Badges */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                  <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
-                    Original Artwork
-                  </span>
-                  <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
-                    Aagspire Studio Design
-                  </span>
-                  <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
-                    High Resolution WebP
-                  </span>
-                </div>
+        return (
+          <div
+            className="fixed inset-0 z-[200] bg-[#070707] flex flex-col w-screen h-screen overflow-hidden animate-fade-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Full-Width Top Bar */}
+            <div className="h-20 px-6 sm:px-10 border-b border-white/10 flex items-center justify-between bg-[#0a0a0a] shrink-0 z-30">
+              {/* Left: Project Title & Category */}
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-white/[0.05] border border-white/15 text-white/80">
+                  {currentProject.categoryName.split('&')[0].trim()}
+                </span>
+                <h3 className="text-base sm:text-xl font-bold text-white line-clamp-1">
+                  {currentProject.title}
+                </h3>
               </div>
 
-              {/* Action Buttons in Panel */}
-              <div className="pt-6 border-t border-white/10 flex flex-col gap-3 mt-auto">
+              {/* Center: Counter & Navigation Arrows */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setActiveProjectIndex((prev) => (prev !== null ? (prev - 1 + filteredProjects.length) % filteredProjects.length : null));
+                    setPortfolioZoom(1);
+                  }}
+                  className="w-10 h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer"
+                  aria-label="Previous artwork"
+                >
+                  <ChevronLeft className="w-5 h-5 text-white" />
+                </button>
+
+                <span className="text-xs font-mono font-bold text-ember px-3 py-1 rounded-full bg-ember/10 border border-ember/30 shadow-[0_0_10px_rgba(255,90,31,0.2)]">
+                  {activeProjectIndex + 1} / {filteredProjects.length}
+                </span>
+
+                <button
+                  onClick={() => {
+                    setActiveProjectIndex((prev) => (prev !== null ? (prev + 1) % filteredProjects.length : null));
+                    setPortfolioZoom(1);
+                  }}
+                  className="w-10 h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer"
+                  aria-label="Next artwork"
+                >
+                  <ChevronRight className="w-5 h-5 text-white" />
+                </button>
+              </div>
+
+              {/* Right: Zoom, Download, Inquiry & Close */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                {isCaseStudy && (
+                  <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1 mr-1">
+                    <button
+                      onClick={() => setPortfolioZoom((z) => Math.max(0.6, parseFloat((z - 0.2).toFixed(1))))}
+                      className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                      title="Zoom Out"
+                      aria-label="Zoom Out"
+                    >
+                      <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[10px] font-mono px-1.5 text-white/60 min-w-[36px] text-center">
+                      {Math.round(portfolioZoom * 100)}%
+                    </span>
+                    <button
+                      onClick={() => setPortfolioZoom((z) => Math.min(2.0, parseFloat((z + 0.2).toFixed(1))))}
+                      className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                      title="Zoom In"
+                      aria-label="Zoom In"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setPortfolioZoom(1)}
+                      className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                      title="Reset Zoom"
+                      aria-label="Reset Zoom"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+
                 <a
-                  href={filteredProjects[activeProjectIndex].image}
-                  download={`${filteredProjects[activeProjectIndex].title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-aagspire.webp`}
-                  className="w-full py-3.5 px-5 rounded-xl border border-white/15 bg-white/[0.04] text-white hover:border-ember/50 hover:bg-ember/10 hover:text-ember transition-all font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  href={currentProject.image}
+                  download={`${currentProject.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-aagspire.webp`}
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border border-white/15 bg-white/[0.04] text-white hover:border-ember/50 hover:bg-ember/10 hover:text-ember transition-all text-xs font-semibold uppercase tracking-wider cursor-pointer"
+                  title="Download High-Res Artwork"
                 >
                   <Download className="w-4 h-4" />
-                  <span>Download Full Artwork</span>
+                  <span>Download</span>
                 </a>
 
                 <a
                   href="#contact"
                   onClick={() => setActiveProjectIndex(null)}
-                  className="w-full py-3.5 px-5 rounded-xl bg-ember hover:bg-ember-light text-white font-semibold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,90,31,0.35)] cursor-pointer"
+                  className="hidden md:flex items-center gap-1.5 px-5 py-2 rounded-full bg-ember hover:bg-ember-light text-white text-xs font-semibold uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(255,90,31,0.3)] cursor-pointer"
                 >
-                  <span>Request Similar Project</span>
-                  <ArrowUpRight className="w-4 h-4" />
+                  <span>Start Project</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
                 </a>
+
+                <button
+                  onClick={() => setActiveProjectIndex(null)}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-r from-[#ff5a1f] to-[#ff7a2f] text-white flex items-center justify-center shadow-[0_0_25px_rgba(255,90,31,0.6)] hover:shadow-[0_0_35px_rgba(255,90,31,0.9)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer border border-[#ff9050]"
+                  aria-label="Close viewer"
+                  title="Close (ESC)"
+                >
+                  <X className="w-5 h-5 text-white stroke-[2.5]" />
+                </button>
+              </div>
+            </div>
+
+            {/* Full-Screen Main Content Body */}
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+              {/* Left/Center: Immense Artwork Canvas */}
+              {isCaseStudy ? (
+                <div className="flex-1 bg-[#030303] overflow-y-auto overflow-x-auto relative custom-scrollbar flex flex-col items-center py-6 px-4">
+                  {/* Floating Process Journey Indicator */}
+                  <div className="sticky top-2 z-20 mb-4 px-4 py-1.5 rounded-full bg-black/85 backdrop-blur-xl border border-white/15 shadow-[0_10px_30px_rgba(0,0,0,0.8)] text-xs text-white/70 flex items-center gap-2 sm:gap-4 max-w-xl text-center">
+                    <span className="text-ember font-bold flex items-center gap-1 shrink-0">
+                      <Sparkles className="w-3.5 h-3.5" /> Design Journey:
+                    </span>
+                    <span className="truncate hidden sm:inline text-white/50">
+                      1. Brandmark ➔ 2. 3D Mockups ➔ 3. Geometric Grid ➔ 4. Guidelines
+                    </span>
+                    <span className="text-[11px] text-ember/90 font-mono ml-auto shrink-0">
+                      ↓ Scroll
+                    </span>
+                  </div>
+
+                  <div
+                    className="transition-transform duration-200 ease-out origin-top flex justify-center max-w-full pb-16"
+                    style={{ transform: `scale(${portfolioZoom})` }}
+                  >
+                    <img
+                      src={currentProject.image}
+                      alt={currentProject.title}
+                      className="max-w-[92vw] sm:max-w-2xl lg:max-w-3xl h-auto w-full rounded-2xl shadow-[0_30px_90px_rgba(0,0,0,0.95)] border border-white/10"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 bg-[#050505] p-4 sm:p-8 lg:p-12 flex items-center justify-center overflow-hidden relative">
+                  <img
+                    src={currentProject.image}
+                    alt={currentProject.title}
+                    className="max-h-[82vh] max-w-full w-auto object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)]"
+                  />
+                </div>
+              )}
+
+              {/* Right: Full Details Sidebar Panel */}
+              <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-white/10 bg-[#0a0a0a] p-6 sm:p-8 flex flex-col justify-between overflow-y-auto shrink-0 max-h-[35vh] lg:max-h-full">
+                <div>
+                  <p className="text-xs font-semibold text-ember uppercase tracking-wider mb-2">
+                    {currentProject.categoryName}
+                  </p>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-tight">
+                    {currentProject.title}
+                  </h2>
+                  <p className="text-sm text-white/60 leading-relaxed mb-6">
+                    {currentProject.desc}
+                  </p>
+
+                  {/* Studio Quality Badges */}
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {isCaseStudy ? (
+                      <>
+                        <span className="text-[11px] px-3 py-1 rounded-lg bg-ember/15 border border-ember/30 text-ember font-medium">
+                          ✨ Full Process Case Study
+                        </span>
+                        <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
+                          📐 Geometric Grid Anatomy
+                        </span>
+                        <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
+                          🎨 Color & Typography Specs
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
+                          Original Artwork
+                        </span>
+                        <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
+                          Aagspire Studio Design
+                        </span>
+                        <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
+                          High Resolution WebP
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons in Panel */}
+                <div className="pt-6 border-t border-white/10 flex flex-col gap-3 mt-auto">
+                  <a
+                    href={currentProject.image}
+                    download={`${currentProject.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-aagspire.webp`}
+                    className="w-full py-3.5 px-5 rounded-xl border border-white/15 bg-white/[0.04] text-white hover:border-ember/50 hover:bg-ember/10 hover:text-ember transition-all font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download Full Presentation</span>
+                  </a>
+
+                  <a
+                    href="#contact"
+                    onClick={() => setActiveProjectIndex(null)}
+                    className="w-full py-3.5 px-5 rounded-xl bg-ember hover:bg-ember-light text-white font-semibold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,90,31,0.35)] cursor-pointer"
+                  >
+                    <span>Request Similar Project</span>
+                    <ArrowUpRight className="w-4 h-4" />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </section>
   );
 }

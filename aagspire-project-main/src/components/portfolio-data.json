@@ -13,8 +13,8 @@
     "services": [
       "social-media-marketing"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
   },
   {
     "id": "insta-1-sadbhavna-sankul-post-carousel-02",
@@ -30,8 +30,8 @@
     "services": [
       "social-media-marketing"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
   },
   {
     "id": "insta-aagspire-car-carousel-post-june-2026-02",
@@ -45,10 +45,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-car-carousel-post-june-2026-03",
@@ -62,10 +63,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-car-carousel-post-june-2026-04",
@@ -79,10 +81,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-car-carousel-post-june-2026-05",
@@ -96,10 +99,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-car-posts-01",
@@ -116,8 +120,8 @@
       "social-media-marketing",
       "poster-design"
     ],
-    "subCategory": "campaign",
-    "subCategoryLabel": "Posters & Campaigns"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-car-posts-02",
@@ -134,8 +138,8 @@
       "social-media-marketing",
       "poster-design"
     ],
-    "subCategory": "campaign",
-    "subCategoryLabel": "Posters & Campaigns"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-headphones-carousel-post-june-2026-01",
@@ -149,10 +153,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-headphones-carousel-post-june-2026-02",
@@ -166,10 +171,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-headphones-carousel-post-june-2026-03",
@@ -183,10 +189,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-headphones-carousel-post-june-2026-04",
@@ -200,10 +207,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-aagspire-sevices-insta-post-may-2026",
@@ -219,8 +227,8 @@
     "services": [
       "social-media-marketing"
     ],
-    "subCategory": "brand",
-    "subCategoryLabel": "Brand Graphics"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-ex-sizer-insta-post-june-2026-03",
@@ -236,8 +244,8 @@
     "services": [
       "social-media-marketing"
     ],
-    "subCategory": "brand",
-    "subCategoryLabel": "Brand Graphics"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-phone-carousel-post-june-2026-01",
@@ -251,10 +259,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-phone-carousel-post-june-2026-02",
@@ -268,10 +277,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-phone-carousel-post-june-2026-03",
@@ -285,10 +295,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-phone-carousel-post-june-2026-04",
@@ -302,10 +313,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-plain-papad-insta-post-july-26-04",
@@ -322,8 +334,8 @@
       "social-media-marketing",
       "packaging-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "pouch-packaging",
+    "subCategoryLabel": "Food, FMCG & Agro Pouch Packaging"
   },
   {
     "id": "insta-smart-phone-post-00",
@@ -337,10 +349,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-smart-phone-post-01",
@@ -354,10 +367,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-smart-phone-post-02",
@@ -371,10 +385,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-smart-phone-post-03",
@@ -388,10 +403,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-smart-phone-post-04",
@@ -405,10 +421,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-vasaline-post-01",
@@ -425,8 +442,8 @@
       "social-media-marketing",
       "packaging-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "box-packaging",
+    "subCategoryLabel": "Retail Product Boxes & Container Design"
   },
   {
     "id": "insta-vasaline-post-02",
@@ -443,8 +460,8 @@
       "social-media-marketing",
       "packaging-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "box-packaging",
+    "subCategoryLabel": "Retail Product Boxes & Container Design"
   },
   {
     "id": "insta-watches-post-01",
@@ -458,10 +475,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-watches-post-02",
@@ -475,10 +493,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-watches-post-03",
@@ -492,10 +511,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-watches-post-04",
@@ -509,10 +529,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "social-media-marketing"
+      "social-media-marketing",
+      "poster-design"
     ],
-    "subCategory": "product",
-    "subCategoryLabel": "Product Creatives"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
   },
   {
     "id": "insta-weffers-insta-post-crousal-01",
@@ -529,8 +550,8 @@
       "social-media-marketing",
       "packaging-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "pouch-packaging",
+    "subCategoryLabel": "Food, FMCG & Agro Pouch Packaging"
   },
   {
     "id": "insta-weffers-insta-post-crousal-02",
@@ -547,8 +568,8 @@
       "social-media-marketing",
       "packaging-design"
     ],
-    "subCategory": "carousel",
-    "subCategoryLabel": "Carousel Posts"
+    "subCategory": "pouch-packaging",
+    "subCategoryLabel": "Food, FMCG & Agro Pouch Packaging"
   },
   {
     "id": "tshirt-1-human-being",
@@ -562,11 +583,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "apparel-graphics",
-      "poster-design"
+      "poster-design",
+      "apparel-graphics"
     ],
-    "subCategory": "apparel",
-    "subCategoryLabel": "Apparel Graphics"
+    "subCategory": "streetwear",
+    "subCategoryLabel": "Streetwear Apparel Graphics & Art Prints"
   },
   {
     "id": "tshirt-2-keep-life-simple",
@@ -580,11 +601,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "apparel-graphics",
-      "poster-design"
+      "poster-design",
+      "apparel-graphics"
     ],
-    "subCategory": "apparel",
-    "subCategoryLabel": "Apparel Graphics"
+    "subCategory": "streetwear",
+    "subCategoryLabel": "Streetwear Apparel Graphics & Art Prints"
   },
   {
     "id": "tshirt-3-prayer-the-god",
@@ -598,11 +619,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "apparel-graphics",
-      "poster-design"
+      "poster-design",
+      "apparel-graphics"
     ],
-    "subCategory": "apparel",
-    "subCategoryLabel": "Apparel Graphics"
+    "subCategory": "streetwear",
+    "subCategoryLabel": "Streetwear Apparel Graphics & Art Prints"
   },
   {
     "id": "tshirt-4-extremely-noisy",
@@ -616,11 +637,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "apparel-graphics",
-      "poster-design"
+      "poster-design",
+      "apparel-graphics"
     ],
-    "subCategory": "apparel",
-    "subCategoryLabel": "Apparel Graphics"
+    "subCategory": "streetwear",
+    "subCategoryLabel": "Streetwear Apparel Graphics & Art Prints"
   },
   {
     "id": "tshirt-5-never-mind",
@@ -634,11 +655,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "apparel-graphics",
-      "poster-design"
+      "poster-design",
+      "apparel-graphics"
     ],
-    "subCategory": "apparel",
-    "subCategoryLabel": "Apparel Graphics"
+    "subCategory": "streetwear",
+    "subCategoryLabel": "Streetwear Apparel Graphics & Art Prints"
   },
   {
     "id": "tshirt-6-fallen",
@@ -652,11 +673,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "apparel-graphics",
-      "poster-design"
+      "poster-design",
+      "apparel-graphics"
     ],
-    "subCategory": "apparel",
-    "subCategoryLabel": "Apparel Graphics"
+    "subCategory": "streetwear",
+    "subCategoryLabel": "Streetwear Apparel Graphics & Art Prints"
   },
   {
     "id": "tshirt-7-the-beast",
@@ -670,11 +691,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "apparel-graphics",
-      "poster-design"
+      "poster-design",
+      "apparel-graphics"
     ],
-    "subCategory": "apparel",
-    "subCategoryLabel": "Apparel Graphics"
+    "subCategory": "streetwear",
+    "subCategoryLabel": "Streetwear Apparel Graphics & Art Prints"
   },
   {
     "id": "tshirt-8-transform-into-force",
@@ -688,11 +709,11 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "apparel-graphics",
-      "poster-design"
+      "poster-design",
+      "apparel-graphics"
     ],
-    "subCategory": "apparel",
-    "subCategoryLabel": "Apparel Graphics"
+    "subCategory": "streetwear",
+    "subCategoryLabel": "Streetwear Apparel Graphics & Art Prints"
   },
   {
     "id": "cards-visiting-card-samples-01",
@@ -706,11 +727,10 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "logo-design",
-      "packaging-design"
+      "logo-design"
     ],
-    "subCategory": "identity",
-    "subCategoryLabel": "Identity & Cards"
+    "subCategory": "business-cards",
+    "subCategoryLabel": "Business Card Printing & Corporate Stationery"
   },
   {
     "id": "cards-visiting-card-samples-02",
@@ -724,11 +744,10 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "logo-design",
-      "packaging-design"
+      "logo-design"
     ],
-    "subCategory": "identity",
-    "subCategoryLabel": "Identity & Cards"
+    "subCategory": "business-cards",
+    "subCategoryLabel": "Business Card Printing & Corporate Stationery"
   },
   {
     "id": "cards-visiting-card-samples-03",
@@ -742,11 +761,10 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "logo-design",
-      "packaging-design"
+      "logo-design"
     ],
-    "subCategory": "identity",
-    "subCategoryLabel": "Identity & Cards"
+    "subCategory": "business-cards",
+    "subCategoryLabel": "Business Card Printing & Corporate Stationery"
   },
   {
     "id": "cards-visiting-card-samples-04",
@@ -760,11 +778,10 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "logo-design",
-      "packaging-design"
+      "logo-design"
     ],
-    "subCategory": "identity",
-    "subCategoryLabel": "Identity & Cards"
+    "subCategory": "business-cards",
+    "subCategoryLabel": "Business Card Printing & Corporate Stationery"
   },
   {
     "id": "cards-visiting-card-samples-05",
@@ -778,11 +795,10 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "logo-design",
-      "packaging-design"
+      "logo-design"
     ],
-    "subCategory": "identity",
-    "subCategoryLabel": "Identity & Cards"
+    "subCategory": "business-cards",
+    "subCategoryLabel": "Business Card Printing & Corporate Stationery"
   },
   {
     "id": "cards-visiting-card-samples-06",
@@ -796,11 +812,10 @@
     "ratio": 0.8,
     "shape": "portrait",
     "services": [
-      "logo-design",
-      "packaging-design"
+      "logo-design"
     ],
-    "subCategory": "identity",
-    "subCategoryLabel": "Identity & Cards"
+    "subCategory": "business-cards",
+    "subCategoryLabel": "Business Card Printing & Corporate Stationery"
   },
   {
     "id": "cards-visiting-card-samples-07",
@@ -814,11 +829,10 @@
     "ratio": 1.33,
     "shape": "landscape",
     "services": [
-      "logo-design",
-      "packaging-design"
+      "logo-design"
     ],
-    "subCategory": "identity",
-    "subCategoryLabel": "Identity & Cards"
+    "subCategory": "business-cards",
+    "subCategoryLabel": "Business Card Printing & Corporate Stationery"
   },
   {
     "id": "insta-gt-in-final-poster",
@@ -835,7 +849,609 @@
       "social-media-marketing",
       "poster-design"
     ],
-    "subCategory": "campaign",
-    "subCategoryLabel": "Posters & Campaigns"
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
+  },
+  {
+    "id": "posts-01",
+    "title": "FIFA Last Dance – Lionel Messi",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/01.webp",
+    "originalName": "01.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "poster-design",
+      "social-media-marketing"
+    ],
+    "subCategory": "sports-posters",
+    "subCategoryLabel": "Sports Tournament & Cinematic Posters"
+  },
+  {
+    "id": "posts-02",
+    "title": "FIFA Last Dance – Cristiano Ronaldo",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/02.webp",
+    "originalName": "02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "poster-design",
+      "social-media-marketing"
+    ],
+    "subCategory": "sports-posters",
+    "subCategoryLabel": "Sports Tournament & Cinematic Posters"
+  },
+  {
+    "id": "posts-03",
+    "title": "FIFA Last Dance – Kevin De Bruyne",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/03.webp",
+    "originalName": "03.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "poster-design",
+      "social-media-marketing"
+    ],
+    "subCategory": "sports-posters",
+    "subCategoryLabel": "Sports Tournament & Cinematic Posters"
+  },
+  {
+    "id": "posts-04",
+    "title": "FIFA Last Dance – Lamine Yamal",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/04.webp",
+    "originalName": "04.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "poster-design",
+      "social-media-marketing"
+    ],
+    "subCategory": "sports-posters",
+    "subCategoryLabel": "Sports Tournament & Cinematic Posters"
+  },
+  {
+    "id": "posts-kashi-rudra-insta-post",
+    "title": "Kashi Rudra Insta Post",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/kashi-rudra-insta-post.webp",
+    "originalName": "Kashi Rudra Insta Post.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "campaigns",
+    "subCategoryLabel": "Festival & Brand Campaign Creatives"
+  },
+  {
+    "id": "posts-khanum-butter-ghee-02",
+    "title": "Khanum Butter Ghee 02",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/khanum-butter-ghee-02.webp",
+    "originalName": "Khanum Butter Ghee 02.jpg",
+    "width": 1600,
+    "height": 1600,
+    "ratio": 1,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "box-packaging",
+    "subCategoryLabel": "Retail Product Boxes & Container Design"
+  },
+  {
+    "id": "posts-messi-carouseel-01",
+    "title": "Messi Carouseel 01",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/messi-carouseel-01.webp",
+    "originalName": "Messi Carouseel 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
+  },
+  {
+    "id": "posts-messi-carouseel-02",
+    "title": "Messi Carouseel 02",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/messi-carouseel-02.webp",
+    "originalName": "Messi Carouseel 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
+  },
+  {
+    "id": "posts-messi-carouseel-03",
+    "title": "Messi Carouseel 03",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/messi-carouseel-03.webp",
+    "originalName": "Messi Carouseel 03.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
+  },
+  {
+    "id": "posts-messi-carouseel-04",
+    "title": "Messi Carouseel 04",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/messi-carouseel-04.webp",
+    "originalName": "Messi Carouseel 04.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
+  },
+  {
+    "id": "posts-pixury-carousel-post-01",
+    "title": "Pixury Carousel Post 01",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/pixury-carousel-post-01.webp",
+    "originalName": "Pixury Carousel Post 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "box-packaging",
+    "subCategoryLabel": "Retail Product Boxes & Container Design"
+  },
+  {
+    "id": "posts-pixury-carousel-post-02",
+    "title": "Pixury Carousel Post 02",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/pixury-carousel-post-02.webp",
+    "originalName": "Pixury Carousel Post 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "box-packaging",
+    "subCategoryLabel": "Retail Product Boxes & Container Design"
+  },
+  {
+    "id": "posts-pixury-carousel-post-03",
+    "title": "Pixury Carousel Post 03",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/pixury-carousel-post-03.webp",
+    "originalName": "Pixury Carousel Post 03.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "box-packaging",
+    "subCategoryLabel": "Retail Product Boxes & Container Design"
+  },
+  {
+    "id": "posts-pixury-carousel-post-04",
+    "title": "Pixury Carousel Post 04",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/pixury-carousel-post-04.webp",
+    "originalName": "Pixury Carousel Post 04.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "box-packaging",
+    "subCategoryLabel": "Retail Product Boxes & Container Design"
+  },
+  {
+    "id": "posts-radhe-agree-industries-insta-post-mar-26-03-2",
+    "title": "Radhe Agree Industries Insta Post Mar 26 03",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/radhe-agree-industries-insta-post-mar-26-03-2.webp",
+    "originalName": "Radhe Agree Industries Insta Post Mar 26 03.2.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "pouch-packaging",
+    "subCategoryLabel": "Food, FMCG & Agro Pouch Packaging"
+  },
+  {
+    "id": "posts-radhe-agree-industries-insta-post-mar-26-10-2",
+    "title": "Radhe Agree Industries Insta Post Mar 26 10",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/radhe-agree-industries-insta-post-mar-26-10-2.webp",
+    "originalName": "Radhe Agree Industries Insta Post Mar 26 10.2.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "pouch-packaging",
+    "subCategoryLabel": "Food, FMCG & Agro Pouch Packaging"
+  },
+  {
+    "id": "posts-urban-monkey-carousel-july-26-01",
+    "title": "Urban Monkey Carousel July 26 01",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/urban-monkey-carousel-july-26-01.webp",
+    "originalName": "Urban Monkey Carousel July 26 01.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
+  },
+  {
+    "id": "posts-urban-monkey-carousel-july-26-02",
+    "title": "Urban Monkey Carousel July 26 02",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/urban-monkey-carousel-july-26-02.webp",
+    "originalName": "Urban Monkey Carousel July 26 02.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
+  },
+  {
+    "id": "posts-urban-monkey-carousel-july-26-03",
+    "title": "Urban Monkey Carousel July 26 03",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/urban-monkey-carousel-july-26-03.webp",
+    "originalName": "Urban Monkey Carousel July 26 03.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
+  },
+  {
+    "id": "posts-urban-monkey-carousel-july-26-04",
+    "title": "Urban Monkey Carousel July 26 04",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/urban-monkey-carousel-july-26-04.webp",
+    "originalName": "Urban Monkey Carousel July 26 04.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing"
+    ],
+    "subCategory": "carousels",
+    "subCategoryLabel": "Instagram Carousels & Multi-Slide Strategy"
+  },
+  {
+    "id": "posts-worldgreen-insta-post-01-4",
+    "title": "WorldGreen Insta Post 01",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/worldgreen-insta-post-01-4.webp",
+    "originalName": "WorldGreen Insta Post 01.4.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "pouch-packaging",
+    "subCategoryLabel": "Food, FMCG & Agro Pouch Packaging"
+  },
+  {
+    "id": "posts-worldgreen-insta-post-02-2",
+    "title": "WorldGreen Insta Post 02",
+    "type": "social",
+    "folder": "posts",
+    "image": "/portfolio-optimized/posts/worldgreen-insta-post-02-2.webp",
+    "originalName": "WorldGreen Insta Post 02.2.jpg",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "social-media-marketing",
+      "packaging-design"
+    ],
+    "subCategory": "pouch-packaging",
+    "subCategoryLabel": "Food, FMCG & Agro Pouch Packaging"
+  },
+  {
+    "id": "cards-aagspire-visiting-card-mockups-02",
+    "title": "Aagspire Premium Corporate Stationery & Cards",
+    "type": "cards",
+    "folder": "cards",
+    "image": "/portfolio-optimized/cards/aagspire-visiting-card-mockups-02.webp",
+    "originalName": "Aagspire Visiting Card Mockups 02.png",
+    "width": 1600,
+    "height": 2000,
+    "ratio": 0.8,
+    "shape": "portrait",
+    "services": [
+      "logo-design"
+    ],
+    "subCategory": "business-cards",
+    "subCategoryLabel": "Business Card Printing & Corporate Stationery"
+  },
+  {
+    "id": "websliders-aagspire-webslider-01",
+    "title": "Aagspire Webslider 01",
+    "type": "social",
+    "folder": "websliders",
+    "image": "/portfolio-optimized/websliders/aagspire-webslider-01.webp",
+    "originalName": "Aagspire Webslider 01.jpg",
+    "width": 1600,
+    "height": 900,
+    "ratio": 1.78,
+    "shape": "landscape",
+    "services": [
+      "web-development",
+      "ui-ux-web-development"
+    ],
+    "subCategory": "web-sliders",
+    "subCategoryLabel": "Web Banners & Interactive Hero Sliders"
+  },
+  {
+    "id": "websliders-aagspire-webslider-02",
+    "title": "Aagspire Webslider 02",
+    "type": "social",
+    "folder": "websliders",
+    "image": "/portfolio-optimized/websliders/aagspire-webslider-02.webp",
+    "originalName": "Aagspire Webslider 02.jpg",
+    "width": 1600,
+    "height": 900,
+    "ratio": 1.78,
+    "shape": "landscape",
+    "services": [
+      "web-development",
+      "ui-ux-web-development"
+    ],
+    "subCategory": "web-sliders",
+    "subCategoryLabel": "Web Banners & Interactive Hero Sliders"
+  },
+  {
+    "id": "websliders-aagspire-webslider-03",
+    "title": "Aagspire Webslider 03",
+    "type": "social",
+    "folder": "websliders",
+    "image": "/portfolio-optimized/websliders/aagspire-webslider-03.webp",
+    "originalName": "Aagspire Webslider 03.jpg",
+    "width": 1600,
+    "height": 900,
+    "ratio": 1.78,
+    "shape": "landscape",
+    "services": [
+      "web-development",
+      "ui-ux-web-development"
+    ],
+    "subCategory": "web-sliders",
+    "subCategoryLabel": "Web Banners & Interactive Hero Sliders"
+  },
+  {
+    "id": "websliders-aagspire-webslider-04",
+    "title": "Aagspire Webslider 04",
+    "type": "social",
+    "folder": "websliders",
+    "image": "/portfolio-optimized/websliders/aagspire-webslider-04.webp",
+    "originalName": "Aagspire Webslider 04.jpg",
+    "width": 1600,
+    "height": 900,
+    "ratio": 1.78,
+    "shape": "landscape",
+    "services": [
+      "web-development",
+      "ui-ux-web-development"
+    ],
+    "subCategory": "web-sliders",
+    "subCategoryLabel": "Web Banners & Interactive Hero Sliders"
+  },
+  {
+    "id": "logos-agrisource-logo-presentation",
+    "title": "Agrisource – Brand & Logo Identity Case Study",
+    "type": "cards",
+    "folder": "logos",
+    "image": "/portfolio-optimized/logos/agrisource-logo-page-1.webp",
+    "originalName": "Agrisource Logo Presentation.pdf",
+    "width": 1190,
+    "height": 8148,
+    "ratio": 0.15,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "brand-identity",
+    "subCategoryLabel": "Brand Identity Guidelines & Master Logo Presentations"
+  },
+  {
+    "id": "logos-consistency-logo-presentation",
+    "title": "Consistency – Brand & Logo Identity Case Study",
+    "type": "cards",
+    "folder": "logos",
+    "image": "/portfolio-optimized/logos/consistency-logo-page-1.webp",
+    "originalName": "Consistency Logo Presentation 01.pdf",
+    "width": 1152,
+    "height": 10957,
+    "ratio": 0.11,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "brand-identity",
+    "subCategoryLabel": "Brand Identity Guidelines & Master Logo Presentations"
+  },
+  {
+    "id": "logos-jyotnar-worldwide-trading-logo-presentation",
+    "title": "Jyotnar Worldwide Trading – Brand & Logo Identity Case Study",
+    "type": "cards",
+    "folder": "logos",
+    "image": "/portfolio-optimized/logos/jyotnar-worldwide-trading-logo-page-1.webp",
+    "originalName": "Jyotnar Worldwide Trading Logo Presentation 02.pdf",
+    "width": 1152,
+    "height": 9977,
+    "ratio": 0.12,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "brand-identity",
+    "subCategoryLabel": "Brand Identity Guidelines & Master Logo Presentations"
+  },
+  {
+    "id": "logos-platinum-car-detailing-studio-logo-presentation",
+    "title": "Platinum Car Detailing Studio – Brand & Logo Identity Case Study",
+    "type": "cards",
+    "folder": "logos",
+    "image": "/portfolio-optimized/logos/platinum-car-detailing-studio-logo-page-1.webp",
+    "originalName": "Platinum Car Detailing Studio Logo.pdf",
+    "width": 1189,
+    "height": 7890,
+    "ratio": 0.15,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "brand-identity",
+    "subCategoryLabel": "Brand Identity Guidelines & Master Logo Presentations"
+  },
+  {
+    "id": "logos-shivalik-construction-design-logo-presentation",
+    "title": "Shivalik Construction & Design – Brand & Logo Identity Case Study",
+    "type": "cards",
+    "folder": "logos",
+    "image": "/portfolio-optimized/logos/shivalik-construction-design-logo-page-1.webp",
+    "originalName": "Shivalik Construction & Design Logo.pdf",
+    "width": 1189,
+    "height": 12240,
+    "ratio": 0.1,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "brand-identity",
+    "subCategoryLabel": "Brand Identity Guidelines & Master Logo Presentations"
+  },
+  {
+    "id": "logos-sonagra-agro-store-logo-presentation",
+    "title": "Sonagra Agro Store – Brand & Logo Identity Case Study",
+    "type": "cards",
+    "folder": "logos",
+    "image": "/portfolio-optimized/logos/sonagra-agro-store-logo-page-1.webp",
+    "originalName": "Sonagra Agro Store Logo Presentation  01.pdf",
+    "width": 1189,
+    "height": 9654,
+    "ratio": 0.12,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "brand-identity",
+    "subCategoryLabel": "Brand Identity Guidelines & Master Logo Presentations"
+  },
+  {
+    "id": "logos-umiya-glass-aluminium-logo-presentation",
+    "title": "Umiya Glass & Aluminium – Brand & Logo Identity Case Study",
+    "type": "cards",
+    "folder": "logos",
+    "image": "/portfolio-optimized/logos/umiya-glass-aluminium-logo-page-1.webp",
+    "originalName": "Umiya Glass & Aluminium Logo .pdf",
+    "width": 1152,
+    "height": 15840,
+    "ratio": 0.07,
+    "shape": "portrait",
+    "services": [
+      "logo-design",
+      "packaging-design"
+    ],
+    "subCategory": "brand-identity",
+    "subCategoryLabel": "Brand Identity Guidelines & Master Logo Presentations"
   }
 ]

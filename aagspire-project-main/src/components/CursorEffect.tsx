@@ -170,12 +170,12 @@ export default function CursorEffect() {
     <>
       <canvas
         ref={canvasRef}
-        className="fixed inset-0 pointer-events-none z-[9998]"
+        className="fixed inset-0 pointer-events-none z-[99998]"
         style={{ mixBlendMode: 'screen' }}
       />
       <div
         ref={trailRef}
-        className="fixed top-0 left-0 w-10 h-10 pointer-events-none z-[9999] rounded-full will-change-transform"
+        className="fixed top-0 left-0 w-10 h-10 pointer-events-none z-[99999] rounded-full will-change-transform"
         style={{
           border: '1px solid rgba(255,90,31,0.35)',
           transition: 'transform 0.1s ease-out',
@@ -183,7 +183,7 @@ export default function CursorEffect() {
       />
       <div
         ref={cursorRef}
-        className="fixed top-0 left-0 pointer-events-none z-[9999] rounded-full will-change-transform"
+        className="fixed top-0 left-0 pointer-events-none z-[99999] rounded-full will-change-transform"
         style={{
           width: '12px',
           height: '12px',

@@ -10,8 +10,18 @@ import { MapPin } from 'lucide-react';
 
 export default function Footer() {
   const links = {
-    Studio: ['About', 'Process', 'Careers', 'Contact'],
-    Services: ['Brand Identity', 'UI/UX Design', 'Web Development', 'Motion & Film'],
+    Studio: [
+      { name: 'About', href: '#about' },
+      { name: 'Process', href: '#process' },
+      { name: 'Services', href: '#services' },
+      { name: 'Contact', href: '#contact' },
+    ],
+    Services: [
+      { name: 'Social Media Marketing', href: '#services' },
+      { name: 'Logo Design', href: '#services' },
+      { name: 'Poster Design', href: '#services' },
+      { name: 'Packaging Design', href: '#services' },
+    ],
   };
 
   const socialLinks = [
@@ -87,12 +97,12 @@ export default function Footer() {
               </p>
               <ul className="flex flex-col gap-3">
                 {items.map((item) => (
-                  <li key={item}>
+                  <li key={item.name}>
                     <a
-                      href={`#${item.toLowerCase().replace(/\s+/g, '-')}`}
+                      href={item.href}
                       className="text-sm text-white/50 hover:text-ember transition-colors duration-300"
                     >
-                      {item}
+                      {item.name}
                     </a>
                   </li>
                 ))}

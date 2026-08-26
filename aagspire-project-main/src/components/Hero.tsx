@@ -30,14 +30,22 @@ interface FireParticle {
 interface HeroProps {
   ignited: boolean;
   onIgnite: () => void;
+  onOpenWork?: () => void;
+  onOpenContact?: () => void;
 }
 
-export default function Hero({ ignited, onIgnite }: HeroProps) {
+export default function Hero({ ignited, onIgnite, onOpenWork, onOpenContact }: HeroProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [showContent, setShowContent] = useState(false);
+  const [showContent, setShowContent] = useState(ignited);
   const particles = useRef<FireParticle[]>([]);
   const animRef = useRef<number>(0);
   const mouseRef = useRef<{ x: number; y: number; active: boolean }>({ x: -1000, y: -1000, active: false });
+
+  useEffect(() => {
+    if (ignited) {
+      setShowContent(true);
+    }
+  }, [ignited]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -269,6 +277,7 @@ export default function Hero({ ignited, onIgnite }: HeroProps) {
 
   const handleIgnite = (e?: React.MouseEvent | MouseEvent) => {
     if (ignited) return;
+    setShowContent(true);
     onIgnite();
     // Spectacular high-performance radial fiery orange & white spark eruption
     const canvas = canvasRef.current;
@@ -301,7 +310,6 @@ export default function Hero({ ignited, onIgnite }: HeroProps) {
         });
       }
     }
-    setTimeout(() => setShowContent(true), 600);
   };
 
   // Click anywhere on window to ignite
@@ -351,11 +359,7 @@ export default function Hero({ ignited, onIgnite }: HeroProps) {
             </button>
           </div>
         ) : (
-          <div
-            className={`flex flex-col items-center gap-8 transition-all duration-1000 ${
-              showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-            }`}
-          >
+          <div className="flex flex-col items-center gap-8 transition-all duration-700 opacity-100 translate-y-0 animate-fade-up">
             {/* Tagline badge */}
             <div className="inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-black/40 px-5 py-2 backdrop-blur-sm shadow-[0_0_20px_rgba(255,90,31,0.15)]">
               <span className="relative flex h-2 w-2 items-center justify-center">
@@ -383,20 +387,22 @@ export default function Hero({ ignited, onIgnite }: HeroProps) {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row items-center gap-4 mt-4">
-              <a
-                href="#contact"
-                className="magnetic-btn group relative px-8 py-4 rounded-full bg-ember text-white text-sm font-semibold ember-glow hover:scale-105 transition-transform flex items-center gap-2"
+              <button
+                type="button"
+                onClick={onOpenContact}
+                className="magnetic-btn group relative px-8 py-4 rounded-full bg-ember text-white text-sm font-semibold ember-glow hover:scale-105 transition-transform flex items-center gap-2 cursor-pointer"
               >
                 <span className="relative z-10">Start Your Project</span>
                 <span className="relative z-10 group-hover:translate-x-1 transition-transform">→</span>
-              </a>
-              <a
-                href="#work"
-                className="magnetic-btn px-8 py-4 rounded-full glass-card glass-card-hover text-sm font-semibold flex items-center gap-2"
+              </button>
+              <button
+                type="button"
+                onClick={onOpenWork}
+                className="magnetic-btn px-8 py-4 rounded-full glass-card glass-card-hover text-sm font-semibold flex items-center gap-2 cursor-pointer"
               >
                 <span>Explore Our Work</span>
                 <span className="text-ember">↗</span>
-              </a>
+              </button>
             </div>
           </div>
         )}
@@ -405,9 +411,9 @@ export default function Hero({ ignited, onIgnite }: HeroProps) {
       {/* Scroll indicator */}
       {ignited && showContent && (
         <a
-          href="#about"
+          href="#services"
           className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center cursor-pointer group"
-          aria-label="Scroll down"
+          aria-label="Scroll down to services"
         >
           <div className="w-px h-12 bg-gradient-to-b from-ember to-transparent group-hover:from-ember-light transition-colors duration-300" />
         </a>

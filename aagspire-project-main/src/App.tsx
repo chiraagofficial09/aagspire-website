@@ -3,7 +3,6 @@ import CursorEffect from './components/CursorEffect';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Services from './components/Services';
-import Portfolio from './components/Portfolio';
 import Process from './components/Process';
 import Testimonials from './components/Testimonials';
 import About from './components/About';
@@ -12,6 +11,28 @@ import Footer from './components/Footer';
 
 function App() {
   const [ignited, setIgnited] = useState(false);
+  const [isWorkOpen, setIsWorkOpen] = useState(false);
+  const [isContactOpen, setIsContactOpen] = useState(false);
+
+  const handleOpenWork = () => {
+    if (!ignited) setIgnited(true);
+    setIsContactOpen(false);
+    setIsWorkOpen(true);
+  };
+
+  const handleCloseWork = () => {
+    setIsWorkOpen(false);
+  };
+
+  const handleOpenContact = () => {
+    if (!ignited) setIgnited(true);
+    setIsWorkOpen(false);
+    setIsContactOpen(true);
+  };
+
+  const handleCloseContact = () => {
+    setIsContactOpen(false);
+  };
 
   return (
     <div
@@ -20,18 +41,36 @@ function App() {
       }`}
     >
       <CursorEffect />
-      <Navbar visible={ignited} />
+      <Navbar
+        visible={ignited}
+        isWorkOpen={isWorkOpen}
+        onOpenWork={handleOpenWork}
+        onCloseWork={handleCloseWork}
+        onOpenContact={handleOpenContact}
+      />
 
       <main className="relative z-10">
-        <Hero ignited={ignited} onIgnite={() => setIgnited(true)} />
+        <Hero
+          ignited={ignited}
+          onIgnite={() => setIgnited(true)}
+          onOpenWork={handleOpenWork}
+          onOpenContact={handleOpenContact}
+        />
         {ignited && (
           <div className="transition-opacity duration-1000 opacity-100">
-            <Services />
-            <Portfolio />
+            <Services
+              isWorkOpen={isWorkOpen}
+              onCloseWork={handleCloseWork}
+            />
             <Process />
             <Testimonials />
             <About />
-            <CTA />
+            <CTA
+              isContactOpen={isContactOpen}
+              onOpenContact={handleOpenContact}
+              onCloseContact={handleCloseContact}
+              onOpenWork={handleOpenWork}
+            />
           </div>
         )}
       </main>
