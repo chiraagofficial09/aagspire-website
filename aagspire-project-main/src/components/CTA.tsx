@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, CheckCircle2, X, ArrowRight, ArrowUpRight, Sparkles, Mail } from 'lucide-react';
+import { Send, CheckCircle2, X, ArrowRight, ArrowUpRight, Sparkles, Mail, AlertCircle } from 'lucide-react';
+import { sendContactEmail, isEmailConfigured } from '../services/emailService';
 
 const serviceOptions = [
   'Social Media Marketing',
@@ -28,6 +29,7 @@ export default function CTA({
   const [localModalOpen, setLocalModalOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -40,11 +42,13 @@ export default function CTA({
 
   const handleOpen = () => {
     setLocalModalOpen(true);
+    setErrorMessage(null);
     onOpenContact?.();
   };
 
   const handleClose = () => {
     setLocalModalOpen(false);
+    setErrorMessage(null);
     onCloseContact?.();
   };
 
@@ -78,14 +82,27 @@ export default function CTA({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isModalOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      const response = await sendContactEmail(formData);
+      if (response.success) {
+        setSubmitted(true);
+      } else {
+        setErrorMessage(
+          response.error || 'Failed to send your inquiry. Please try again or contact us directly.'
+        );
+      }
+    } catch {
+      setErrorMessage(
+        'An unexpected error occurred. Please try again later or reach out at aagspire@gmail.com.'
+      );
+    } finally {
       setIsSubmitting(false);
-      setSubmitted(true);
-    }, 800);
+    }
   };
 
   return (
@@ -149,11 +166,11 @@ export default function CTA({
             {/* Quick Meta Footer */}
             <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mt-14 text-xs font-medium text-white/40">
               <a
-                href="mailto:hello@aagspire.com"
+                href="mailto:aagspire@gmail.com"
                 className="hover:text-ember transition-colors flex items-center gap-1.5"
               >
                 <Mail className="w-3.5 h-3.5 text-ember" />
-                hello@aagspire.com
+                aagspire@gmail.com
               </a>
               <span className="hidden sm:inline-block w-1 h-1 rounded-full bg-white/20" />
               <span>Remote · Worldwide</span>
@@ -201,6 +218,7 @@ export default function CTA({
                   type="button"
                   onClick={() => {
                     setSubmitted(false);
+                    setErrorMessage(null);
                     handleClose();
                     setFormData({
                       name: '',
@@ -229,6 +247,31 @@ export default function CTA({
                 <p className="text-xs sm:text-sm text-white/50 mb-6 leading-relaxed">
                   Fill in your details below and we'll reach out within 24 hours with a custom proposal.
                 </p>
+
+                {/* Error Banner */}
+                {errorMessage && (
+                  <div className="mb-5 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-start gap-3 animate-fade-up">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
+                    <div className="flex-1 leading-relaxed">
+                      <p className="font-semibold text-red-200">{errorMessage}</p>
+                      {!isEmailConfigured() && (
+                        <p className="mt-1 text-[11px] text-white/50">
+                          Note: Add your EmailJS Service ID, Template ID, and Public Key to your{' '}
+                          <code className="text-white/80 font-mono bg-white/10 px-1 py-0.5 rounded">.env</code>{' '}
+                          file to enable live sending.
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setErrorMessage(null)}
+                      className="text-white/40 hover:text-white transition-colors cursor-pointer"
+                      aria-label="Dismiss error"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                   {/* Name & Email */}

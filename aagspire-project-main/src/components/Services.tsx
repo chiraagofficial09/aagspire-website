@@ -16,8 +16,6 @@ import {
   Trophy,
   Shirt,
   Sliders,
-  Share2,
-  X,
   ArrowUpRight,
   Sparkles,
   ChevronLeft,
@@ -228,7 +226,7 @@ interface ServicesProps {
 export default function Services({ isWorkOpen = false, onCloseWork, initialTabId = 'all' }: ServicesProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const tabsScrollRef = useRef<HTMLDivElement>(null);
-  const [scrollProgress, setScrollProgress] = useState<number>(0);
+  const [, setScrollProgress] = useState<number>(0);
   const [visible, setVisible] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string>('all');

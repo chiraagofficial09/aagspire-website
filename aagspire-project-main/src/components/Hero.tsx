@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface SparkPoint {
   x: number;
@@ -36,16 +36,9 @@ interface HeroProps {
 
 export default function Hero({ ignited, onIgnite, onOpenWork, onOpenContact }: HeroProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [showContent, setShowContent] = useState(ignited);
   const particles = useRef<FireParticle[]>([]);
   const animRef = useRef<number>(0);
   const mouseRef = useRef<{ x: number; y: number; active: boolean }>({ x: -1000, y: -1000, active: false });
-
-  useEffect(() => {
-    if (ignited) {
-      setShowContent(true);
-    }
-  }, [ignited]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -277,7 +270,6 @@ export default function Hero({ ignited, onIgnite, onOpenWork, onOpenContact }: H
 
   const handleIgnite = (e?: React.MouseEvent | MouseEvent) => {
     if (ignited) return;
-    setShowContent(true);
     onIgnite();
     // Spectacular high-performance radial fiery orange & white spark eruption
     const canvas = canvasRef.current;
@@ -407,17 +399,6 @@ export default function Hero({ ignited, onIgnite, onOpenWork, onOpenContact }: H
           </div>
         )}
       </div>
-
-      {/* Scroll indicator */}
-      {ignited && showContent && (
-        <a
-          href="#services"
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center cursor-pointer group"
-          aria-label="Scroll down to services"
-        >
-          <div className="w-px h-12 bg-gradient-to-b from-ember to-transparent group-hover:from-ember-light transition-colors duration-300" />
-        </a>
-      )}
     </section>
   );
 }
