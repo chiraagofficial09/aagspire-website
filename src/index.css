@@ -22,10 +22,8 @@
   }
 }
 
-/* Strict Image Anti-Theft & Anti-Copy Protection */
-img,
-.protected-image,
-[data-protected="true"] {
+/* Full-Website Anti-Theft, Anti-Copy, & Anti-Drag Protection */
+*, *::before, *::after {
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
   -ms-user-select: none !important;
@@ -38,22 +36,27 @@ img,
   -webkit-touch-callout: none !important;
 }
 
+/* Allow text typing in form fields */
+input, textarea {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
 /* Anti-Print Protection: Blanks out content if user attempts Print / Save to PDF */
 @media print {
-  html, body {
+  html, body, #root {
     display: none !important;
     visibility: hidden !important;
   }
-  img, svg, canvas, .protected-image {
-    display: none !important;
-    opacity: 0 !important;
-  }
 }
 
-/* Blur protection when Snipping Tool or external screenshot app takes window focus */
-.window-blurred .protected-image img {
-  filter: blur(14px) brightness(0.7) !important;
-  transition: filter 0.2s ease !important;
+/* Anti-Screenshot: Heavy blur across entire website when Snipping Tool or external capture app is active */
+.window-blurred #root {
+  filter: blur(24px) brightness(0.4) !important;
+  pointer-events: none !important;
+  transition: filter 0.15s ease !important;
 }
 
 html {

@@ -161,12 +161,14 @@ export const ImageWithLoader: React.FC<ImageWithLoaderProps> = ({
             className={`${className} transition-all duration-700 ease-out select-none pointer-events-none ${
               isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.98]'
             }`}
-            style={{
-              WebkitUserDrag: 'none',
-              WebkitTouchCallout: 'none',
-              userSelect: 'none',
-              ...rest.style,
-            }}
+            style={
+              {
+                WebkitUserDrag: 'none',
+                WebkitTouchCallout: 'none',
+                userSelect: 'none',
+                ...rest.style,
+              } as React.CSSProperties
+            }
             {...rest}
           />
           {/* Transparent Protection Shield Overlay: Blocks right-click saving & image dragging */}

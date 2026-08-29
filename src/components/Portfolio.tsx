@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { ArrowUpRight, X, Sparkles, ChevronLeft, ChevronRight, Eye, Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ArrowUpRight, X, Sparkles, ChevronLeft, ChevronRight, Eye, ZoomIn, ZoomOut, RotateCcw, Download } from 'lucide-react';
 import { ImageWithLoader } from './ImageWithLoader';
 import { FireLogo } from './FireLogo';
 import rawPortfolioData from './portfolio-data.json';
@@ -674,14 +674,6 @@ export default function Portfolio() {
 
                 {/* Action Buttons in Panel */}
                 <div className="pt-6 border-t border-white/10 flex flex-col gap-3 mt-auto">
-                  <a
-                    href={currentProject.image}
-                    download={`${currentProject.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-aagspire.webp`}
-                    className="w-full py-3.5 px-5 rounded-xl border border-white/15 bg-white/[0.04] text-white hover:border-ember/50 hover:bg-ember/10 hover:text-ember transition-all font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-md"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download Full Presentation</span>
-                  </a>
 
                   <a
                     href="#contact"

@@ -19,7 +19,6 @@ import {
   ArrowLeft,
   X,
   Eye,
-  Download,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -746,15 +745,6 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                       </div>
                     )}
 
-                    <a
-                      href={currentWork.image}
-                      download={`${currentWork.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-aagspire.webp`}
-                      className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border border-white/15 bg-white/[0.04] text-white hover:border-ember/50 hover:bg-ember/10 hover:text-ember transition-all text-xs font-semibold uppercase tracking-wider cursor-pointer"
-                      title="Download High-Res Artwork"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Download</span>
-                    </a>
 
                     {/* Prominent Close Button */}
                     <button
