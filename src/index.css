@@ -52,11 +52,120 @@ input, textarea {
   }
 }
 
-/* Anti-Screenshot: Heavy blur across entire website when Snipping Tool or external capture app is active */
-.window-blurred #root {
-  filter: blur(24px) brightness(0.4) !important;
+/* Anti-Screenshot & Anti-Snipping Tool Protection */
+#anti-screenshot-shield {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background-color: #050505;
+  background-image: radial-gradient(circle at 50% 50%, rgba(255, 90, 31, 0.15) 0%, rgba(5, 5, 5, 0.98) 75%);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: pointer;
+}
+
+html.window-blurred #anti-screenshot-shield {
+  display: flex !important;
+}
+
+/* Instantly remove the entire page from screen render with 0ms transition */
+html.window-blurred #root {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
   pointer-events: none !important;
-  transition: filter 0.15s ease !important;
+  transition: none !important;
+}
+
+.anti-screenshot-content {
+  max-width: 480px;
+  background: rgba(15, 15, 15, 0.95);
+  border: 1px solid rgba(255, 90, 31, 0.4);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(255, 90, 31, 0.2);
+  border-radius: 1.25rem;
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.anti-screenshot-icon-wrap {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 9999px;
+  background: rgba(255, 90, 31, 0.15);
+  border: 1px solid rgba(255, 90, 31, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 0 25px rgba(255, 90, 31, 0.35);
+}
+
+.anti-screenshot-icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.anti-screenshot-tag {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #FF5A1F;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.anti-screenshot-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+}
+
+.anti-screenshot-desc {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 1.5rem;
+}
+
+.anti-screenshot-desc strong {
+  color: #FF7A45;
+}
+
+.anti-screenshot-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.45rem 1rem;
+  border-radius: 9999px;
+}
+
+@keyframes centerToastPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.center-toast-pop {
+  animation: centerToastPop 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 html {

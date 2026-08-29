@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ShieldAlert, Lock, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, Lock } from 'lucide-react';
 
 export default function ImageProtection() {
   const [shieldActive, setShieldActive] = useState(false);
-  const [windowBlurred, setWindowBlurred] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -17,11 +16,19 @@ export default function ImageProtection() {
       }, 2500);
     };
 
+    const clearClipboard = () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText('');
+        }
+      } catch {}
+    };
+
     // 1. COMPLETELY DISABLE RIGHT-CLICK ON ENTIRE WEBSITE
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      showToast('Right click is disabled');
+      showToast('This artwork is protected by Aagspire');
       return false;
     };
 
@@ -29,20 +36,16 @@ export default function ImageProtection() {
     const handleDragStart = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      showToast('This artwork is protected by Aagspire');
       return false;
     };
 
     // 3. SCREEN CAPTURE & SCREENSHOT DETECTION SHIELD
     const triggerShield = () => {
+      document.documentElement.classList.add('window-blurred');
       setShieldActive(true);
       showToast('Screen capture restricted. All artwork is copyrighted by Aagspire.');
-
-      // Clear clipboard buffer if PrintScreen was pressed
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText('');
-        }
-      } catch {}
+      clearClipboard();
 
       setTimeout(() => {
         setShieldActive(false);
@@ -55,20 +58,29 @@ export default function ImageProtection() {
         e.target instanceof HTMLTextAreaElement;
 
       // PrintScreen key (any modifier)
-      if (e.key === 'PrintScreen' || e.code === 'PrintScreen') {
+      if (e.key === 'PrintScreen' || e.code === 'PrintScreen' || (e as any).keyCode === 44) {
         e.preventDefault();
+        document.documentElement.classList.add('window-blurred');
         triggerShield();
+        clearClipboard();
         return false;
+      }
+
+      // Windows Key (Meta / OS) - invoked at start of Win+Shift+S Snipping Tool
+      if (e.key === 'Meta' || e.key === 'OS' || e.code === 'MetaLeft' || e.code === 'MetaRight') {
+        document.documentElement.classList.add('window-blurred');
       }
 
       // Windows Snipping Tool (Win + Shift + S) or Mac (Cmd + Shift + 3/4/5)
       if (
-        (e.ctrlKey || e.metaKey) &&
+        (e.ctrlKey || e.metaKey || e.key === 'Meta') &&
         e.shiftKey &&
-        (e.key === 'S' || e.key === 's' || e.key === '3' || e.key === '4' || e.key === '5')
+        (e.key === 'S' || e.key === 's' || e.code === 'KeyS' || e.key === '3' || e.key === '4' || e.key === '5')
       ) {
         e.preventDefault();
+        document.documentElement.classList.add('window-blurred');
         triggerShield();
+        clearClipboard();
         return false;
       }
 
@@ -108,7 +120,7 @@ export default function ImageProtection() {
       // Copy text (Ctrl+C / Cmd+C) outside input fields
       if (!isInput && (e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
-        showToast('Copying website content is disabled.');
+        showToast('This artwork is protected by Aagspire');
         return false;
       }
 
@@ -120,32 +132,46 @@ export default function ImageProtection() {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'PrintScreen' || e.code === 'PrintScreen') {
+      if (e.key === 'PrintScreen' || e.code === 'PrintScreen' || (e as any).keyCode === 44) {
+        clearClipboard();
         triggerShield();
+      }
+      if ((e.key === 'Meta' || e.key === 'OS') && document.hasFocus()) {
+        setTimeout(() => {
+          if (document.hasFocus()) {
+            document.documentElement.classList.remove('window-blurred');
+          }
+        }, 300);
       }
     };
 
     // 4. BLUR ENTIRE WEBSITE WHEN FOCUS IS LOST (e.g. Snipping tool / Screen grabber invoked)
     const handleWindowBlur = () => {
-      setWindowBlurred(true);
       document.documentElement.classList.add('window-blurred');
+      clearClipboard();
     };
 
     const handleWindowFocus = () => {
-      setWindowBlurred(false);
       document.documentElement.classList.remove('window-blurred');
     };
 
-    // 5. Visibility change (user minimizes or switches apps to record)
+    // 5. Visibility change (user minimizes, switches apps, or snipping tool dims screen)
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setWindowBlurred(true);
+      if (document.hidden || document.visibilityState !== 'visible') {
         document.documentElement.classList.add('window-blurred');
+        clearClipboard();
       } else {
-        setWindowBlurred(false);
         document.documentElement.classList.remove('window-blurred');
       }
     };
+
+    // Shield click handler to restore view
+    const shieldEl = document.getElementById('anti-screenshot-shield');
+    const handleShieldClick = () => {
+      window.focus();
+      document.documentElement.classList.remove('window-blurred');
+    };
+    shieldEl?.addEventListener('click', handleShieldClick);
 
     // Attach capture listeners to document and window
     document.addEventListener('contextmenu', handleContextMenu, { capture: true });
@@ -164,6 +190,7 @@ export default function ImageProtection() {
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      shieldEl?.removeEventListener('click', handleShieldClick);
       if (toastTimeout) clearTimeout(toastTimeout);
     };
   }, []);
@@ -181,32 +208,18 @@ export default function ImageProtection() {
           </div>
           <h4 className="text-xl font-bold text-white mb-1">Protected Intellectual Property</h4>
           <p className="text-xs text-white/50 max-w-sm">
-            All visual identities, artworks, and designs are proprietary to Aagspire Studio.
-          </p>
-        </div>
-      )}
-
-      {/* Snipping Tool / Window Blur Privacy Shield */}
-      {windowBlurred && (
-        <div
-          className="fixed inset-0 z-[999999] bg-black/75 backdrop-blur-2xl flex flex-col items-center justify-center text-center p-6 select-none pointer-events-none transition-opacity duration-200"
-          aria-hidden="true"
-        >
-          <div className="w-16 h-16 rounded-full bg-ember/20 border border-ember/40 flex items-center justify-center text-ember mb-4 shadow-[0_0_30px_rgba(255,90,31,0.4)]">
-            <ShieldCheck className="w-8 h-8" />
-          </div>
-          <h4 className="text-xl font-bold text-white mb-2">Content Protected · Aagspire Studio</h4>
-          <p className="text-xs text-white/50 max-w-sm leading-relaxed">
-            Screen capture and external recording are restricted. Click back to resume browsing.
+            All visual identities, artworks, and designs are proprietary to Aagspire.
           </p>
         </div>
       )}
 
       {/* Center Bottom Notification Toast */}
       {toastMessage && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999999] px-6 py-3 rounded-full bg-[#111111]/95 border border-ember/50 shadow-[0_10px_35px_rgba(0,0,0,0.85),0_0_20px_rgba(255,90,31,0.3)] backdrop-blur-2xl flex items-center justify-center gap-2.5 text-xs sm:text-sm text-white font-semibold tracking-wide animate-fade-up pointer-events-none select-none text-center whitespace-nowrap">
-          <ShieldAlert className="w-4 h-4 text-ember shrink-0" />
-          <span>{toastMessage}</span>
+        <div className="fixed inset-x-0 bottom-0 z-[9999999] flex justify-center pb-8 sm:pb-10 pointer-events-none select-none px-4">
+          <div className="center-toast-pop px-7 py-3.5 rounded-full bg-[#111111]/95 border border-ember/50 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_35px_rgba(255,90,31,0.35)] backdrop-blur-2xl flex items-center justify-center gap-3 text-xs sm:text-sm text-white font-semibold tracking-wide text-center whitespace-nowrap">
+            <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5 text-ember shrink-0" />
+            <span>{toastMessage}</span>
+          </div>
         </div>
       )}
     </>
