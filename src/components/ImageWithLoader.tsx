@@ -142,19 +142,47 @@ export const ImageWithLoader: React.FC<ImageWithLoaderProps> = ({
           <span className="text-xs">{fallbackText}</span>
         </div>
       ) : (
-        <img
-          ref={imgRef}
-          src={src}
-          alt={alt}
-          loading={loading}
-          decoding={decoding}
-          onLoad={handleLoad}
-          onError={handleError}
-          className={`${className} transition-all duration-700 ease-out ${
-            isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.98]'
-          }`}
-          {...rest}
-        />
+        <div
+          className="relative w-full h-full select-none protected-image"
+          onContextMenu={(e) => e.preventDefault()}
+          onDragStart={(e) => e.preventDefault()}
+        >
+          <img
+            ref={imgRef}
+            src={src}
+            alt={alt}
+            loading={loading}
+            decoding={decoding}
+            draggable={false}
+            onContextMenu={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
+            onLoad={handleLoad}
+            onError={handleError}
+            className={`${className} transition-all duration-700 ease-out select-none pointer-events-none ${
+              isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.98]'
+            }`}
+            style={{
+              WebkitUserDrag: 'none',
+              WebkitTouchCallout: 'none',
+              userSelect: 'none',
+              ...rest.style,
+            }}
+            {...rest}
+          />
+          {/* Transparent Protection Shield Overlay: Blocks right-click saving & image dragging */}
+          <div
+            className="absolute inset-0 z-10 select-none bg-transparent cursor-inherit"
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDragStart={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            aria-hidden="true"
+          />
+        </div>
       )}
     </div>
   );

@@ -410,30 +410,10 @@ export default function Portfolio() {
                 className="w-full h-auto object-contain block transition-transform duration-700 group-hover:scale-105"
               />
 
-              {/* Smooth Dark Gradient Vignette Overlay on Hover */}
-              <div className="absolute inset-0 bg-gradient-to-t from-obsidian/90 via-obsidian/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-              {/* Floating Category Pill (Top Left) */}
-              <div className="absolute top-3.5 left-3.5 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform -translate-y-1 group-hover:translate-y-0">
-                <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/15 text-white/90 shadow-md">
-                  {project.categoryName.split('&')[0].trim()}
-                </span>
-              </div>
-
               {/* Floating Action Pill (Bottom Right - Freepik Style) */}
               <div className="absolute bottom-3.5 right-3.5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90 shadow-lg opacity-0 group-hover:opacity-100 group-hover:bg-ember group-hover:border-ember transition-all duration-300">
                 <Eye className="w-3.5 h-3.5" />
                 <span>View</span>
-              </div>
-
-              {/* Project Title (Bottom Left Overlay on Hover) */}
-              <div className="absolute bottom-3.5 left-3.5 right-20 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
-                <h3 className="text-sm font-bold text-white line-clamp-1 drop-shadow-md">
-                  {project.title}
-                </h3>
-                <p className="text-[11px] text-ember-light font-medium line-clamp-1">
-                  {project.categoryName}
-                </p>
               </div>
             </div>
           ))}
@@ -465,42 +445,10 @@ export default function Portfolio() {
                   }`}
                 />
 
-                {/* Case Study Badge */}
-                {isCaseStudy && (
-                  <div className="absolute top-3.5 left-3.5 z-10">
-                    <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-black/85 backdrop-blur-md border border-ember/40 text-ember shadow-[0_4px_12px_rgba(0,0,0,0.6)]">
-                      <Sparkles className="w-3 h-3" />
-                      <span>Full Case Study</span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Hover Vignette Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-obsidian/90 via-obsidian/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-                {/* Floating Category Pill (Top Left - when not case study) */}
-                {!isCaseStudy && (
-                  <div className="absolute top-3.5 left-3.5 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform -translate-y-1 group-hover:translate-y-0">
-                    <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/15 text-white/90 shadow-md">
-                      {project.categoryName.split('&')[0].trim()}
-                    </span>
-                  </div>
-                )}
-
                 {/* Floating Action Pill (Bottom Right - Freepik Style) */}
                 <div className="absolute bottom-3.5 right-3.5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90 shadow-lg opacity-0 group-hover:opacity-100 group-hover:bg-ember group-hover:border-ember transition-all duration-300">
                   <Eye className="w-3.5 h-3.5" />
                   <span>View</span>
-                </div>
-
-                {/* Project Title (Bottom Left Overlay on Hover) */}
-                <div className="absolute bottom-3.5 left-3.5 right-20 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
-                  <h3 className="text-sm font-bold text-white line-clamp-1 drop-shadow-md">
-                    {project.title}
-                  </h3>
-                  <p className="text-[11px] text-ember-light font-medium line-clamp-1">
-                    {project.categoryName}
-                  </p>
                 </div>
               </div>
             );
@@ -718,9 +666,6 @@ export default function Portfolio() {
                         </span>
                         <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
                           Aagspire Studio Design
-                        </span>
-                        <span className="text-[11px] px-3 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-white/60">
-                          High Resolution WebP
                         </span>
                       </>
                     )}

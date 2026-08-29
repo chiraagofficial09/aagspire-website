@@ -22,6 +22,40 @@
   }
 }
 
+/* Strict Image Anti-Theft & Anti-Copy Protection */
+img,
+.protected-image,
+[data-protected="true"] {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  -o-user-drag: none !important;
+  user-drag: none !important;
+  -webkit-touch-callout: none !important;
+}
+
+/* Anti-Print Protection: Blanks out content if user attempts Print / Save to PDF */
+@media print {
+  html, body {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  img, svg, canvas, .protected-image {
+    display: none !important;
+    opacity: 0 !important;
+  }
+}
+
+/* Blur protection when Snipping Tool or external screenshot app takes window focus */
+.window-blurred .protected-image img {
+  filter: blur(14px) brightness(0.7) !important;
+  transition: filter 0.2s ease !important;
+}
+
 html {
   scroll-behavior: smooth;
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import CursorEffect from './components/CursorEffect';
+import ImageProtection from './components/ImageProtection';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Services from './components/Services';
@@ -41,6 +42,7 @@ function App() {
       }`}
     >
       <CursorEffect />
+      <ImageProtection />
       <Navbar
         visible={ignited}
         isWorkOpen={isWorkOpen}

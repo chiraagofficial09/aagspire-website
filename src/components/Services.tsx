@@ -622,32 +622,10 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                           }`}
                         />
 
-                        {/* Case Study Badge */}
-                        {isCaseStudy && (
-                          <div className="absolute top-3 left-3 z-10">
-                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-black/85 backdrop-blur-md border border-ember/50 text-ember shadow-xl">
-                              <Sparkles className="w-3 h-3" />
-                              <span>Brand Identity Guidelines</span>
-                            </span>
-                          </div>
-                        )}
-
                         {/* Floating Action Pill (Bottom Right - Click to Open) */}
                         <div className="absolute bottom-3.5 right-3.5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90 shadow-lg opacity-0 group-hover:opacity-100 group-hover:bg-ember group-hover:border-ember transition-all duration-300">
                           <Eye className="w-3.5 h-3.5" />
                           <span>{isCaseStudy ? 'View Presentation' : 'View'}</span>
-                        </div>
-
-                        {/* Bottom Title & Metadata Overlay on Hover */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-obsidian/95 via-obsidian/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-                        <div className="absolute bottom-3.5 left-3.5 right-28 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
-                          <p className="text-xs font-bold text-white line-clamp-1 drop-shadow-md">
-                            {work.title}
-                          </p>
-                          <p className="text-[10px] text-ember-light font-medium mt-0.5">
-                            {isCaseStudy ? '✨ Complete Brand Identity Suite' : 'High Resolution Artwork'}
-                          </p>
                         </div>
                       </div>
                     );
