@@ -125,14 +125,6 @@ export default function Footer() {
                 Halvad - 363330
               </address>
             </div>
-            <a
-              href="https://maps.app.goo.gl/jjAYk4USRPfAxCgH7"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-ember hover:text-ember-light transition-colors mt-3 pl-6"
-            >
-              View on Google Maps →
-            </a>
           </div>
         </div>
 

@@ -4,8 +4,22 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  cursor: none !important;
+/* Only hide system cursor on large desktop devices with fine mouse pointer */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+  html:not(.no-custom-cursor) * {
+    cursor: none !important;
+  }
+}
+
+/* Strictly hide custom cursor on mobile screens, tablets, and any touch-capable device */
+@media (max-width: 1023px), (pointer: coarse), (hover: none) {
+  .custom-cursor-container,
+  .custom-cursor-container * {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
 }
 
 html {
@@ -167,6 +181,33 @@ body {
   100% { background-position: 200% center; }
 }
 
+@keyframes skeletonShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 35%,
+    rgba(255, 90, 31, 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 65%,
+    transparent 100%
+  );
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
 .shimmer-text {
   background: linear-gradient(90deg, #ffffff 25%, #FF5A1F 50%, #ffffff 75%);
   background-size: 200% auto;
@@ -205,3 +246,42 @@ body {
 .animate-marquee-left:hover {
   animation-play-state: paused;
 }
+
+@keyframes flamePulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(255, 90, 31, 0.6)) drop-shadow(0 0 20px rgba(255, 60, 0, 0.3));
+  }
+  50% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 16px rgba(255, 90, 31, 0.95)) drop-shadow(0 0 32px rgba(255, 90, 31, 0.6));
+  }
+}
+
+@keyframes flameFlicker {
+  0%, 100% {
+    opacity: 0.92;
+    transform: scale(1) translateY(0);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1.04) translateY(-1px);
+  }
+  50% {
+    opacity: 0.86;
+    transform: scale(0.97) translateY(0.5px);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1.03) translateY(-0.5px);
+  }
+}
+
+.animate-flame-pulse {
+  animation: flamePulse 2s ease-in-out infinite;
+}
+
+.animate-flame-flicker {
+  animation: flameFlicker 1.8s ease-in-out infinite;
+}
+

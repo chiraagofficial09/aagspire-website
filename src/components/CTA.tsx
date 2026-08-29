@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, CheckCircle2, X, ArrowRight, ArrowUpRight, Sparkles, Mail, AlertCircle } from 'lucide-react';
+import { Send, CheckCircle2, X, ArrowRight, ArrowUpRight, Sparkles, Mail, AlertCircle, ChevronDown, Check } from 'lucide-react';
 import { sendContactEmail, isEmailConfigured } from '../services/emailService';
 
 const serviceOptions = [
@@ -37,6 +37,8 @@ export default function CTA({
     service: 'Social Media Marketing',
     message: '',
   });
+  const [serviceDropdownOpen, setServiceDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isModalOpen = isContactOpen || localModalOpen;
 
@@ -48,9 +50,25 @@ export default function CTA({
 
   const handleClose = () => {
     setLocalModalOpen(false);
+    setServiceDropdownOpen(false);
     setErrorMessage(null);
     onCloseContact?.();
   };
+
+  // Close service dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setServiceDropdownOpen(false);
+      }
+    };
+    if (serviceDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [serviceDropdownOpen]);
 
   useEffect(() => {
     const obs = new IntersectionObserver(
@@ -286,7 +304,7 @@ export default function CTA({
                         placeholder="e.g. John Doe"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full rounded-xl bg-[#161616] border border-white/15 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-all duration-300 focus:border-ember focus:bg-[#1a1a1a] focus:ring-1 focus:ring-ember"
+                        className="w-full rounded-2xl bg-[#1a1a1a] border border-[#333333] px-4 py-3.5 text-sm text-white placeholder-white/30 outline-none transition-all duration-300 focus:border-ember focus:bg-[#222222] focus:ring-1 focus:ring-ember"
                       />
                     </div>
 
@@ -300,7 +318,7 @@ export default function CTA({
                         placeholder="e.g. john@example.com"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full rounded-xl bg-[#161616] border border-white/15 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-all duration-300 focus:border-ember focus:bg-[#1a1a1a] focus:ring-1 focus:ring-ember"
+                        className="w-full rounded-2xl bg-[#1a1a1a] border border-[#333333] px-4 py-3.5 text-sm text-white placeholder-white/30 outline-none transition-all duration-300 focus:border-ember focus:bg-[#222222] focus:ring-1 focus:ring-ember"
                       />
                     </div>
                   </div>
@@ -316,25 +334,65 @@ export default function CTA({
                         placeholder="e.g. +91 98765 43210"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full rounded-xl bg-[#161616] border border-white/15 px-4 py-3 text-sm text-white placeholder-white/30 outline-none transition-all duration-300 focus:border-ember focus:bg-[#1a1a1a] focus:ring-1 focus:ring-ember"
+                        className="w-full rounded-2xl bg-[#1a1a1a] border border-[#333333] px-4 py-3.5 text-sm text-white placeholder-white/30 outline-none transition-all duration-300 focus:border-ember focus:bg-[#222222] focus:ring-1 focus:ring-ember"
                       />
                     </div>
 
-                    <div>
+                    <div ref={dropdownRef} className="relative">
                       <label className="block text-xs font-bold text-white/80 uppercase tracking-wider mb-2">
                         Service Needed
                       </label>
-                      <select
-                        value={formData.service}
-                        onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-                        className="w-full rounded-xl bg-[#161616] border border-white/15 px-4 py-3 text-sm text-white outline-none transition-all duration-300 focus:border-ember focus:ring-1 focus:ring-ember cursor-pointer"
+
+                      {/* Solid Non-Transparent Rounded Dropdown Trigger (Instant / No Animation) */}
+                      <button
+                        type="button"
+                        onClick={() => setServiceDropdownOpen((prev) => !prev)}
+                        className={`w-full rounded-2xl bg-[#1a1a1a] border px-4 py-3.5 text-sm text-left flex items-center justify-between cursor-pointer shadow-sm ${
+                          serviceDropdownOpen
+                            ? 'border-ember ring-2 ring-ember/40 bg-[#222222]'
+                            : 'border-[#333333] hover:border-[#555555] hover:bg-[#222222]'
+                        }`}
+                        aria-haspopup="listbox"
+                        aria-expanded={serviceDropdownOpen}
                       >
-                        {serviceOptions.map((opt) => (
-                          <option key={opt} value={opt} className="bg-[#121212] text-white py-1">
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
+                        <span className="font-semibold text-white truncate">
+                          {formData.service}
+                        </span>
+                        <ChevronDown
+                          className={`w-4 h-4 text-ember shrink-0 ml-2 ${
+                            serviceDropdownOpen ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+
+                      {/* 100% Solid Non-Transparent Rounded Dropdown Menu (No Animation) */}
+                      {serviceDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-2 z-50 rounded-2xl bg-[#1a1a1a] border border-[#3a3a3a] p-1.5 shadow-[0_25px_60px_rgba(0,0,0,0.98)] max-h-60 overflow-y-auto custom-scrollbar">
+                          {serviceOptions.map((opt) => {
+                            const isSelected = formData.service === opt;
+                            return (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                  setFormData({ ...formData, service: opt });
+                                  setServiceDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-3 rounded-xl text-xs sm:text-sm cursor-pointer flex items-center justify-between ${
+                                  isSelected
+                                    ? 'bg-ember text-white shadow-md font-bold'
+                                    : 'bg-[#1a1a1a] text-white/90 hover:bg-[#282828] hover:text-white font-medium'
+                                }`}
+                              >
+                                <span>{opt}</span>
+                                {isSelected && (
+                                  <Check className="w-4 h-4 text-white shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -349,7 +407,7 @@ export default function CTA({
                       placeholder="Tell us about your brand vision, requirements, or timeline..."
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="w-full rounded-xl bg-[#161616] border border-white/15 p-4 text-sm text-white placeholder-white/30 outline-none transition-all duration-300 focus:border-ember focus:bg-[#1a1a1a] focus:ring-1 focus:ring-ember resize-none"
+                      className="w-full rounded-2xl bg-[#1a1a1a] border border-[#333333] p-4 text-sm text-white placeholder-white/30 outline-none transition-all duration-300 focus:border-ember focus:bg-[#222222] focus:ring-1 focus:ring-ember resize-none"
                     />
                   </div>
 
@@ -357,7 +415,7 @@ export default function CTA({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full mt-2 py-4 rounded-xl bg-gradient-to-r from-[#ff5a1f] to-[#ff7a2f] text-white text-sm font-bold shadow-[0_0_25px_rgba(255,90,31,0.5)] hover:shadow-[0_0_35px_rgba(255,90,31,0.8)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
+                    className="w-full mt-2 py-4 rounded-2xl bg-gradient-to-r from-[#ff5a1f] to-[#ff7a2f] text-white text-sm font-bold shadow-[0_0_25px_rgba(255,90,31,0.5)] hover:shadow-[0_0_35px_rgba(255,90,31,0.8)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <span className="flex items-center gap-2">

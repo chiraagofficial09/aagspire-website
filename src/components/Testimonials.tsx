@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Quote, Star } from 'lucide-react';
+import { ImageWithLoader } from './ImageWithLoader';
 
 const testimonials = [
   {
@@ -88,10 +89,12 @@ export default function Testimonials() {
                 </div>
 
                 <div className="flex items-center gap-4 mt-8 pt-6 border-t border-white/5">
-                  <img
+                  <ImageWithLoader
                     src={t.avatar}
                     alt={t.author}
-                    className="h-12 w-12 rounded-full border-2 border-ember/30 object-cover group-hover:border-ember transition-colors duration-300"
+                    showSpinner={false}
+                    wrapperClassName="h-12 w-12 rounded-full border-2 border-ember/30 overflow-hidden shrink-0 group-hover:border-ember transition-colors duration-300"
+                    className="w-full h-full object-cover"
                   />
                   <div>
                     <p className="font-semibold text-white group-hover:text-ember-light transition-colors duration-300">

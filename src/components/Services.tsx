@@ -11,17 +11,20 @@ import {
   CreditCard,
   Instagram,
   Target,
-  Box,
-  ShoppingBag,
-  Trophy,
   Shirt,
-  Sliders,
   ArrowUpRight,
   Sparkles,
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
+  X,
+  Eye,
+  Download,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from 'lucide-react';
+import { ImageWithLoader } from './ImageWithLoader';
 import rawPortfolioData from './portfolio-data.json';
 
 interface ProjectItem {
@@ -127,7 +130,7 @@ const coreServiceTabs: ShowcaseTabDef[] = [
     id: 'logo-design',
     label: 'Logo Design',
     icon: PenTool,
-    filter: (p) => (p.services || []).includes('logo-design'),
+    filter: (p) => (p.folder === 'logos' || (p.services || []).includes('logo-design')) && p.folder !== 'cards',
   },
   {
     id: 'poster-design',
@@ -167,9 +170,9 @@ const specializedTabs: ShowcaseTabDef[] = [
   },
   {
     id: 'business-cards',
-    label: 'Business Cards & Stationery',
+    label: 'Business Cards',
     icon: CreditCard,
-    filter: (p) => p.subCategory === 'business-cards' || p.folder === 'cards',
+    filter: (p) => p.folder === 'cards' || p.subCategory === 'business-cards' || (p.services || []).includes('business-cards'),
   },
   {
     id: 'carousels',
@@ -184,34 +187,10 @@ const specializedTabs: ShowcaseTabDef[] = [
     filter: (p) => p.subCategory === 'campaigns',
   },
   {
-    id: 'box-packaging',
-    label: 'Product Boxes',
-    icon: Box,
-    filter: (p) => p.subCategory === 'box-packaging',
-  },
-  {
-    id: 'pouch-packaging',
-    label: 'Pouches & Agro Packs',
-    icon: ShoppingBag,
-    filter: (p) => p.subCategory === 'pouch-packaging',
-  },
-  {
-    id: 'sports-posters',
-    label: 'Sports Posters',
-    icon: Trophy,
-    filter: (p) => p.subCategory === 'sports-posters',
-  },
-  {
     id: 'streetwear',
     label: 'Streetwear Apparel',
     icon: Shirt,
     filter: (p) => p.subCategory === 'streetwear' || p.folder === 'tshirt',
-  },
-  {
-    id: 'web-sliders',
-    label: 'Web Sliders',
-    icon: Sliders,
-    filter: (p) => p.subCategory === 'web-sliders' || p.folder === 'websliders',
   },
 ];
 
@@ -230,6 +209,8 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
   const [visible, setVisible] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTabId, setActiveTabId] = useState<string>('all');
+  const [activeWorkIndex, setActiveWorkIndex] = useState<number | null>(null);
+  const [workZoom, setWorkZoom] = useState<number>(1);
 
   const handleTabsScroll = () => {
     if (tabsScrollRef.current) {
@@ -282,6 +263,53 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
     return portfolioItems.filter(activeTabDef.filter);
   }, [activeTabDef]);
 
+  const [worksLoading, setWorksLoading] = useState(true);
+  const [worksLoadedCount, setWorksLoadedCount] = useState(0);
+
+  // Monitor image loading for all artworks in current active tab of Our Works
+  useEffect(() => {
+    if (!modalOpen || !displayedWorks.length) {
+      setWorksLoading(false);
+      return;
+    }
+
+    setWorksLoading(true);
+    setWorksLoadedCount(0);
+
+    let loaded = 0;
+    let isCancelled = false;
+    const total = displayedWorks.length;
+
+    const onComplete = () => {
+      if (isCancelled) return;
+      loaded += 1;
+      setWorksLoadedCount(loaded);
+      if (loaded >= total) {
+        setWorksLoading(false);
+      }
+    };
+
+    displayedWorks.forEach((work) => {
+      const img = new window.Image();
+      img.src = work.image;
+      if (img.complete && img.naturalWidth > 0) {
+        onComplete();
+      } else {
+        img.onload = onComplete;
+        img.onerror = onComplete;
+      }
+    });
+
+    const timer = setTimeout(() => {
+      if (!isCancelled) setWorksLoading(false);
+    }, 3500);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [modalOpen, activeTabId, displayedWorks]);
+
   // Lock background body scroll when service modal is open
   useEffect(() => {
     if (modalOpen) {
@@ -293,16 +321,32 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
     }
   }, [modalOpen]);
 
-  // Keyboard navigation for modal
+  // Reset active artwork viewer when modal or tab changes
+  useEffect(() => {
+    setActiveWorkIndex(null);
+    setWorkZoom(1);
+  }, [modalOpen, activeTabId]);
+
+  // Keyboard navigation for modal & artwork viewer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && modalOpen) {
+      if (activeWorkIndex !== null) {
+        if (e.key === 'Escape') {
+          setActiveWorkIndex(null);
+        } else if (e.key === 'ArrowRight') {
+          setActiveWorkIndex((prev) => (prev !== null ? (prev + 1) % displayedWorks.length : null));
+          setWorkZoom(1);
+        } else if (e.key === 'ArrowLeft') {
+          setActiveWorkIndex((prev) => (prev !== null ? (prev - 1 + displayedWorks.length) % displayedWorks.length : null));
+          setWorkZoom(1);
+        }
+      } else if (e.key === 'Escape' && modalOpen) {
         handleCloseModal();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modalOpen]);
+  }, [modalOpen, activeWorkIndex, displayedWorks.length]);
 
   return (
     <section
@@ -392,11 +436,13 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                   <>
                     <div className="flex items-center -space-x-2 overflow-hidden">
                       {servicePreviewWorks.map((work) => (
-                        <img
+                        <ImageWithLoader
                           key={work.id}
                           src={work.image}
                           alt={work.title}
-                          className="w-8 h-8 rounded-full object-cover border-2 border-[#121212] shadow-sm"
+                          showSpinner={false}
+                          wrapperClassName="w-8 h-8 rounded-full border-2 border-[#121212] shadow-sm overflow-hidden shrink-0"
+                          className="w-full h-full object-cover"
                           loading="lazy"
                         />
                       ))}
@@ -425,80 +471,86 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
           {/* Full-Screen Scrollable Content */}
           <div className="flex-1 overflow-y-auto px-6 sm:px-12 py-8 custom-scrollbar">
             <div className="max-w-7xl mx-auto space-y-8">
-              {/* ← Back Button */}
-              <button
-                onClick={handleCloseModal}
-                className="flex items-center gap-2 text-ember hover:text-ember-light transition-colors duration-300 cursor-pointer group mb-2"
-                aria-label="Go back"
-              >
-                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                <span className="text-sm font-medium">Back</span>
-              </button>
-              {/* Single Continuous Horizontal-Scrollable Navigation Dock (All in Same Line) */}
-              <div className="rounded-3xl bg-[#0e0e0e]/95 border border-white/10 p-3 sm:p-3.5 shadow-[0_25px_60px_rgba(0,0,0,0.85)] backdrop-blur-2xl relative overflow-hidden">
-                <div className="flex items-center gap-2 sm:gap-3">
-                  {/* Left Scroll Button */}
+              {/* Sticky Filter Bar & Controls (Stays pinned when user scrolls through works) */}
+              <div className="sticky -top-8 z-30 -mx-6 sm:-mx-12 px-6 sm:px-12 pt-3 pb-4 bg-[#070707]/95 backdrop-blur-2xl border-b border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.9)] space-y-3">
+                {/* Back Button */}
+                <div className="flex items-center justify-between">
                   <button
-                    onClick={() => scrollTabs('left')}
-                    className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#141414] hover:bg-[#222] border border-white/10 hover:border-ember/60 text-white/70 hover:text-white flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md hover:scale-105 active:scale-95"
-                    aria-label="Scroll categories left"
+                    onClick={handleCloseModal}
+                    className="flex items-center gap-2 text-ember hover:text-ember-light transition-colors duration-300 cursor-pointer group"
+                    aria-label="Go back"
                   >
-                    <ChevronLeft className="w-4 h-4 text-ember" />
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    <span className="text-sm font-medium">Back to Services</span>
                   </button>
+                </div>
 
-                  {/* Same-Line Horizontal Scrollable Tabs Track with Visible Custom Ember Scrollbar */}
-                  <div
-                    ref={tabsScrollRef}
-                    onScroll={handleTabsScroll}
-                    className="flex-1 flex items-center gap-2.5 sm:gap-3 overflow-x-auto pb-2 pt-0.5 tabs-custom-scrollbar snap-x select-none"
-                  >
-                    {allShowcaseTabs.map((tab) => {
-                      const Icon = tab.icon;
-                      const isSelected = activeTabId === tab.id;
-                      const count = portfolioItems.filter(tab.filter).length;
+                {/* Single Continuous Horizontal-Scrollable Navigation Dock (All in Same Line) */}
+                <div className="rounded-2xl sm:rounded-3xl bg-[#0e0e0e]/95 border border-white/10 p-2 sm:p-2.5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] relative overflow-hidden">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {/* Left Scroll Button */}
+                    <button
+                      onClick={() => scrollTabs('left')}
+                      className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#141414] hover:bg-[#222] border border-white/10 hover:border-ember/60 text-white/70 hover:text-white flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md hover:scale-105 active:scale-95"
+                      aria-label="Scroll categories left"
+                    >
+                      <ChevronLeft className="w-4 h-4 text-ember" />
+                    </button>
 
-                      return (
-                        <button
-                          key={tab.id}
-                          onClick={() => setActiveTabId(tab.id)}
-                          className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-xs font-bold transition-all duration-300 flex items-center gap-2.5 cursor-pointer shrink-0 snap-start whitespace-nowrap ${
-                            isSelected
-                              ? 'bg-gradient-to-r from-[#ff5a1f] to-[#ff7a2f] text-white shadow-[0_0_25px_rgba(255,90,31,0.6)] border border-[#ff9050]'
-                              : 'bg-[#141414] hover:bg-[#1a1a1a] text-white/80 hover:text-white border border-white/10'
-                          }`}
-                        >
-                          {Icon && (
-                            <Icon
-                              className={`w-4 h-4 ${
-                                isSelected ? 'text-white' : 'text-[#ff7a2f]'
-                              }`}
-                            />
-                          )}
-                          <span>{tab.label}</span>
-                          {count > 0 && (
-                            <span
-                              className={`text-[11px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                                isSelected
-                                  ? 'bg-black/35 text-white'
-                                  : 'bg-white/10 text-white/70'
-                              }`}
-                            >
-                              {count}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
+                    {/* Same-Line Horizontal Scrollable Tabs Track with Visible Custom Ember Scrollbar */}
+                    <div
+                      ref={tabsScrollRef}
+                      onScroll={handleTabsScroll}
+                      className="flex-1 flex items-center gap-2 sm:gap-2.5 overflow-x-auto pb-1.5 pt-0.5 tabs-custom-scrollbar snap-x select-none"
+                    >
+                      {allShowcaseTabs.map((tab) => {
+                        const Icon = tab.icon;
+                        const isSelected = activeTabId === tab.id;
+                        const count = portfolioItems.filter(tab.filter).length;
+
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setActiveTabId(tab.id)}
+                            className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl text-xs font-bold transition-all duration-300 flex items-center gap-2 cursor-pointer shrink-0 snap-start whitespace-nowrap ${
+                              isSelected
+                                ? 'bg-gradient-to-r from-[#ff5a1f] to-[#ff7a2f] text-white shadow-[0_0_20px_rgba(255,90,31,0.6)] border border-[#ff9050]'
+                                : 'bg-[#141414] hover:bg-[#1a1a1a] text-white/80 hover:text-white border border-white/10'
+                            }`}
+                          >
+                            {Icon && (
+                              <Icon
+                                className={`w-3.5 h-3.5 ${
+                                  isSelected ? 'text-white' : 'text-[#ff7a2f]'
+                                }`}
+                              />
+                            )}
+                            <span>{tab.label}</span>
+                            {count > 0 && (
+                              <span
+                                className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                                  isSelected
+                                    ? 'bg-black/35 text-white'
+                                    : 'bg-white/10 text-white/70'
+                                }`}
+                              >
+                                {count}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Right Scroll Button */}
+                    <button
+                      onClick={() => scrollTabs('right')}
+                      className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#141414] hover:bg-[#222] border border-white/10 hover:border-ember/60 text-white/70 hover:text-white flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md hover:scale-105 active:scale-95"
+                      aria-label="Scroll categories right"
+                    >
+                      <ChevronRight className="w-4 h-4 text-ember" />
+                    </button>
                   </div>
-
-                  {/* Right Scroll Button */}
-                  <button
-                    onClick={() => scrollTabs('right')}
-                    className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#141414] hover:bg-[#222] border border-white/10 hover:border-ember/60 text-white/70 hover:text-white flex items-center justify-center cursor-pointer transition-all duration-300 shadow-md hover:scale-105 active:scale-95"
-                    aria-label="Scroll categories right"
-                  >
-                    <ChevronRight className="w-4 h-4 text-ember" />
-                  </button>
                 </div>
               </div>
 
@@ -513,11 +565,35 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                     {displayedWorks.length} Items Available
                   </span>
                 </div>
+
+                {worksLoading && (
+                  <div className="flex items-center gap-2.5 text-xs font-mono text-ember bg-ember/10 border border-ember/30 px-3.5 py-1.5 rounded-full shadow-[0_0_15px_rgba(255,90,31,0.2)]">
+                    <div className="w-3.5 h-3.5 border-2 border-ember border-t-transparent rounded-full animate-spin" />
+                    <span>Loading works ({worksLoadedCount}/{displayedWorks.length})</span>
+                  </div>
+                )}
               </div>
 
               {/* Matching Works Gallery in Natural Image Size Proportion (Masonry) - No Popup On Click */}
-              {displayedWorks.length > 0 ? (
-                <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-5 space-y-5">
+              {worksLoading ? (
+                /* Skeleton Loader while all images in current tab load */
+                <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-5 space-y-5 animate-fade-up">
+                  {[340, 420, 300, 400, 360, 440, 320, 380].map((h, idx) => (
+                    <div
+                      key={idx}
+                      className="break-inside-avoid rounded-2xl overflow-hidden bg-[#0d0d0d] border border-white/5 relative p-4 flex flex-col justify-end mb-5"
+                      style={{ height: `${h}px` }}
+                    >
+                      <div className="skeleton-shimmer" />
+                      <div className="relative z-10 space-y-2">
+                        <div className="h-3 w-1/4 bg-white/10 rounded-full" />
+                        <div className="h-4 w-2/3 bg-white/10 rounded-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : displayedWorks.length > 0 ? (
+                <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-5 space-y-5 animate-fade-up">
                   {displayedWorks.map((work) => {
                     const isCaseStudy =
                       work.folder === 'logos' || work.subCategory === 'brand-identity';
@@ -525,13 +601,22 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                     return (
                       <div
                         key={work.id}
-                        className="break-inside-avoid relative rounded-2xl overflow-hidden bg-[#050505] border border-white/10 hover:border-ember/50 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(255,90,31,0.18)] group mb-5 block select-none"
+                        onClick={() => {
+                          const idx = displayedWorks.findIndex((w) => w.id === work.id);
+                          if (idx !== -1) {
+                            setActiveWorkIndex(idx);
+                            setWorkZoom(1);
+                          }
+                        }}
+                        className="break-inside-avoid relative rounded-2xl overflow-hidden bg-[#050505] border border-white/10 hover:border-ember/50 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(255,90,31,0.18)] group mb-5 block select-none cursor-pointer"
                       >
-                        {/* Image matching exact natural dimensions */}
-                        <img
+                        {/* Image matching exact natural dimensions with Loading State */}
+                        <ImageWithLoader
                           src={work.image}
                           alt={work.title}
                           loading="lazy"
+                          minHeight="220px"
+                          wrapperClassName="w-full"
                           className={`w-full block transition-transform duration-700 group-hover:scale-105 ${
                             isCaseStudy ? 'max-h-[550px] object-cover object-top' : 'h-auto object-contain'
                           }`}
@@ -547,10 +632,16 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                           </div>
                         )}
 
+                        {/* Floating Action Pill (Bottom Right - Click to Open) */}
+                        <div className="absolute bottom-3.5 right-3.5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-obsidian/85 backdrop-blur-md border border-white/20 text-xs font-semibold text-white/90 shadow-lg opacity-0 group-hover:opacity-100 group-hover:bg-ember group-hover:border-ember transition-all duration-300">
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>{isCaseStudy ? 'View Presentation' : 'View'}</span>
+                        </div>
+
                         {/* Bottom Title & Metadata Overlay on Hover */}
                         <div className="absolute inset-0 bg-gradient-to-t from-obsidian/95 via-obsidian/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-                        <div className="absolute bottom-3.5 left-3.5 right-3.5 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+                        <div className="absolute bottom-3.5 left-3.5 right-28 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
                           <p className="text-xs font-bold text-white line-clamp-1 drop-shadow-md">
                             {work.title}
                           </p>
@@ -588,6 +679,151 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
               )}
             </div>
           </div>
+
+          {/* Full-Screen Immersive Artwork Studio Viewer for Logo Presentations and Works */}
+          {activeWorkIndex !== null && displayedWorks[activeWorkIndex] && (() => {
+            const currentWork = displayedWorks[activeWorkIndex];
+            const isCaseStudy =
+              currentWork.folder === 'logos' ||
+              currentWork.subCategory === 'brand-identity' ||
+              (currentWork.ratio !== undefined && currentWork.ratio < 0.35);
+
+            return (
+              <div
+                className="fixed inset-0 z-[10005] bg-[#070707] flex flex-col w-screen h-screen overflow-hidden animate-fade-up"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Full-Width Top Bar */}
+                <div className="h-20 px-6 sm:px-10 border-b border-white/10 flex items-center justify-between bg-[#0a0a0a] shrink-0 z-30">
+                  {/* Left: Project Title & Category */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-white/[0.05] border border-white/15 text-white/80">
+                      {isCaseStudy ? 'Brand Identity Case Study' : activeTabDef.label}
+                    </span>
+                    <h3 className="text-base sm:text-xl font-bold text-white line-clamp-1">
+                      {currentWork.title}
+                    </h3>
+                  </div>
+
+                  {/* Center: Counter & Navigation Arrows */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setActiveWorkIndex((prev) => (prev !== null ? (prev - 1 + displayedWorks.length) % displayedWorks.length : null));
+                        setWorkZoom(1);
+                      }}
+                      className="w-10 h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer"
+                      aria-label="Previous artwork"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-white" />
+                    </button>
+
+                    <span className="text-xs font-mono font-bold text-ember px-3 py-1 rounded-full bg-ember/10 border border-ember/30 shadow-[0_0_10px_rgba(255,90,31,0.2)]">
+                      {activeWorkIndex + 1} / {displayedWorks.length}
+                    </span>
+
+                    <button
+                      onClick={() => {
+                        setActiveWorkIndex((prev) => (prev !== null ? (prev + 1) % displayedWorks.length : null));
+                        setWorkZoom(1);
+                      }}
+                      className="w-10 h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer"
+                      aria-label="Next artwork"
+                    >
+                      <ChevronRight className="w-5 h-5 text-white" />
+                    </button>
+                  </div>
+
+                  {/* Right: Zoom Controls, Download & Big Prominent Close Button */}
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {isCaseStudy && (
+                      <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1 mr-1">
+                        <button
+                          onClick={() => setWorkZoom((z) => Math.max(0.6, parseFloat((z - 0.2).toFixed(1))))}
+                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                          title="Zoom Out"
+                          aria-label="Zoom Out"
+                        >
+                          <ZoomOut className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-[10px] font-mono px-1.5 text-white/60 min-w-[36px] text-center">
+                          {Math.round(workZoom * 100)}%
+                        </span>
+                        <button
+                          onClick={() => setWorkZoom((z) => Math.min(2.0, parseFloat((z + 0.2).toFixed(1))))}
+                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                          title="Zoom In"
+                          aria-label="Zoom In"
+                        >
+                          <ZoomIn className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setWorkZoom(1)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                          title="Reset Zoom"
+                          aria-label="Reset Zoom"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+
+                    <a
+                      href={currentWork.image}
+                      download={`${currentWork.title.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}-aagspire.webp`}
+                      className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border border-white/15 bg-white/[0.04] text-white hover:border-ember/50 hover:bg-ember/10 hover:text-ember transition-all text-xs font-semibold uppercase tracking-wider cursor-pointer"
+                      title="Download High-Res Artwork"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Download</span>
+                    </a>
+
+                    {/* Prominent Close Button */}
+                    <button
+                      onClick={() => setActiveWorkIndex(null)}
+                      className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-r from-[#ff5a1f] to-[#ff7a2f] text-white flex items-center justify-center shadow-[0_0_25px_rgba(255,90,31,0.6)] hover:shadow-[0_0_35px_rgba(255,90,31,0.9)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer border border-[#ff9050]"
+                      aria-label="Close viewer"
+                      title="Close (ESC)"
+                    >
+                      <X className="w-5 h-5 text-white stroke-[2.5]" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Main Content Body */}
+                <div className="flex-1 flex flex-col overflow-hidden bg-[#030303]">
+                  {isCaseStudy ? (
+                    <div className="flex-1 overflow-y-auto overflow-x-auto relative custom-scrollbar flex flex-col items-center py-6 px-4">
+                      <div
+                        className="transition-transform duration-200 ease-out origin-top flex justify-center max-w-full pb-16"
+                        style={{ transform: `scale(${workZoom})` }}
+                      >
+                        <ImageWithLoader
+                          src={currentWork.image}
+                          alt={currentWork.title}
+                          wrapperClassName="max-w-[94vw] sm:max-w-2xl lg:max-w-3xl w-full rounded-2xl overflow-hidden shadow-[0_30px_90px_rgba(0,0,0,0.95)] border border-white/10"
+                          spinnerSize="lg"
+                          minHeight="450px"
+                          className="w-full h-auto block"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-1 p-4 sm:p-8 flex items-center justify-center overflow-hidden relative">
+                      <ImageWithLoader
+                        src={currentWork.image}
+                        alt={currentWork.title}
+                        wrapperClassName="max-h-[85vh] max-w-full flex items-center justify-center rounded-2xl overflow-hidden"
+                        spinnerSize="lg"
+                        minHeight="350px"
+                        className="max-h-[85vh] max-w-full w-auto object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)]"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </section>

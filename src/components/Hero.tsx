@@ -330,7 +330,11 @@ export default function Hero({ ignited, onIgnite, onOpenWork, onOpenContact }: H
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-ember/10 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-ember-deep/10 blur-[100px] pointer-events-none" />
 
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <div
+        className={`relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-center transition-all duration-700 ${
+          ignited ? 'pt-28 sm:pt-36 pb-16 sm:pb-20' : 'py-12'
+        }`}
+      >
         {!ignited ? (
           <div className="flex flex-col items-center gap-12">
             <div className="flex flex-col items-center gap-6">
@@ -351,7 +355,7 @@ export default function Hero({ ignited, onIgnite, onOpenWork, onOpenContact }: H
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-8 transition-all duration-700 opacity-100 translate-y-0 animate-fade-up">
+          <div className="my-auto flex flex-col items-center gap-6 sm:gap-8 transition-all duration-700 opacity-100 translate-y-0 animate-fade-up">
             {/* Tagline badge */}
             <div className="inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-black/40 px-5 py-2 backdrop-blur-sm shadow-[0_0_20px_rgba(255,90,31,0.15)]">
               <span className="relative flex h-2 w-2 items-center justify-center">

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { ArrowUpRight, X, Sparkles, ChevronLeft, ChevronRight, Eye, Download, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ImageWithLoader } from './ImageWithLoader';
+import { FireLogo } from './FireLogo';
 import rawPortfolioData from './portfolio-data.json';
 
 interface ProjectItem {
@@ -66,6 +68,7 @@ const categories = [
   { label: 'All Works', value: 'all', count: allProjects.length },
   { label: 'Social Media Marketing', value: 'social-media-marketing', count: allProjects.filter((p) => p.services?.includes('social-media-marketing')).length },
   { label: 'Logo Design', value: 'logo-design', count: allProjects.filter((p) => p.services?.includes('logo-design')).length },
+  { label: 'Business Cards', value: 'business-cards', count: allProjects.filter((p) => p.services?.includes('business-cards')).length },
   { label: 'Poster Design', value: 'poster-design', count: allProjects.filter((p) => p.services?.includes('poster-design')).length },
   { label: 'Packaging Design', value: 'packaging-design', count: allProjects.filter((p) => p.services?.includes('packaging-design')).length },
   { label: 'T-Shirt & Apparel', value: 'apparel-graphics', count: allProjects.filter((p) => p.type === 'tshirt' || p.services?.includes('apparel-graphics')).length },
@@ -139,6 +142,69 @@ export default function Portfolio() {
     return filteredProjects.slice(0, displayCount);
   }, [filteredProjects, displayCount]);
 
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
+  const [portfolioLoadedCount, setPortfolioLoadedCount] = useState(0);
+
+  // Monitor image loading for all artworks in current portfolio batch (guaranteed 1s showcase of Fire Logo)
+  useEffect(() => {
+    if (!visibleProjects.length) {
+      setPortfolioLoading(false);
+      return;
+    }
+
+    setPortfolioLoading(true);
+    setPortfolioLoadedCount(0);
+
+    const startTime = Date.now();
+    const minLoadingTime = 1000; // Display Fire Logo for at least 1 second
+    let loaded = 0;
+    let isCancelled = false;
+    let finishTimer: ReturnType<typeof setTimeout> | null = null;
+    const total = visibleProjects.length;
+
+    const finishLoading = () => {
+      if (isCancelled) return;
+      const elapsed = Date.now() - startTime;
+      const delay = Math.max(0, minLoadingTime - elapsed);
+      finishTimer = setTimeout(() => {
+        if (!isCancelled) {
+          setPortfolioLoadedCount(total);
+          setPortfolioLoading(false);
+        }
+      }, delay);
+    };
+
+    const onComplete = () => {
+      if (isCancelled) return;
+      loaded += 1;
+      setPortfolioLoadedCount(loaded);
+      if (loaded >= total) {
+        finishLoading();
+      }
+    };
+
+    visibleProjects.forEach((proj) => {
+      const img = new window.Image();
+      img.src = proj.image;
+      if (img.complete && img.naturalWidth > 0) {
+        onComplete();
+      } else {
+        img.onload = onComplete;
+        img.onerror = onComplete;
+      }
+    });
+
+    const fallbackTimer = setTimeout(() => {
+      if (!isCancelled) finishLoading();
+    }, 4000);
+
+    return () => {
+      isCancelled = true;
+      if (finishTimer) clearTimeout(finishTimer);
+      clearTimeout(fallbackTimer);
+    };
+  }, [visibleProjects]);
+
   // Handle keyboard navigation for modal
   useEffect(() => {
     if (activeProjectIndex === null) return;
@@ -173,8 +239,8 @@ export default function Portfolio() {
         </p>
       </div>
 
-      {/* Controls Bar: Category Filter & Visualization View Switcher */}
-      <div className={`section-reveal ${visible ? 'visible' : ''} flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10`}>
+      {/* Controls Bar: Category Filter & Visualization View Switcher (Sticky under navbar) */}
+      <div className={`section-reveal ${visible ? 'visible' : ''} sticky top-20 z-40 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3.5 bg-[#050505]/95 backdrop-blur-xl border-y border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.6)] flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-10 transition-all duration-300`}>
         {/* Category Filter Tabs */}
         <div className="flex flex-wrap items-center gap-2.5">
           {categories.map((cat) => (
@@ -229,21 +295,118 @@ export default function Portfolio() {
       </div>
 
       {/* Dynamic Image-Fit Gallery Layouts */}
-      {viewMode === 'masonry' ? (
+      {portfolioLoading ? (
+        <div className="space-y-8 animate-fade-up">
+          {/* Progress Header featuring Aagspire Fire Flame Loading Badge */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 sm:p-6 rounded-3xl bg-[#0d0d0d] border border-white/10 shadow-2xl relative overflow-hidden">
+            {/* Ambient fiery backdrop glow */}
+            <div className="absolute -top-12 -left-12 w-48 h-48 bg-ember/15 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-white/[0.04] border border-ember/30 shadow-[0_0_25px_rgba(255,90,31,0.25)] shrink-0">
+                {/* Expanding subtle pulse */}
+                <div className="absolute inset-0 rounded-2xl border border-ember/40 animate-ping opacity-20 pointer-events-none" />
+                {/* Rotating ember dash orbit ring */}
+                <div className="absolute inset-1 rounded-xl border border-dashed border-ember/40 animate-spin [animation-duration:8s] pointer-events-none" />
+                {/* Fire Logo Center */}
+                <FireLogo className="w-8 h-8 drop-shadow-[0_0_14px_rgba(255,90,31,0.9)]" animated glow />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm sm:text-base font-bold text-white tracking-wide">
+                    Loading Artworks & Presentations
+                  </p>
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-ember/15 border border-ember/30 text-ember font-semibold">
+                    Live Render
+                  </span>
+                </div>
+                <p className="text-xs text-white/50 mt-0.5">
+                  Optimizing visual showcases...
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full sm:w-72 flex items-center gap-3 relative z-10">
+              <div className="flex-1 h-2.5 rounded-full bg-white/10 overflow-hidden p-[1px]">
+                <div
+                  className="h-full bg-gradient-to-r from-red-600 via-ember to-amber-400 transition-all duration-300 rounded-full shadow-[0_0_14px_rgba(255,90,31,0.7)]"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      Math.round((portfolioLoadedCount / Math.max(1, visibleProjects.length)) * 100)
+                    )}%`,
+                  }}
+                />
+              </div>
+              <span className="text-xs font-mono font-bold text-ember shrink-0">
+                {portfolioLoadedCount}/{visibleProjects.length}
+              </span>
+            </div>
+          </div>
+
+          {/* Skeleton Gallery Cards with Centered Glowing Fire Logo */}
+          <div
+            className={
+              viewMode === 'masonry'
+                ? 'columns-1 sm:columns-2 lg:columns-3 gap-6 [column-fill:_balance]'
+                : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6'
+            }
+          >
+            {[340, 420, 300, 380, 440, 320].map((h, idx) => (
+              <div
+                key={idx}
+                className={`mb-6 break-inside-avoid rounded-2xl sm:rounded-3xl overflow-hidden bg-[#0d0d0d] border border-white/5 relative p-5 flex flex-col justify-between ${
+                  viewMode === 'masonry' ? '' : 'aspect-[4/5]'
+                }`}
+                style={viewMode === 'masonry' ? { height: `${h}px` } : undefined}
+              >
+                <div className="skeleton-shimmer" />
+
+                {/* Top corner subtle badge placeholder */}
+                <div className="relative z-10 flex justify-between items-center">
+                  <div className="h-4 w-16 bg-white/5 rounded-full border border-white/5" />
+                  <div className="w-2 h-2 rounded-full bg-ember/40 animate-pulse" />
+                </div>
+
+                {/* Center Glowing Fire Logo in each skeleton card while images are loading */}
+                <div className="relative z-10 flex flex-col items-center justify-center my-auto py-8">
+                  <div className="relative flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full border border-white/10 border-t-ember/70 animate-spin [animation-duration:2.5s]" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <FireLogo className="w-7 h-7 opacity-85" animated glow />
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-white/30 mt-3">
+                    Loading
+                  </span>
+                </div>
+
+                {/* Bottom title & tags placeholder */}
+                <div className="relative z-10 space-y-2">
+                  <div className="h-3 w-1/3 bg-white/10 rounded-full" />
+                  <div className="h-4 w-2/3 bg-white/10 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : viewMode === 'masonry' ? (
         /* Seamless Natural Image Fit Masonry (3 Columns) */
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 [column-fill:_balance]">
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 [column-fill:_balance] animate-fade-up">
           {visibleProjects.map((project) => (
             <div
               key={project.id}
               onClick={() => setActiveProjectIndex(filteredProjects.indexOf(project))}
               className="group relative mb-6 break-inside-avoid rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer bg-[#111] border border-white/10 hover:border-ember/50 transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(255,90,31,0.22)]"
             >
-              {/* Pure Artwork Image (Natural Height Fit) */}
-              <img
+              {/* Pure Artwork Image (Natural Height Fit with Loading State) */}
+              <ImageWithLoader
                 src={project.image}
                 alt={project.title}
                 loading="lazy"
                 decoding="async"
+                minHeight="220px"
+                wrapperClassName="w-full"
                 className="w-full h-auto object-contain block transition-transform duration-700 group-hover:scale-105"
               />
 
@@ -291,11 +454,12 @@ export default function Portfolio() {
                 className="group relative aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer bg-[#0e0e0e] border border-white/10 hover:border-ember/50 transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(255,90,31,0.22)] flex items-center justify-center"
               >
                 {/* Image Centered and Contained or Top-Aligned for Case Studies */}
-                <img
+                <ImageWithLoader
                   src={project.image}
                   alt={project.title}
                   loading="lazy"
                   decoding="async"
+                  wrapperClassName="w-full h-full"
                   className={`w-full h-full block transition-transform duration-700 group-hover:scale-105 ${
                     isCaseStudy ? 'object-cover object-top' : 'object-contain'
                   }`}
@@ -497,18 +661,24 @@ export default function Portfolio() {
                     className="transition-transform duration-200 ease-out origin-top flex justify-center max-w-full pb-16"
                     style={{ transform: `scale(${portfolioZoom})` }}
                   >
-                    <img
+                    <ImageWithLoader
                       src={currentProject.image}
                       alt={currentProject.title}
-                      className="max-w-[92vw] sm:max-w-2xl lg:max-w-3xl h-auto w-full rounded-2xl shadow-[0_30px_90px_rgba(0,0,0,0.95)] border border-white/10"
+                      wrapperClassName="max-w-[92vw] sm:max-w-2xl lg:max-w-3xl w-full rounded-2xl overflow-hidden shadow-[0_30px_90px_rgba(0,0,0,0.95)] border border-white/10"
+                      spinnerSize="lg"
+                      minHeight="420px"
+                      className="w-full h-auto block"
                     />
                   </div>
                 </div>
               ) : (
                 <div className="flex-1 bg-[#050505] p-4 sm:p-8 lg:p-12 flex items-center justify-center overflow-hidden relative">
-                  <img
+                  <ImageWithLoader
                     src={currentProject.image}
                     alt={currentProject.title}
+                    wrapperClassName="max-h-[82vh] max-w-full flex items-center justify-center rounded-2xl overflow-hidden"
+                    spinnerSize="lg"
+                    minHeight="350px"
                     className="max-h-[82vh] max-w-full w-auto object-contain rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9)]"
                   />
                 </div>
