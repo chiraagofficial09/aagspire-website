@@ -1,12 +1,26 @@
 import {
   SiBehance,
   SiFacebook,
-  SiFiverr,
   SiGooglemaps,
   SiInstagram,
   SiPinterest,
 } from 'react-icons/si';
 import { MapPin } from 'lucide-react';
+
+function FiverrFiIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+      {...props}
+    >
+      {/* Official Fiverr 'fi' Mark */}
+      <path d="M18.75 18.25v-10h-10v-.625c0-1.034.841-1.875 1.875-1.875H12.5V2H10.625A5.632 5.632 0 0 0 5 7.625v.625H2.5V12H5v6.25H2.5V22h8.75v-3.75H8.75V12h6.285v6.25H12.5V22h8.75v-3.75h-2.5z" />
+      <circle cx="16.875" cy="3.875" r="1.875" />
+    </svg>
+  );
+}
 
 export default function Footer() {
   const links = {
@@ -25,16 +39,16 @@ export default function Footer() {
   };
 
   const socialLinks = [
-    { label: 'Fiverr', href: 'https://www.fiverr.com/s/K38YRwb', icon: SiFiverr },
     { label: 'Instagram', href: 'https://www.instagram.com/aagspire/', icon: SiInstagram },
-    { label: 'Pinterest', href: 'https://in.pinterest.com/aagspire/', icon: SiPinterest },
-    { label: 'Behance', href: 'https://www.behance.net/Aagspire', icon: SiBehance },
-    { label: 'Google Maps', href: 'https://maps.app.goo.gl/jjAYk4USRPfAxCgH7', icon: SiGooglemaps },
     {
       label: 'Facebook',
       href: 'https://www.facebook.com/profile.php?id=61590180277142&sk=about',
       icon: SiFacebook,
     },
+    { label: 'Pinterest', href: 'https://in.pinterest.com/aagspire/', icon: SiPinterest },
+    { label: 'Fiverr', href: 'https://www.fiverr.com/s/K38YRwb', icon: FiverrFiIcon },
+    { label: 'Behance', href: 'https://www.behance.net/Aagspire', icon: SiBehance },
+    { label: 'Google Maps', href: 'https://maps.app.goo.gl/jjAYk4USRPfAxCgH7', icon: SiGooglemaps },
   ];
 
   return (
