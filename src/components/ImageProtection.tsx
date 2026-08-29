@@ -165,6 +165,33 @@ export default function ImageProtection() {
       }
     };
 
+    // 6. Mobile 3-Finger Screenshot Gesture Interception (Android & iOS)
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches && e.touches.length >= 3) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.documentElement.classList.add('window-blurred');
+        triggerShield();
+        showToast('This artwork is protected by Aagspire');
+        return false;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches && e.touches.length >= 3) {
+        e.preventDefault();
+        e.stopPropagation();
+        document.documentElement.classList.add('window-blurred');
+        return false;
+      }
+    };
+
+    // 7. Mobile Page Lifecycle (App Switcher, Notification Shade, Screen Lock)
+    const handlePageHide = () => {
+      document.documentElement.classList.add('window-blurred');
+      clearClipboard();
+    };
+
     // Shield click handler to restore view
     const shieldEl = document.getElementById('anti-screenshot-shield');
     const handleShieldClick = () => {
@@ -181,6 +208,9 @@ export default function ImageProtection() {
     window.addEventListener('blur', handleWindowBlur);
     window.addEventListener('focus', handleWindowFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+    window.addEventListener('pagehide', handlePageHide);
 
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu, { capture: true });
@@ -190,6 +220,9 @@ export default function ImageProtection() {
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('pagehide', handlePageHide);
       shieldEl?.removeEventListener('click', handleShieldClick);
       if (toastTimeout) clearTimeout(toastTimeout);
     };
