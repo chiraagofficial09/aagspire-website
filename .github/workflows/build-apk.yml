@@ -47,7 +47,10 @@ jobs:
       - name: Build Debug APK with FLAG_SECURE
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../gradle.log
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee ../gradle.log
+          cd ..
+          echo "### Generated APK Files:"
+          find . -name "*.apk" -ls || true
 
       - name: Post Failure Summary
         if: failure()
@@ -64,14 +67,9 @@ jobs:
           name: gradle-build-log
           path: gradle.log
 
-      - name: Locate Generated APK
-        run: |
-          ls -la android/app/build/outputs/apk/debug/ || ls -la android/app/build/outputs/
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Aagspire-Protected-APK
-          path: android/app/build/outputs/apk/**/*.apk
-          if-no-files-found: error
+          path: '**/*.apk'
 
