@@ -48,12 +48,41 @@ export default function CTA({
     onOpenContact?.();
   };
 
+  const isModalOpenRef = useRef<boolean>(isModalOpen);
+  isModalOpenRef.current = isModalOpen;
+
   const handleClose = () => {
     setLocalModalOpen(false);
     setServiceDropdownOpen(false);
     setErrorMessage(null);
     onCloseContact?.();
+    if (window.history.state?.aagspireModal === 'contact') {
+      window.history.back();
+    }
   };
+
+  // Sync browser history state when contact modal opens
+  useEffect(() => {
+    if (isModalOpen) {
+      if (window.history.state?.aagspireModal !== 'contact') {
+        window.history.pushState({ aagspireModal: 'contact' }, '');
+      }
+    }
+  }, [isModalOpen]);
+
+  // Mobile / browser back button popstate handler for contact modal
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (isModalOpenRef.current && e.state?.aagspireModal !== 'contact') {
+        setLocalModalOpen(false);
+        setServiceDropdownOpen(false);
+        setErrorMessage(null);
+        onCloseContact?.();
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [onCloseContact]);
 
   // Close service dropdown on click outside
   useEffect(() => {

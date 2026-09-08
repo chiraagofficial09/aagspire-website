@@ -7,7 +7,6 @@ import {
   Package,
   Monitor,
   Film,
-  BookOpen,
   CreditCard,
   Instagram,
   Target,
@@ -25,6 +24,8 @@ import {
 } from 'lucide-react';
 import { ImageWithLoader } from './ImageWithLoader';
 import rawPortfolioData from './portfolio-data.json';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 
 interface ProjectItem {
   id: string;
@@ -230,6 +231,17 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
     return () => obs.disconnect();
   }, []);
 
+  // Reset stale history state on initial mount if page was refreshed
+  useEffect(() => {
+    if (
+      !isWorkOpen &&
+      (window.history.state?.aagspireStep === 'showcase' ||
+        window.history.state?.aagspireStep === 'artwork')
+    ) {
+      window.history.replaceState(null, '');
+    }
+  }, []);
+
   // Sync external isWorkOpen prop
   useEffect(() => {
     if (isWorkOpen) {
@@ -237,13 +249,119 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
       setModalOpen(true);
     } else {
       setModalOpen(false);
+      if (
+        window.history.state?.aagspireStep === 'showcase' ||
+        window.history.state?.aagspireStep === 'artwork'
+      ) {
+        window.history.back();
+      }
     }
   }, [isWorkOpen, initialTabId]);
 
+  // Refs to always access freshest state inside popstate and native back button listeners
+  const activeWorkIndexRef = useRef<number | null>(activeWorkIndex);
+  activeWorkIndexRef.current = activeWorkIndex;
+
+  const modalOpenRef = useRef<boolean>(modalOpen);
+  modalOpenRef.current = modalOpen;
+
+  // Clean helper to close artwork view and pop history state if active
+  const exitArtwork = () => {
+    setActiveWorkIndex(null);
+    setWorkZoom(1);
+    if (window.history.state?.aagspireStep === 'artwork') {
+      window.history.back();
+    }
+  };
+
+  // Clean helper to close showcase modal and pop history state if active
   const handleCloseModal = () => {
     setModalOpen(false);
     onCloseWork?.();
+    if (
+      window.history.state?.aagspireStep === 'showcase' ||
+      window.history.state?.aagspireStep === 'artwork'
+    ) {
+      window.history.back();
+    }
   };
+
+  // Sync browser history state when opening/switching artwork images
+  useEffect(() => {
+    if (activeWorkIndex !== null) {
+      if (window.history.state?.aagspireStep === 'artwork') {
+        window.history.replaceState({ aagspireStep: 'artwork', index: activeWorkIndex }, '');
+      } else {
+        window.history.pushState({ aagspireStep: 'artwork', index: activeWorkIndex }, '');
+      }
+    }
+  }, [activeWorkIndex]);
+
+  // Sync browser history state when opening showcase gallery
+  useEffect(() => {
+    if (modalOpen) {
+      if (
+        window.history.state?.aagspireStep !== 'showcase' &&
+        window.history.state?.aagspireStep !== 'artwork'
+      ) {
+        window.history.pushState({ aagspireStep: 'showcase' }, '');
+      }
+    }
+  }, [modalOpen]);
+
+  // Mobile and Browser Back button handler (popstate event)
+  // When back button is clicked:
+  // - If viewing an image: ONLY close the image viewer and return to the showcase gallery
+  // - If in showcase gallery: close the showcase and return to the main website
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const nextStep = e.state?.aagspireStep;
+
+      // 1. If an image is open and back was pressed, close ONLY the image viewer
+      if (activeWorkIndexRef.current !== null && nextStep !== 'artwork') {
+        setActiveWorkIndex(null);
+        setWorkZoom(1);
+        return;
+      }
+
+      // 2. If showcase gallery is open and back was pressed, close the showcase gallery
+      if (modalOpenRef.current && nextStep !== 'showcase' && nextStep !== 'artwork') {
+        setModalOpen(false);
+        onCloseWork?.();
+        return;
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [onCloseWork]);
+
+  // Native Android hardware/gesture back button handler (via Capacitor)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let listenerHandle: { remove: () => void } | null = null;
+
+    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      if (activeWorkIndexRef.current !== null) {
+        exitArtwork();
+      } else if (modalOpenRef.current) {
+        handleCloseModal();
+      } else if (canGoBack) {
+        window.history.back();
+      } else {
+        CapacitorApp.exitApp();
+      }
+    }).then((handle) => {
+      listenerHandle = handle;
+    });
+
+    return () => {
+      if (listenerHandle) {
+        listenerHandle.remove();
+      }
+    };
+  }, []);
 
   // Current active tab definition
   const activeTabDef = useMemo(() => {
@@ -324,7 +442,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
     const handleKeyDown = (e: KeyboardEvent) => {
       if (activeWorkIndex !== null) {
         if (e.key === 'Escape') {
-          setActiveWorkIndex(null);
+          exitArtwork();
         } else if (e.key === 'ArrowRight') {
           setActiveWorkIndex((prev) => (prev !== null ? (prev + 1) % displayedWorks.length : null));
           setWorkZoom(1);
@@ -749,7 +867,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
 
                     {/* Prominent High-Visibility Exit Button with Icon & Label */}
                     <button
-                      onClick={() => setActiveWorkIndex(null)}
+                      onClick={exitArtwork}
                       className="group flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-[#ff5a1f] to-[#ff7a2f] text-white font-bold text-xs sm:text-sm tracking-wide shadow-[0_0_25px_rgba(255,90,31,0.6)] hover:shadow-[0_0_35px_rgba(255,90,31,0.9)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer border border-[#ff9050] shrink-0"
                       aria-label="Exit full view"
                       title="Exit Full View (ESC)"
@@ -766,7 +884,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                   className="flex-1 flex flex-col overflow-hidden bg-[#030303] relative"
                   onClick={(e) => {
                     if (e.target === e.currentTarget) {
-                      setActiveWorkIndex(null);
+                      exitArtwork();
                     }
                   }}
                 >
@@ -775,7 +893,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                       className="flex-1 overflow-y-auto overflow-x-auto relative custom-scrollbar flex flex-col items-center py-6 px-4"
                       onClick={(e) => {
                         if (e.target === e.currentTarget) {
-                          setActiveWorkIndex(null);
+                          exitArtwork();
                         }
                       }}
                     >
@@ -798,7 +916,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                       className="flex-1 p-4 sm:p-8 flex items-center justify-center overflow-hidden relative cursor-pointer"
                       onClick={(e) => {
                         if (e.target === e.currentTarget) {
-                          setActiveWorkIndex(null);
+                          exitArtwork();
                         }
                       }}
                     >
@@ -816,7 +934,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
 
                   {/* Floating Quick Exit Pill (Always visible on screen while viewing images) */}
                   <button
-                    onClick={() => setActiveWorkIndex(null)}
+                    onClick={exitArtwork}
                     className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-full bg-[#141414]/90 hover:bg-[#ff5a1f] backdrop-blur-xl text-white border border-white/20 hover:border-ember shadow-[0_12px_35px_rgba(0,0,0,0.85)] hover:shadow-[0_12px_35px_rgba(255,90,31,0.5)] text-xs sm:text-sm font-semibold tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer group"
                     aria-label="Exit full view"
                     title="Exit Full View (ESC)"
