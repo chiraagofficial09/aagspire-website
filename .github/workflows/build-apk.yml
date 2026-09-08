@@ -46,6 +46,7 @@ jobs:
 
       - name: Build Debug APK with FLAG_SECURE
         run: |
+          set -o pipefail
           cd android
           ./gradlew :app:assembleDebug --no-daemon --stacktrace 2>&1 | tee ../gradle.log
           cd ..
