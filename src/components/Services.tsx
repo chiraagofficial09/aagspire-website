@@ -238,6 +238,9 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
   const modalOpenRef = useRef<boolean>(modalOpen);
   modalOpenRef.current = modalOpen;
 
+  const onCloseWorkRef = useRef(onCloseWork);
+  onCloseWorkRef.current = onCloseWork;
+
   // Clean stale hashes on initial page mount (e.g. if refreshed while in full view)
   useEffect(() => {
     if (
@@ -265,7 +268,21 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
     }
   }, [isWorkOpen, initialTabId]);
 
-  // Clean helper to close artwork view when clicking on-screen Exit buttons
+  // Synchronously open artwork in full view with user gesture history push
+  const openArtwork = (idx: number) => {
+    setActiveWorkIndex(idx);
+    setWorkZoom(1);
+    // Push real hash entry synchronously during user click/touch so mobile browser never exits website
+    if (window.location.hash !== '#artwork') {
+      window.history.pushState(
+        { aagspireStep: 'artwork', index: idx },
+        '',
+        '#artwork'
+      );
+    }
+  };
+
+  // Clean helper to close artwork view when clicking on-screen Exit Full View button
   const exitArtwork = () => {
     setActiveWorkIndex(null);
     setWorkZoom(1);
@@ -278,7 +295,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
   const handleCloseModal = () => {
     setModalOpen(false);
     setActiveWorkIndex(null);
-    onCloseWork?.();
+    onCloseWorkRef.current?.();
     if (window.location.hash === '#artwork') {
       window.history.go(-2);
     } else if (window.location.hash === '#showcase') {
@@ -286,7 +303,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
     }
   };
 
-  // Sync browser URL hash when activeWorkIndex changes (when opening an image)
+  // Sync browser URL hash when activeWorkIndex changes (when navigating prev/next)
   useEffect(() => {
     if (activeWorkIndex !== null) {
       if (window.location.hash !== '#artwork') {
@@ -309,27 +326,23 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
   }, [modalOpen]);
 
   // Mobile & Desktop Browser Back Button Navigation Handler (popstate + hashchange)
-  // When back button is pressed:
-  // - If an image is open (#artwork): browser navigates back to #showcase.
-  //   ONLY close the image viewer and KEEP the showcase open!
-  // - If showcase is open (#showcase): browser navigates back to base URL.
-  //   Close the showcase gallery and return to main website!
+  // When phone back button is pressed:
+  // - If an image is open in full view: IMMEDIATELY HIT EXIT FULL VIEW!
+  // - If showcase is open: close the showcase gallery!
   useEffect(() => {
     const handleBrowserBack = () => {
-      const currentHash = window.location.hash;
-
-      // 1. If an artwork image was open, and user pressed Back (URL is no longer #artwork)
-      if (activeWorkIndexRef.current !== null && currentHash !== '#artwork') {
+      // 1. If an artwork image is open in full view, hitting Back on the phone HITS EXIT FULL VIEW!
+      if (activeWorkIndexRef.current !== null) {
         setActiveWorkIndex(null);
         setWorkZoom(1);
         return;
       }
 
-      // 2. If showcase gallery was open, and user pressed Back (URL is no longer #showcase or #artwork)
-      if (modalOpenRef.current && currentHash !== '#showcase' && currentHash !== '#artwork') {
+      // 2. If showcase gallery was open, hitting Back on the phone closes the showcase!
+      if (modalOpenRef.current) {
         setModalOpen(false);
         setActiveWorkIndex(null);
-        onCloseWork?.();
+        onCloseWorkRef.current?.();
         return;
       }
     };
@@ -341,7 +354,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
       window.removeEventListener('popstate', handleBrowserBack);
       window.removeEventListener('hashchange', handleBrowserBack);
     };
-  }, [onCloseWork]);
+  }, []);
 
   // Native Android hardware / gesture back button handler (via Capacitor)
   useEffect(() => {
@@ -351,21 +364,11 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
 
     CapacitorApp.addListener('backButton', () => {
       if (activeWorkIndexRef.current !== null) {
-        // Artwork is open: ONLY close the artwork viewer
-        if (window.location.hash === '#artwork') {
-          window.history.back();
-        } else {
-          setActiveWorkIndex(null);
-          setWorkZoom(1);
-        }
+        // Artwork is in full view: HITS EXIT FULL VIEW!
+        exitArtwork();
       } else if (modalOpenRef.current) {
         // Showcase gallery is open: close showcase and return to main website
-        if (window.location.hash === '#showcase') {
-          window.history.back();
-        } else {
-          setModalOpen(false);
-          onCloseWork?.();
-        }
+        handleCloseModal();
       } else {
         // Main website home: exit app
         CapacitorApp.exitApp();
@@ -741,8 +744,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                         onClick={() => {
                           const idx = displayedWorks.findIndex((w) => w.id === work.id);
                           if (idx !== -1) {
-                            setActiveWorkIndex(idx);
-                            setWorkZoom(1);
+                            openArtwork(idx);
                           }
                         }}
                         className="break-inside-avoid relative rounded-2xl overflow-hidden bg-[#050505] border border-white/10 hover:border-ember/50 transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_15px_35px_rgba(255,90,31,0.18)] group mb-5 block select-none cursor-pointer"
