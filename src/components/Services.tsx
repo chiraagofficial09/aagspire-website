@@ -231,14 +231,20 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
     return () => obs.disconnect();
   }, []);
 
-  // Reset stale history state on initial mount if page was refreshed
+  // Refs to always access freshest state inside navigation event listeners
+  const activeWorkIndexRef = useRef<number | null>(activeWorkIndex);
+  activeWorkIndexRef.current = activeWorkIndex;
+
+  const modalOpenRef = useRef<boolean>(modalOpen);
+  modalOpenRef.current = modalOpen;
+
+  // Clean stale hashes on initial page mount (e.g. if refreshed while in full view)
   useEffect(() => {
     if (
       !isWorkOpen &&
-      (window.history.state?.aagspireStep === 'showcase' ||
-        window.history.state?.aagspireStep === 'artwork')
+      (window.location.hash === '#artwork' || window.location.hash === '#showcase')
     ) {
-      window.history.replaceState(null, '');
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
   }, []);
 
@@ -247,109 +253,121 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
     if (isWorkOpen) {
       setActiveTabId(initialTabId || 'all');
       setModalOpen(true);
+      if (window.location.hash !== '#showcase' && window.location.hash !== '#artwork') {
+        window.history.pushState({ aagspireStep: 'showcase' }, '', '#showcase');
+      }
     } else {
       setModalOpen(false);
-      if (
-        window.history.state?.aagspireStep === 'showcase' ||
-        window.history.state?.aagspireStep === 'artwork'
-      ) {
-        window.history.back();
+      setActiveWorkIndex(null);
+      if (window.location.hash === '#artwork' || window.location.hash === '#showcase') {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
       }
     }
   }, [isWorkOpen, initialTabId]);
 
-  // Refs to always access freshest state inside popstate and native back button listeners
-  const activeWorkIndexRef = useRef<number | null>(activeWorkIndex);
-  activeWorkIndexRef.current = activeWorkIndex;
-
-  const modalOpenRef = useRef<boolean>(modalOpen);
-  modalOpenRef.current = modalOpen;
-
-  // Clean helper to close artwork view and pop history state if active
+  // Clean helper to close artwork view when clicking on-screen Exit buttons
   const exitArtwork = () => {
     setActiveWorkIndex(null);
     setWorkZoom(1);
-    if (window.history.state?.aagspireStep === 'artwork') {
+    if (window.location.hash === '#artwork') {
       window.history.back();
     }
   };
 
-  // Clean helper to close showcase modal and pop history state if active
+  // Clean helper to close showcase modal when clicking on-screen Back / Exit Showcase
   const handleCloseModal = () => {
     setModalOpen(false);
+    setActiveWorkIndex(null);
     onCloseWork?.();
-    if (
-      window.history.state?.aagspireStep === 'showcase' ||
-      window.history.state?.aagspireStep === 'artwork'
-    ) {
+    if (window.location.hash === '#artwork') {
+      window.history.go(-2);
+    } else if (window.location.hash === '#showcase') {
       window.history.back();
     }
   };
 
-  // Sync browser history state when opening/switching artwork images
+  // Sync browser URL hash when activeWorkIndex changes (when opening an image)
   useEffect(() => {
     if (activeWorkIndex !== null) {
-      if (window.history.state?.aagspireStep === 'artwork') {
-        window.history.replaceState({ aagspireStep: 'artwork', index: activeWorkIndex }, '');
-      } else {
-        window.history.pushState({ aagspireStep: 'artwork', index: activeWorkIndex }, '');
+      if (window.location.hash !== '#artwork') {
+        window.history.pushState(
+          { aagspireStep: 'artwork', index: activeWorkIndex },
+          '',
+          '#artwork'
+        );
       }
     }
   }, [activeWorkIndex]);
 
-  // Sync browser history state when opening showcase gallery
+  // Sync browser URL hash when modalOpen changes
   useEffect(() => {
     if (modalOpen) {
-      if (
-        window.history.state?.aagspireStep !== 'showcase' &&
-        window.history.state?.aagspireStep !== 'artwork'
-      ) {
-        window.history.pushState({ aagspireStep: 'showcase' }, '');
+      if (window.location.hash !== '#showcase' && window.location.hash !== '#artwork') {
+        window.history.pushState({ aagspireStep: 'showcase' }, '', '#showcase');
       }
     }
   }, [modalOpen]);
 
-  // Mobile and Browser Back button handler (popstate event)
-  // When back button is clicked:
-  // - If viewing an image: ONLY close the image viewer and return to the showcase gallery
-  // - If in showcase gallery: close the showcase and return to the main website
+  // Mobile & Desktop Browser Back Button Navigation Handler (popstate + hashchange)
+  // When back button is pressed:
+  // - If an image is open (#artwork): browser navigates back to #showcase.
+  //   ONLY close the image viewer and KEEP the showcase open!
+  // - If showcase is open (#showcase): browser navigates back to base URL.
+  //   Close the showcase gallery and return to main website!
   useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      const nextStep = e.state?.aagspireStep;
+    const handleBrowserBack = () => {
+      const currentHash = window.location.hash;
 
-      // 1. If an image is open and back was pressed, close ONLY the image viewer
-      if (activeWorkIndexRef.current !== null && nextStep !== 'artwork') {
+      // 1. If an artwork image was open, and user pressed Back (URL is no longer #artwork)
+      if (activeWorkIndexRef.current !== null && currentHash !== '#artwork') {
         setActiveWorkIndex(null);
         setWorkZoom(1);
         return;
       }
 
-      // 2. If showcase gallery is open and back was pressed, close the showcase gallery
-      if (modalOpenRef.current && nextStep !== 'showcase' && nextStep !== 'artwork') {
+      // 2. If showcase gallery was open, and user pressed Back (URL is no longer #showcase or #artwork)
+      if (modalOpenRef.current && currentHash !== '#showcase' && currentHash !== '#artwork') {
         setModalOpen(false);
+        setActiveWorkIndex(null);
         onCloseWork?.();
         return;
       }
     };
 
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', handleBrowserBack);
+    window.addEventListener('hashchange', handleBrowserBack);
+
+    return () => {
+      window.removeEventListener('popstate', handleBrowserBack);
+      window.removeEventListener('hashchange', handleBrowserBack);
+    };
   }, [onCloseWork]);
 
-  // Native Android hardware/gesture back button handler (via Capacitor)
+  // Native Android hardware / gesture back button handler (via Capacitor)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     let listenerHandle: { remove: () => void } | null = null;
 
-    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+    CapacitorApp.addListener('backButton', () => {
       if (activeWorkIndexRef.current !== null) {
-        exitArtwork();
+        // Artwork is open: ONLY close the artwork viewer
+        if (window.location.hash === '#artwork') {
+          window.history.back();
+        } else {
+          setActiveWorkIndex(null);
+          setWorkZoom(1);
+        }
       } else if (modalOpenRef.current) {
-        handleCloseModal();
-      } else if (canGoBack) {
-        window.history.back();
+        // Showcase gallery is open: close showcase and return to main website
+        if (window.location.hash === '#showcase') {
+          window.history.back();
+        } else {
+          setModalOpen(false);
+          onCloseWork?.();
+        }
       } else {
+        // Main website home: exit app
         CapacitorApp.exitApp();
       }
     }).then((handle) => {

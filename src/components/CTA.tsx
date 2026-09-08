@@ -56,7 +56,7 @@ export default function CTA({
     setServiceDropdownOpen(false);
     setErrorMessage(null);
     onCloseContact?.();
-    if (window.history.state?.aagspireModal === 'contact') {
+    if (window.location.hash === '#contact-modal') {
       window.history.back();
     }
   };
@@ -64,16 +64,16 @@ export default function CTA({
   // Sync browser history state when contact modal opens
   useEffect(() => {
     if (isModalOpen) {
-      if (window.history.state?.aagspireModal !== 'contact') {
-        window.history.pushState({ aagspireModal: 'contact' }, '');
+      if (window.location.hash !== '#contact-modal') {
+        window.history.pushState({ aagspireModal: 'contact' }, '', '#contact-modal');
       }
     }
   }, [isModalOpen]);
 
   // Mobile / browser back button popstate handler for contact modal
   useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
-      if (isModalOpenRef.current && e.state?.aagspireModal !== 'contact') {
+    const handlePopState = () => {
+      if (isModalOpenRef.current && window.location.hash !== '#contact-modal') {
         setLocalModalOpen(false);
         setServiceDropdownOpen(false);
         setErrorMessage(null);
@@ -81,7 +81,11 @@ export default function CTA({
       }
     };
     window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
   }, [onCloseContact]);
 
   // Close service dropdown on click outside
