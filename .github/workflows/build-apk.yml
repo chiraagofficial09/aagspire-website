@@ -47,7 +47,22 @@ jobs:
       - name: Build Debug APK with FLAG_SECURE
         run: |
           cd android
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../gradle.log
+
+      - name: Post Failure Summary
+        if: failure()
+        run: |
+          echo "### Gradle Build Error" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 100 gradle.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Gradle Build Log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log
+          path: gradle.log
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
