@@ -26,9 +26,22 @@ export const ImageWithLoader: React.FC<ImageWithLoaderProps> = ({
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
   const startTimeRef = useRef<number>(Date.now());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    const handleBlur = () => setIsRevealed(false);
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('visibilitychange', handleBlur);
+    return () => {
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('visibilitychange', handleBlur);
+    };
+  }, []);
 
   // Reset loading state whenever src changes and enforce minimum 1 second loading time
   useEffect(() => {
@@ -184,6 +197,45 @@ export const ImageWithLoader: React.FC<ImageWithLoaderProps> = ({
             }}
             aria-hidden="true"
           />
+
+          {/* Mobile Screenshot Protection: Shows card on mobile unless actively held; taking a Power button screenshot forces fingers off or blur, capturing the card */}
+          {isTouchDevice && isLoaded && !hasError && !wrapperClassName.includes('rounded-full') && (
+            <div
+              className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md p-4 text-center select-none transition-opacity duration-150 ${
+                isRevealed ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
+              }`}
+              onTouchStart={(e) => {
+                if (e.touches.length === 1) {
+                  setIsRevealed(true);
+                } else {
+                  setIsRevealed(false);
+                }
+              }}
+              onTouchEnd={() => setIsRevealed(false)}
+              onTouchCancel={() => setIsRevealed(false)}
+            >
+              <div className="w-10 h-10 rounded-xl bg-ember/15 border border-ember/30 flex items-center justify-center text-ember mb-2 shadow-[0_0_20px_rgba(255,90,31,0.25)]">
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="5" y="11" width="14" height="10" rx="2" />
+                  <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-semibold text-white mb-0.5">
+                This artwork is protected by <span className="text-ember">Aagspire</span>
+              </h3>
+              <p className="text-[11px] text-white/50">
+                Touch &amp; hold to view
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
