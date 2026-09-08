@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ShieldAlert, Lock } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 
 export default function ImageProtection() {
-  const [shieldActive, setShieldActive] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -47,7 +46,6 @@ export default function ImageProtection() {
       document.documentElement.classList.add('window-blurred');
       const shield = document.getElementById('anti-screenshot-shield');
       if (shield) shield.classList.add('active');
-      setShieldActive(true);
       showToast('This artwork is protected by Aagspire');
       clearClipboard();
 
@@ -56,7 +54,6 @@ export default function ImageProtection() {
         if (document.hasFocus() && !document.hidden) {
           document.documentElement.classList.remove('window-blurred');
           shield?.classList.remove('active');
-          setShieldActive(false);
         }
       }, 3000);
     };
@@ -247,7 +244,6 @@ export default function ImageProtection() {
       window.focus();
       document.documentElement.classList.remove('window-blurred');
       shieldEl?.classList.remove('active');
-      setShieldActive(false);
     };
     shieldEl?.addEventListener('click', handleShieldDismiss);
     shieldEl?.addEventListener('touchstart', handleShieldDismiss, { passive: true });

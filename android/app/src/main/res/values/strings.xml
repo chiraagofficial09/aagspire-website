@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Aagspire</string>
+    <string name="title_activity_main">Aagspire</string>
+    <string name="package_name">com.aagspire.app</string>
+    <string name="custom_url_scheme">com.aagspire.app</string>
+</resources>
