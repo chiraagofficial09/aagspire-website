@@ -596,7 +596,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
       {/* Full-Screen Service Works Showcase */}
       {modalOpen && (
         <div
-          className="fixed inset-0 z-[9999] pt-20 bg-[#070707] flex flex-col w-screen h-screen overflow-hidden animate-fade-up"
+          className="fixed inset-0 z-[9999] pt-20 bg-[#070707] flex flex-col w-full h-[100dvh] max-h-[100dvh] overflow-hidden animate-modal-fade"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Full-Screen Scrollable Content */}
@@ -804,98 +804,100 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
               currentWork.folder === 'logos' ||
               currentWork.subCategory === 'brand-identity' ||
               (currentWork.ratio !== undefined && currentWork.ratio < 0.35);
-
+ 
             return (
               <div
-                className="fixed inset-0 z-[10005] bg-[#070707] flex flex-col w-screen h-screen overflow-hidden animate-fade-up"
+                className="fixed inset-0 z-[10005] bg-[#070707] flex flex-col w-full h-[100dvh] max-h-[100dvh] overflow-hidden animate-modal-fade"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Full-Width Responsive Top Bar */}
-                <div className="h-16 sm:h-20 px-3 sm:px-8 border-b border-white/10 flex items-center justify-between bg-[#0a0a0a] shrink-0 z-30 gap-2 sm:gap-4">
-                  {/* Left: Project Title & Category */}
-                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-2">
-                    <span className="hidden md:inline-flex text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-white/[0.05] border border-white/15 text-white/80 shrink-0">
-                      {isCaseStudy ? 'Brand Identity Case Study' : activeTabDef.label}
-                    </span>
-                    <h3 className="text-xs sm:text-base font-bold text-white truncate" title={currentWork.title}>
-                      {currentWork.title}
-                    </h3>
-                  </div>
+                {/* Full-Width Responsive Top Bar with Mobile Safe Area Inset Support */}
+                <div className="pt-[env(safe-area-inset-top,0px)] px-3 sm:px-8 border-b border-white/10 bg-[#0a0a0a] shrink-0 z-30">
+                  <div className="h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
+                    {/* Left: Project Title & Category */}
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 mr-1 sm:mr-2">
+                      <span className="hidden md:inline-flex text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-white/[0.05] border border-white/15 text-white/80 shrink-0">
+                        {isCaseStudy ? 'Brand Identity Case Study' : activeTabDef.label}
+                      </span>
+                      <h3 className="text-xs sm:text-base font-bold text-white truncate" title={currentWork.title}>
+                        {currentWork.title}
+                      </h3>
+                    </div>
 
-                  {/* Center: Counter & Navigation Arrows */}
-                  <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-                    <button
-                      onClick={() => {
-                        setActiveWorkIndex((prev) => (prev !== null ? (prev - 1 + displayedWorks.length) % displayedWorks.length : null));
-                        setWorkZoom(1);
-                      }}
-                      className="w-8 h-8 sm:w-10 sm:h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer"
-                      aria-label="Previous artwork"
-                    >
-                      <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                    </button>
+                    {/* Center: Counter & Navigation Arrows */}
+                    <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+                      <button
+                        onClick={() => {
+                          setActiveWorkIndex((prev) => (prev !== null ? (prev - 1 + displayedWorks.length) % displayedWorks.length : null));
+                          setWorkZoom(1);
+                        }}
+                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer shrink-0"
+                        aria-label="Previous artwork"
+                      >
+                        <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </button>
 
-                    <span className="text-[11px] sm:text-xs font-mono font-bold text-ember px-2 sm:px-3 py-1 rounded-full bg-ember/10 border border-ember/30 shadow-[0_0_10px_rgba(255,90,31,0.2)]">
-                      {activeWorkIndex + 1} / {displayedWorks.length}
-                    </span>
+                      <span className="text-[11px] sm:text-xs font-mono font-bold text-ember px-2 sm:px-3 py-1 rounded-full bg-ember/10 border border-ember/30 shadow-[0_0_10px_rgba(255,90,31,0.2)] shrink-0">
+                        {activeWorkIndex + 1} / {displayedWorks.length}
+                      </span>
 
-                    <button
-                      onClick={() => {
-                        setActiveWorkIndex((prev) => (prev !== null ? (prev + 1) % displayedWorks.length : null));
-                        setWorkZoom(1);
-                      }}
-                      className="w-8 h-8 sm:w-10 sm:h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer"
-                      aria-label="Next artwork"
-                    >
-                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => {
+                          setActiveWorkIndex((prev) => (prev !== null ? (prev + 1) % displayedWorks.length : null));
+                          setWorkZoom(1);
+                        }}
+                        className="w-8 h-8 sm:w-10 sm:h-10 rounded-full glass-card border border-white/15 flex items-center justify-center hover:bg-ember hover:border-ember transition-colors cursor-pointer shrink-0"
+                        aria-label="Next artwork"
+                      >
+                        <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </button>
+                    </div>
 
-                  {/* Right: Zoom Controls & Prominent EXIT Button */}
-                  <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                    {isCaseStudy && (
-                      <div className="hidden lg:flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1 mr-1">
-                        <button
-                          onClick={() => setWorkZoom((z) => Math.max(0.6, parseFloat((z - 0.2).toFixed(1))))}
-                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
-                          title="Zoom Out"
-                          aria-label="Zoom Out"
-                        >
-                          <ZoomOut className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="text-[10px] font-mono px-1.5 text-white/60 min-w-[36px] text-center">
-                          {Math.round(workZoom * 100)}%
-                        </span>
-                        <button
-                          onClick={() => setWorkZoom((z) => Math.min(2.0, parseFloat((z + 0.2).toFixed(1))))}
-                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
-                          title="Zoom In"
-                          aria-label="Zoom In"
-                        >
-                          <ZoomIn className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setWorkZoom(1)}
-                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
-                          title="Reset Zoom"
-                          aria-label="Reset Zoom"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
+                    {/* Right: Zoom Controls & Prominent EXIT FULL VIEW Button */}
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                      {isCaseStudy && (
+                        <div className="hidden lg:flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-1 mr-1">
+                          <button
+                            onClick={() => setWorkZoom((z) => Math.max(0.6, parseFloat((z - 0.2).toFixed(1))))}
+                            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                            title="Zoom Out"
+                            aria-label="Zoom Out"
+                          >
+                            <ZoomOut className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="text-[10px] font-mono px-1.5 text-white/60 min-w-[36px] text-center">
+                            {Math.round(workZoom * 100)}%
+                          </span>
+                          <button
+                            onClick={() => setWorkZoom((z) => Math.min(2.0, parseFloat((z + 0.2).toFixed(1))))}
+                            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                            title="Zoom In"
+                            aria-label="Zoom In"
+                          >
+                            <ZoomIn className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setWorkZoom(1)}
+                            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+                            title="Reset Zoom"
+                            aria-label="Reset Zoom"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
 
-                    {/* Prominent High-Visibility Exit Button with Icon & Label */}
-                    <button
-                      onClick={exitArtwork}
-                      className="group flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-[#ff5a1f] to-[#ff7a2f] text-white font-bold text-xs sm:text-sm tracking-wide shadow-[0_0_25px_rgba(255,90,31,0.6)] hover:shadow-[0_0_35px_rgba(255,90,31,0.9)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer border border-[#ff9050] shrink-0"
-                      aria-label="Exit full view"
-                      title="Exit Full View (ESC)"
-                    >
-                      <X className="w-4 h-4 sm:w-5 sm:h-5 text-white stroke-[2.5] group-hover:rotate-90 transition-transform duration-300" />
-                      <span className="font-semibold uppercase sm:normal-case">Exit</span>
-                      <span className="hidden sm:inline-block text-[10px] opacity-75 font-mono">(ESC)</span>
-                    </button>
+                      {/* Prominent High-Visibility Exit Full View Button */}
+                      <button
+                        onClick={exitArtwork}
+                        className="group flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full bg-gradient-to-r from-[#ff5a1f] to-[#ff7a2f] text-white font-bold text-xs sm:text-sm tracking-wide shadow-[0_0_25px_rgba(255,90,31,0.6)] hover:shadow-[0_0_35px_rgba(255,90,31,0.9)] hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer border border-[#ff9050] shrink-0"
+                        aria-label="Exit full view"
+                        title="Exit Full View (ESC)"
+                      >
+                        <X className="w-4 h-4 sm:w-5 sm:h-5 text-white stroke-[2.5] group-hover:rotate-90 transition-transform duration-300" />
+                        <span className="font-semibold whitespace-nowrap">Exit Full View</span>
+                        <span className="hidden md:inline-block text-[10px] opacity-75 font-mono">(ESC)</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -910,7 +912,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                 >
                   {isCaseStudy ? (
                     <div
-                      className="flex-1 overflow-y-auto overflow-x-auto relative custom-scrollbar flex flex-col items-center py-6 px-4"
+                      className="flex-1 overflow-y-auto overflow-x-auto relative custom-scrollbar flex flex-col items-center py-6 px-4 pb-28"
                       onClick={(e) => {
                         if (e.target === e.currentTarget) {
                           exitArtwork();
@@ -933,7 +935,7 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                     </div>
                   ) : (
                     <div
-                      className="flex-1 p-4 sm:p-8 flex items-center justify-center overflow-hidden relative cursor-pointer"
+                      className="flex-1 p-4 sm:p-8 pb-24 sm:pb-8 flex items-center justify-center overflow-hidden relative cursor-pointer"
                       onClick={(e) => {
                         if (e.target === e.currentTarget) {
                           exitArtwork();
@@ -951,18 +953,18 @@ export default function Services({ isWorkOpen = false, onCloseWork, initialTabId
                       />
                     </div>
                   )}
-
-                  {/* Floating Quick Exit Pill (Always visible on screen while viewing images) */}
-                  <button
-                    onClick={exitArtwork}
-                    className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-full bg-[#141414]/90 hover:bg-[#ff5a1f] backdrop-blur-xl text-white border border-white/20 hover:border-ember shadow-[0_12px_35px_rgba(0,0,0,0.85)] hover:shadow-[0_12px_35px_rgba(255,90,31,0.5)] text-xs sm:text-sm font-semibold tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer group"
-                    aria-label="Exit full view"
-                    title="Exit Full View (ESC)"
-                  >
-                    <X className="w-4 h-4 stroke-[2.5] text-ember group-hover:text-white transition-colors" />
-                    <span>Exit Full View</span>
-                  </button>
                 </div>
+
+                {/* Floating Quick Exit Pill (Always visible & pinned above safe area on mobile & desktop) */}
+                <button
+                  onClick={exitArtwork}
+                  className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] right-4 sm:bottom-6 sm:right-6 z-[10020] flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-full bg-[#141414]/95 hover:bg-[#ff5a1f] backdrop-blur-xl text-white border border-white/20 hover:border-ember shadow-[0_12px_35px_rgba(0,0,0,0.85),0_0_20px_rgba(255,90,31,0.3)] hover:shadow-[0_12px_35px_rgba(255,90,31,0.6)] text-xs sm:text-sm font-semibold tracking-wide transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer group"
+                  aria-label="Exit full view"
+                  title="Exit Full View (ESC)"
+                >
+                  <X className="w-4 h-4 stroke-[2.5] text-ember group-hover:text-white transition-colors" />
+                  <span>Exit Full View</span>
+                </button>
               </div>
             );
           })()}

@@ -443,3 +443,16 @@ body {
   animation: flameFlicker 1.8s ease-in-out infinite;
 }
 
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-modal-fade {
+  animation: modalFadeIn 0.25s ease-out forwards;
+}
+
