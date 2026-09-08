@@ -74,12 +74,23 @@ html.window-blurred #anti-screenshot-shield,
   display: flex !important;
 }
 
-/* Instantly remove the entire page from screen render with 0ms transition */
+/* Instantly blur the entire page when screenshot or window blur occurs */
 html.window-blurred #root {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
+  filter: blur(40px) brightness(0.35) saturate(0.2) !important;
+  -webkit-filter: blur(40px) brightness(0.35) saturate(0.2) !important;
   pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  transition: none !important;
+}
+
+/* Maximum blur shield on all artworks and images during screenshot */
+html.window-blurred img,
+html.window-blurred picture,
+html.window-blurred .protected-image {
+  filter: blur(60px) brightness(0.1) !important;
+  -webkit-filter: blur(60px) brightness(0.1) !important;
+  opacity: 0.1 !important;
   transition: none !important;
 }
 
