@@ -69,7 +69,8 @@ input, textarea {
   cursor: pointer;
 }
 
-html.window-blurred #anti-screenshot-shield {
+html.window-blurred #anti-screenshot-shield,
+#anti-screenshot-shield.active {
   display: flex !important;
 }
 

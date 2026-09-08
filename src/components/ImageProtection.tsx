@@ -41,15 +41,24 @@ export default function ImageProtection() {
     };
 
     // 3. SCREEN CAPTURE & SCREENSHOT DETECTION SHIELD
+    let shieldTimeout: ReturnType<typeof setTimeout> | null = null;
+
     const triggerShield = () => {
       document.documentElement.classList.add('window-blurred');
+      const shield = document.getElementById('anti-screenshot-shield');
+      if (shield) shield.classList.add('active');
       setShieldActive(true);
-      showToast('Screen capture restricted. All artwork is copyrighted by Aagspire.');
+      showToast('This artwork is protected by Aagspire');
       clearClipboard();
 
-      setTimeout(() => {
-        setShieldActive(false);
-      }, 1500);
+      if (shieldTimeout) clearTimeout(shieldTimeout);
+      shieldTimeout = setTimeout(() => {
+        if (document.hasFocus() && !document.hidden) {
+          document.documentElement.classList.remove('window-blurred');
+          shield?.classList.remove('active');
+          setShieldActive(false);
+        }
+      }, 3000);
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -57,10 +66,26 @@ export default function ImageProtection() {
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement;
 
+      // Mobile Hardware Volume buttons (captures Power + Volume Down / Up screenshot attempts)
+      if (
+        e.key === 'VolumeDown' ||
+        e.key === 'VolumeUp' ||
+        e.key === 'AudioVolumeDown' ||
+        e.key === 'AudioVolumeUp' ||
+        e.code === 'AudioVolumeDown' ||
+        e.code === 'AudioVolumeUp' ||
+        (e as any).keyCode === 174 ||
+        (e as any).keyCode === 175 ||
+        (e as any).keyCode === 24 ||
+        (e as any).keyCode === 25
+      ) {
+        triggerShield();
+        return false;
+      }
+
       // PrintScreen key (any modifier)
       if (e.key === 'PrintScreen' || e.code === 'PrintScreen' || (e as any).keyCode === 44) {
         e.preventDefault();
-        document.documentElement.classList.add('window-blurred');
         triggerShield();
         clearClipboard();
         return false;
@@ -69,6 +94,8 @@ export default function ImageProtection() {
       // Windows Key (Meta / OS) - invoked at start of Win+Shift+S Snipping Tool
       if (e.key === 'Meta' || e.key === 'OS' || e.code === 'MetaLeft' || e.code === 'MetaRight') {
         document.documentElement.classList.add('window-blurred');
+        const shield = document.getElementById('anti-screenshot-shield');
+        if (shield) shield.classList.add('active');
       }
 
       // Windows Snipping Tool (Win + Shift + S) or Mac (Cmd + Shift + 3/4/5)
@@ -78,7 +105,6 @@ export default function ImageProtection() {
         (e.key === 'S' || e.key === 's' || e.code === 'KeyS' || e.key === '3' || e.key === '4' || e.key === '5')
       ) {
         e.preventDefault();
-        document.documentElement.classList.add('window-blurred');
         triggerShield();
         clearClipboard();
         return false;
@@ -132,7 +158,21 @@ export default function ImageProtection() {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'PrintScreen' || e.code === 'PrintScreen' || (e as any).keyCode === 44) {
+      if (
+        e.key === 'VolumeDown' ||
+        e.key === 'VolumeUp' ||
+        e.key === 'AudioVolumeDown' ||
+        e.key === 'AudioVolumeUp' ||
+        e.code === 'AudioVolumeDown' ||
+        e.code === 'AudioVolumeUp' ||
+        (e as any).keyCode === 174 ||
+        (e as any).keyCode === 175 ||
+        (e as any).keyCode === 24 ||
+        (e as any).keyCode === 25 ||
+        e.key === 'PrintScreen' ||
+        e.code === 'PrintScreen' ||
+        (e as any).keyCode === 44
+      ) {
         clearClipboard();
         triggerShield();
       }
@@ -140,28 +180,37 @@ export default function ImageProtection() {
         setTimeout(() => {
           if (document.hasFocus()) {
             document.documentElement.classList.remove('window-blurred');
+            const shield = document.getElementById('anti-screenshot-shield');
+            if (shield) shield.classList.remove('active');
           }
         }, 300);
       }
     };
 
-    // 4. BLUR ENTIRE WEBSITE WHEN FOCUS IS LOST (e.g. Snipping tool / Screen grabber invoked)
+    // 4. BLUR ENTIRE WEBSITE WHEN FOCUS IS LOST (e.g. Snipping tool / Screen grabber / mobile OS screenshot)
     const handleWindowBlur = () => {
       document.documentElement.classList.add('window-blurred');
+      const shield = document.getElementById('anti-screenshot-shield');
+      if (shield) shield.classList.add('active');
       clearClipboard();
     };
 
     const handleWindowFocus = () => {
       document.documentElement.classList.remove('window-blurred');
+      const shield = document.getElementById('anti-screenshot-shield');
+      if (shield) shield.classList.remove('active');
     };
 
     // 5. Visibility change (user minimizes, switches apps, or snipping tool dims screen)
     const handleVisibilityChange = () => {
+      const shield = document.getElementById('anti-screenshot-shield');
       if (document.hidden || document.visibilityState !== 'visible') {
         document.documentElement.classList.add('window-blurred');
+        if (shield) shield.classList.add('active');
         clearClipboard();
       } else {
         document.documentElement.classList.remove('window-blurred');
+        if (shield) shield.classList.remove('active');
       }
     };
 
@@ -170,9 +219,7 @@ export default function ImageProtection() {
       if (e.touches && e.touches.length >= 3) {
         e.preventDefault();
         e.stopPropagation();
-        document.documentElement.classList.add('window-blurred');
         triggerShield();
-        showToast('This artwork is protected by Aagspire');
         return false;
       }
     };
@@ -181,7 +228,7 @@ export default function ImageProtection() {
       if (e.touches && e.touches.length >= 3) {
         e.preventDefault();
         e.stopPropagation();
-        document.documentElement.classList.add('window-blurred');
+        triggerShield();
         return false;
       }
     };
@@ -189,16 +236,21 @@ export default function ImageProtection() {
     // 7. Mobile Page Lifecycle (App Switcher, Notification Shade, Screen Lock)
     const handlePageHide = () => {
       document.documentElement.classList.add('window-blurred');
+      const shield = document.getElementById('anti-screenshot-shield');
+      if (shield) shield.classList.add('active');
       clearClipboard();
     };
 
-    // Shield click handler to restore view
+    // Shield click/touch handler to restore view
     const shieldEl = document.getElementById('anti-screenshot-shield');
-    const handleShieldClick = () => {
+    const handleShieldDismiss = () => {
       window.focus();
       document.documentElement.classList.remove('window-blurred');
+      shieldEl?.classList.remove('active');
+      setShieldActive(false);
     };
-    shieldEl?.addEventListener('click', handleShieldClick);
+    shieldEl?.addEventListener('click', handleShieldDismiss);
+    shieldEl?.addEventListener('touchstart', handleShieldDismiss, { passive: true });
 
     // Attach capture listeners to document and window
     document.addEventListener('contextmenu', handleContextMenu, { capture: true });
@@ -223,29 +275,15 @@ export default function ImageProtection() {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('pagehide', handlePageHide);
-      shieldEl?.removeEventListener('click', handleShieldClick);
+      shieldEl?.removeEventListener('click', handleShieldDismiss);
+      shieldEl?.removeEventListener('touchstart', handleShieldDismiss);
       if (toastTimeout) clearTimeout(toastTimeout);
+      if (shieldTimeout) clearTimeout(shieldTimeout);
     };
   }, []);
 
   return (
     <>
-      {/* Blackout Curtain on Screenshot / PrintScreen Attempt */}
-      {shieldActive && (
-        <div
-          className="fixed inset-0 z-[9999999] bg-[#050505] flex flex-col items-center justify-center text-center p-6 select-none pointer-events-auto"
-          aria-hidden="true"
-        >
-          <div className="w-16 h-16 rounded-full bg-ember/20 border border-ember/50 flex items-center justify-center text-ember mb-4 shadow-[0_0_30px_rgba(255,90,31,0.5)]">
-            <Lock className="w-8 h-8" />
-          </div>
-          <h4 className="text-xl font-bold text-white mb-1">Protected Intellectual Property</h4>
-          <p className="text-xs text-white/50 max-w-sm">
-            All visual identities, artworks, and designs are proprietary to Aagspire.
-          </p>
-        </div>
-      )}
-
       {/* Center Bottom Notification Toast */}
       {toastMessage && (
         <div className="fixed inset-x-0 bottom-0 z-[9999999] flex justify-center pb-8 sm:pb-10 pointer-events-none select-none px-4">
