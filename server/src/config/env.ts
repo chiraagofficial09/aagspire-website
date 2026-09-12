@@ -9,7 +9,8 @@ export const ENV = {
   JWT_EXPIRES_IN: (process.env.JWT_EXPIRES_IN || '7d').trim(),
   CLIENT_ORIGIN: (process.env.CLIENT_ORIGIN || 'http://localhost:5173,http://localhost:5174')
     .split(',')
-    .map((s) => s.trim()),
+    .map((s) => s.trim().replace(/\/+$/, ''))
+    .filter(Boolean),
   ADMIN_INITIAL_EMAIL: (process.env.ADMIN_INITIAL_EMAIL || 'admin@aagspire.com').trim(),
   ADMIN_INITIAL_PASSWORD: (process.env.ADMIN_INITIAL_PASSWORD || 'AagspireAdmin@2026').trim(),
 };
