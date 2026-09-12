@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
+import { EmptyState } from '../../components/work/EmptyState';
 
 export const EmployeeEarnings: React.FC = () => {
   const [data, setData] = useState<any>(null);
@@ -104,8 +105,8 @@ export const EmployeeEarnings: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-zinc-500">
-                    No project earnings recorded yet.
+                  <td colSpan={4} className="py-8">
+                    <EmptyState type="earnings" />
                   </td>
                 </tr>
               )}

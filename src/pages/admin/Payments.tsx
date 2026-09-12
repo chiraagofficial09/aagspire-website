@@ -11,6 +11,7 @@ import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
+import { EmptyState } from '../../components/work/EmptyState';
 
 export const AdminPayments: React.FC = () => {
   const toast = useToast();
@@ -252,8 +253,12 @@ export const AdminPayments: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-500">
-                    No payments found.
+                  <td colSpan={7} className="py-8">
+                    <EmptyState
+                      type="payments"
+                      actionLabel="Record Payment"
+                      onAction={() => setIsModalOpen(true)}
+                    />
                   </td>
                 </tr>
               )}

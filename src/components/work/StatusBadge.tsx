@@ -25,6 +25,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   const getBadgeStyle = (): { bg: string; text: string; dot: string; border: string; label: string } => {
     switch (normalized) {
       // Primary / Active / Production states -> Website Ember Brand Color
+      case 'active':
+        return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'Active' };
       case 'in_progress':
         return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'In Progress' };
       case 'urgent':

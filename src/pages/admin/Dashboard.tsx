@@ -38,6 +38,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { api } from '../../services/api';
+import { StatusBadge } from '../../components/work/StatusBadge';
 
 // Format Indian Rupee currency: e.g. ₹ 12,50,000
 const formatINR = (val: number | string | undefined): string => {
@@ -206,37 +207,6 @@ export const AdminDashboard: React.FC = () => {
   const headingColor = isLight ? 'text-slate-900' : 'text-white';
   const subtextColor = isLight ? 'text-slate-500' : 'text-white/50';
 
-  const renderStatusPill = (status: string) => {
-    switch (status) {
-      case 'completed':
-      case 'delivered':
-        return (
-          <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-white/10 text-white border border-white/20">
-            Completed
-          </span>
-        );
-      case 'in_progress':
-      case 'confirmed':
-        return (
-          <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-ember/15 text-ember border border-ember/30">
-            In Progress
-          </span>
-        );
-      case 'review':
-        return (
-          <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-white/5 text-zinc-300 border border-white/10">
-            Review
-          </span>
-        );
-      case 'lead':
-      default:
-        return (
-          <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-white/5 text-zinc-400 border border-white/10">
-            {status ? status.replace(/_/g, ' ') : 'Lead'}
-          </span>
-        );
-    }
-  };
 
   const availableMonths = (data?.availableMonths && data.availableMonths.length > 0)
     ? data.availableMonths
@@ -738,7 +708,7 @@ export const AdminDashboard: React.FC = () => {
                         {formatINR(prj.value)}
                       </td>
                       <td className="py-3 text-right">
-                        {renderStatusPill(prj.status)}
+                        <StatusBadge status={prj.status} type="project" />
                       </td>
                     </tr>
                   ))

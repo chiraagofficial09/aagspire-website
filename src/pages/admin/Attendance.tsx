@@ -5,6 +5,7 @@ import {
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/work/StatusBadge';
 import { CustomCalendarDropdown } from '../../components/work/CustomCalendarDropdown';
+import { EmptyState } from '../../components/work/EmptyState';
 
 export const AdminAttendance: React.FC = () => {
   const [attendance, setAttendance] = useState<any[]>([]);
@@ -142,8 +143,8 @@ export const AdminAttendance: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-500">
-                    No attendance records found.
+                  <td colSpan={7} className="py-8">
+                    <EmptyState type="attendance" />
                   </td>
                 </tr>
               )}

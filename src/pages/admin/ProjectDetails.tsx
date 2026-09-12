@@ -2,16 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  Briefcase,
   Users,
-  Percent,
-  FileCheck2,
   Plus,
   Pencil,
   Trash2,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
   X,
 } from 'lucide-react';
 import { api } from '../../services/api';
@@ -20,8 +14,7 @@ import { CommissionBar } from '../../components/work/CommissionBar';
 import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
 import { CustomSelect } from '../../components/work/CustomSelect';
-import { CustomDatePicker } from '../../components/work/CustomDatePicker';
-import { MultiSelect } from '../../components/work/MultiSelect';
+import { ProjectModal } from '../../components/work/ProjectModal';
 
 export const AdminProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -40,22 +33,9 @@ export const AdminProjectDetails: React.FC = () => {
   // Modals
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [submittingEdit, setSubmittingEdit] = useState(false);
   const [selectedEmp, setSelectedEmp] = useState('');
   const [empShare, setEmpShare] = useState('100');
   const [empRole, setEmpRole] = useState('Lead Producer');
-
-  // Project Edit Form
-  const [editFormData, setEditFormData] = useState({
-    projectName: '',
-    clientId: '',
-    projectValue: '',
-    assignedEmployees: [] as string[],
-    startDate: '',
-    deadline: '',
-    status: 'signed',
-    description: '',
-  });
 
 
 
@@ -82,22 +62,6 @@ export const AdminProjectDetails: React.FC = () => {
 
       const proj = pRes.data.data?.project || pRes.data.project || pRes.data.data;
       setProject(proj);
-      if (proj) {
-        const startStr = proj.startDate ? new Date(proj.startDate).toISOString().slice(0, 10) : '';
-        const endVal = proj.deadline || proj.endDate;
-        const endStr = endVal ? new Date(endVal).toISOString().slice(0, 10) : '';
-        const empIds = (proj.assignedEmployees || []).map((e: any) => typeof e === 'object' && e ? e._id : e).filter(Boolean);
-        setEditFormData({
-          projectName: proj.projectName || proj.title || '',
-          clientId: proj.clientId?._id || proj.clientId || '',
-          projectValue: String(proj.projectValue !== undefined ? proj.projectValue : proj.totalAmount || ''),
-          assignedEmployees: empIds,
-          startDate: startStr,
-          deadline: endStr,
-          status: proj.status || 'signed',
-          description: proj.description || '',
-        });
-      }
 
       const commData = cRes.data.data || cRes.data.commission || pRes.data.commission || pRes.data.data?.commission;
       if (commData) {
@@ -185,27 +149,7 @@ export const AdminProjectDetails: React.FC = () => {
 
 
 
-  const handleUpdateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setSubmittingEdit(true);
-      await api.patch(`/admin/projects/${id}`, {
-        ...editFormData,
-        projectValue: Number(editFormData.projectValue),
-        totalAmount: Number(editFormData.projectValue),
-        assignedEmployees: editFormData.assignedEmployees,
-        deadline: editFormData.deadline || undefined,
-        startDate: editFormData.startDate || undefined,
-      });
-      toast.success('Project details updated successfully');
-      setIsEditModalOpen(false);
-      fetchAll();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update project');
-    } finally {
-      setSubmittingEdit(false);
-    }
-  };
+
 
   const handleDeleteProject = async () => {
     if (!window.confirm(`Are you sure you want to delete "${project.projectName || project.title}"? All associated data will be removed.`)) {
@@ -615,151 +559,15 @@ export const AdminProjectDetails: React.FC = () => {
 
 
 
-      {/* Edit Project Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-6 md:p-8 space-y-5 text-white text-xs my-8 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
-              <div>
-                <h3 className="font-bold text-base tracking-tight text-white">Edit Project</h3>
-              </div>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateProject} className="space-y-4 text-xs">
-              <div>
-                <label className="text-zinc-400 block mb-1.5 font-medium">Project Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Jyotnar Brand Identity"
-                  value={editFormData.projectName}
-                  onChange={(e) => setEditFormData({ ...editFormData, projectName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-[#12131a] border border-white/[0.08] rounded-xl text-white placeholder-zinc-600 focus:border-[#FF5A1F] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Client *</label>
-                  <CustomSelect
-                    value={editFormData.clientId}
-                    onChange={(val) => setEditFormData({ ...editFormData, clientId: val })}
-                    placeholder="Select client"
-                    options={allClients.map((c) => ({
-                      value: c._id,
-                      label: c.name || c.companyName,
-                    }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Contract Value (₹) *</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="e.g. 100000"
-                    value={editFormData.projectValue}
-                    onChange={(e) => setEditFormData({ ...editFormData, projectValue: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#12131a] border border-white/[0.08] rounded-xl text-white font-mono focus:border-[#FF5A1F] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Assigned Employees Multi-Select */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-zinc-400 font-medium flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-[#FF5A1F]" />
-                    <span>Assign Team / Staff</span>
-                  </label>
-                  <span className="text-[11px] text-zinc-500">
-                    Select one or more employees
-                  </span>
-                </div>
-                <MultiSelect
-                  values={editFormData.assignedEmployees}
-                  onChange={(vals) => setEditFormData({ ...editFormData, assignedEmployees: vals })}
-                  placeholder="Select employees to assign..."
-                  options={allEmployees.map((emp) => ({
-                    value: emp._id,
-                    label: emp.fullName || emp.name,
-                    sublabel: emp.employeeCode ? `(${emp.employeeCode})` : undefined,
-                  }))}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Start Date</label>
-                  <CustomDatePicker
-                    value={editFormData.startDate}
-                    onChange={(val) => setEditFormData({ ...editFormData, startDate: val })}
-                    placeholder="Select start date"
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Target End Date</label>
-                  <CustomDatePicker
-                    value={editFormData.deadline}
-                    onChange={(val) => setEditFormData({ ...editFormData, deadline: val })}
-                    placeholder="Select end date"
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Status</label>
-                  <CustomSelect
-                    value={editFormData.status}
-                    onChange={(val) => setEditFormData({ ...editFormData, status: val })}
-                    options={[
-                      { value: 'confirmed', label: 'Confirmed' },
-                      { value: 'in_progress', label: 'In Progress' },
-                      { value: 'review', label: 'In Review' },
-                      { value: 'completed', label: 'Completed' },
-                      { value: 'delivered', label: 'Delivered' },
-                      { value: 'signed', label: 'Signed' },
-                      { value: 'lead', label: 'Lead' },
-                      { value: 'cancelled', label: 'Cancelled' },
-                    ]}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-zinc-400 block mb-1.5 font-medium">Description / Scope</label>
-                <textarea
-                  rows={2}
-                  placeholder="Creative deliverables, production guidelines..."
-                  value={editFormData.description}
-                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-[#12131a] border border-white/[0.08] rounded-xl text-white placeholder-zinc-600 focus:border-[#FF5A1F] focus:outline-none resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.06]">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingEdit}
-                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#FF5A1F] hover:bg-[#e04810] text-white transition-all shadow-sm cursor-pointer"
-                >
-                  {submittingEdit ? 'Saving...' : 'Update Project'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Reusable Unified Project Modal */}
+      <ProjectModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        project={project}
+        clients={allClients}
+        employees={allEmployees}
+        onSuccess={() => fetchAll()}
+      />
     </div>
   );
 };

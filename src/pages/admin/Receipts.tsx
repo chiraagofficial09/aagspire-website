@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { ReceiptModal } from '../../components/work/ReceiptModal';
+import { EmptyState } from '../../components/work/EmptyState';
 import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
 
@@ -153,8 +154,8 @@ export const AdminReceipts: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-500">
-                    No receipts found.
+                  <td colSpan={6} className="py-8">
+                    <EmptyState type="receipts" />
                   </td>
                 </tr>
               )}

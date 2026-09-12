@@ -11,6 +11,7 @@ import {
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
+import { EmptyState } from '../../components/work/EmptyState';
 
 export const AdminClients: React.FC = () => {
   const toast = useToast();
@@ -278,8 +279,12 @@ export const AdminClients: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-500">
-                    No clients found.
+                  <td colSpan={6} className="py-8">
+                    <EmptyState
+                      type="clients"
+                      actionLabel="Register First Client"
+                      onAction={openCreateModal}
+                    />
                   </td>
                 </tr>
               )}

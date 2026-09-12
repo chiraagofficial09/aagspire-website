@@ -21,9 +21,7 @@ export async function connectDatabase(): Promise<void> {
     if (ENV.MONGODB_URI.includes('mongodb+srv://')) {
       console.error('[Database] Tip: If connection timed out, verify that your current IP address is whitelisted in MongoDB Atlas Network Access.');
     }
-    if (ENV.NODE_ENV === 'production') {
-      process.exit(1);
-    }
+    throw error;
   }
 }
 

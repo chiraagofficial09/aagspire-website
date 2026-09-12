@@ -3,6 +3,7 @@ import { FileText } from 'lucide-react';
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/work/StatusBadge';
 import { ReceiptModal } from '../../components/work/ReceiptModal';
+import { EmptyState } from '../../components/work/EmptyState';
 import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
 
@@ -100,8 +101,8 @@ export const EmployeeSettlements: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-zinc-500">
-                    No settlements on file yet.
+                  <td colSpan={5} className="py-8">
+                    <EmptyState type="settlements" />
                   </td>
                 </tr>
               )}

@@ -11,6 +11,8 @@ import {
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
+import { EmptyState } from '../../components/work/EmptyState';
+import { StatusBadge } from '../../components/work/StatusBadge';
 
 export const AdminEmployees: React.FC = () => {
   const toast = useToast();
@@ -242,10 +244,7 @@ export const AdminEmployees: React.FC = () => {
                         <span className="text-sm font-medium text-white">{formatINR(earned)}</span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-ember/10 text-ember border-ember/25">
-                          <span className="w-1.5 h-1.5 rounded-full bg-ember" />
-                          <span>Active</span>
-                        </span>
+                        <StatusBadge status={emp.status || 'active'} />
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2 relative">
@@ -280,8 +279,12 @@ export const AdminEmployees: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-500">
-                    No employees found.
+                  <td colSpan={6} className="py-8">
+                    <EmptyState
+                      type="employees"
+                      actionLabel="Add Team Member"
+                      onAction={openCreateModal}
+                    />
                   </td>
                 </tr>
               )}

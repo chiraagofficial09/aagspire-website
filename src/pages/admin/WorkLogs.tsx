@@ -11,6 +11,7 @@ import { StatusBadge } from '../../components/work/StatusBadge';
 import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomCalendarDropdown } from '../../components/work/CustomCalendarDropdown';
+import { EmptyState } from '../../components/work/EmptyState';
 
 export const AdminWorkLogs: React.FC = () => {
   const toast = useToast();
@@ -273,8 +274,8 @@ export const AdminWorkLogs: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-500">
-                    No work logs found.
+                  <td colSpan={7} className="py-8">
+                    <EmptyState type="workLogs" />
                   </td>
                 </tr>
               )}

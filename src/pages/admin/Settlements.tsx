@@ -12,6 +12,7 @@ import { ReceiptModal } from '../../components/work/ReceiptModal';
 import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
 import { CustomSelect } from '../../components/work/CustomSelect';
+import { EmptyState } from '../../components/work/EmptyState';
 
 export const AdminSettlements: React.FC = () => {
   const toast = useToast();
@@ -301,8 +302,12 @@ export const AdminSettlements: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-500">
-                    No settlement records found.
+                  <td colSpan={7} className="py-8">
+                    <EmptyState
+                      type="settlements"
+                      actionLabel="Generate Settlement"
+                      onAction={() => setIsGenModalOpen(true)}
+                    />
                   </td>
                 </tr>
               )}

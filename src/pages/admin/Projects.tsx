@@ -3,21 +3,16 @@ import { Link } from 'react-router-dom';
 import {
   Plus,
   Search,
-  ChevronDown,
   Pencil,
   Trash2,
-  X,
-  Tag,
   MoreVertical,
-  Users,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/work/StatusBadge';
 import { useToast } from '../../components/work/Toast';
-import { formatINR } from '../../utils/formatters';
 import { CustomSelect } from '../../components/work/CustomSelect';
-import { MultiSelect } from '../../components/work/MultiSelect';
-import { CustomDatePicker } from '../../components/work/CustomDatePicker';
+import { ProjectModal } from '../../components/work/ProjectModal';
+import { EmptyState } from '../../components/work/EmptyState';
 
 export const AdminProjects: React.FC = () => {
   const toast = useToast();
@@ -29,22 +24,9 @@ export const AdminProjects: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const menuRef = useRef<HTMLDivElement | null>(null);
-
-  const [formData, setFormData] = useState({
-    title: '',
-    clientId: '',
-    totalAmount: '',
-    assignedEmployees: [] as string[],
-    discountPercent: 0,
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: '',
-    description: '',
-    status: 'in_progress',
-  });
 
   const fetchAll = async () => {
     try {
@@ -81,76 +63,13 @@ export const AdminProjects: React.FC = () => {
 
   const openCreateModal = () => {
     setEditingProject(null);
-    setFormData({
-      title: '',
-      clientId: clients[0]?._id || '',
-      totalAmount: '',
-      assignedEmployees: [],
-      discountPercent: 0,
-      startDate: new Date().toISOString().slice(0, 10),
-      endDate: '',
-      description: '',
-      status: 'in_progress',
-    });
     setIsModalOpen(true);
   };
 
   const openEditModal = (prj: any) => {
     setEditingProject(prj);
-    const startStr = prj.startDate ? new Date(prj.startDate).toISOString().slice(0, 10) : '';
-    const endVal = prj.deadline || prj.endDate;
-    const endStr = endVal ? new Date(endVal).toISOString().slice(0, 10) : '';
-    const empIds = (prj.assignedEmployees || []).map((e: any) =>
-      typeof e === 'object' && e ? e._id : e
-    ).filter(Boolean);
-
-    setFormData({
-      title: prj.projectName || prj.title || '',
-      clientId: prj.clientId?._id || prj.clientId || '',
-      totalAmount: String(prj.grossProjectValue ?? prj.projectValue ?? prj.totalAmount ?? ''),
-      assignedEmployees: empIds,
-      discountPercent: Number(prj.discountPercent) || 0,
-      startDate: startStr,
-      endDate: endStr,
-      description: prj.description || '',
-      status: prj.status || 'in_progress',
-    });
     setActiveMenuId(null);
     setIsModalOpen(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setSubmitting(true);
-      const grossVal = Number(formData.totalAmount) || 0;
-
-      const payload = {
-        ...formData,
-        projectName: formData.title,
-        projectValue: grossVal,
-        discountPercent: 0,
-        discountAmount: 0,
-        assignedEmployees: formData.assignedEmployees,
-        deadline: formData.endDate || undefined,
-        totalAmount: grossVal,
-      };
-
-      if (editingProject) {
-        await api.patch(`/admin/projects/${editingProject._id}`, payload);
-        toast.success('Project updated successfully');
-      } else {
-        await api.post('/admin/projects', payload);
-        toast.success('Project created and assigned successfully');
-      }
-
-      setIsModalOpen(false);
-      fetchAll();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to save project');
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -194,7 +113,7 @@ export const AdminProjects: React.FC = () => {
             Projects
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Track creative projects and deliverables.
+            Manage creative production, client assignments, team allocations, and project statuses.
           </p>
         </div>
         <button
@@ -321,8 +240,12 @@ export const AdminProjects: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-500">
-                    No projects found.
+                  <td colSpan={5} className="py-8">
+                    <EmptyState
+                      type="projects"
+                      actionLabel="Create First Project"
+                      onAction={openCreateModal}
+                    />
                   </td>
                 </tr>
               )}
@@ -364,153 +287,15 @@ export const AdminProjects: React.FC = () => {
         {filtered.length} {filtered.length === 1 ? 'project' : 'projects'}
       </div>
 
-      {/* Add / Edit Project Modal with full cascaded discount engine preserved */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-xl bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-6 md:p-8 space-y-5 text-white text-xs my-8 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
-              <div>
-                <h3 className="font-bold text-base tracking-tight text-white">
-                  {editingProject ? 'Edit Project' : 'New Project'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="text-zinc-400 block mb-1.5 font-medium">Project Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Jyotnar Brand Identity"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-[#12131a] border border-white/[0.08] rounded-xl text-white placeholder-zinc-600 focus:border-[#FF5A1F] focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Client *</label>
-                  <CustomSelect
-                    value={formData.clientId}
-                    onChange={(val) => setFormData({ ...formData, clientId: val })}
-                    placeholder="Select client"
-                    options={clients.map((c) => ({
-                      value: c._id,
-                      label: c.name || c.companyName,
-                    }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Contract Value (₹) *</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="e.g. 100000"
-                    value={formData.totalAmount}
-                    onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-[#12131a] border border-white/[0.08] rounded-xl text-white font-mono focus:border-[#FF5A1F] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Assigned Employees Multi-Select */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-zinc-400 font-medium flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-[#FF5A1F]" />
-                    <span>Assign Team / Staff</span>
-                  </label>
-                  <span className="text-[11px] text-zinc-500">
-                    Select one or more employees
-                  </span>
-                </div>
-                <MultiSelect
-                  values={formData.assignedEmployees}
-                  onChange={(vals) => setFormData({ ...formData, assignedEmployees: vals })}
-                  placeholder="Select employees to assign..."
-                  options={employees.map((emp) => ({
-                    value: emp._id,
-                    label: emp.fullName || emp.name,
-                    sublabel: emp.employeeCode ? `(${emp.employeeCode})` : undefined,
-                  }))}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Start Date</label>
-                  <CustomDatePicker
-                    value={formData.startDate}
-                    onChange={(val) => setFormData({ ...formData, startDate: val })}
-                    placeholder="Select start date"
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Target End Date</label>
-                  <CustomDatePicker
-                    value={formData.endDate}
-                    onChange={(val) => setFormData({ ...formData, endDate: val })}
-                    placeholder="Select end date"
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Status</label>
-                  <CustomSelect
-                    value={formData.status}
-                    onChange={(val) => setFormData({ ...formData, status: val })}
-                    options={[
-                      { value: 'confirmed', label: 'Confirmed' },
-                      { value: 'in_progress', label: 'In Progress' },
-                      { value: 'review', label: 'In Review' },
-                      { value: 'completed', label: 'Completed' },
-                      { value: 'delivered', label: 'Delivered' },
-                      { value: 'signed', label: 'Signed' },
-                      { value: 'lead', label: 'Lead' },
-                      { value: 'cancelled', label: 'Cancelled' },
-                    ]}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-zinc-400 block mb-1.5 font-medium">Description / Scope</label>
-                <textarea
-                  rows={2}
-                  placeholder="Creative deliverables, production guidelines..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-[#12131a] border border-white/[0.08] rounded-xl text-white placeholder-zinc-600 focus:border-[#FF5A1F] focus:outline-none resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.06]">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#FF5A1F] hover:bg-[#e04810] text-white transition-all shadow-sm cursor-pointer"
-                >
-                  {submitting ? 'Saving...' : editingProject ? 'Update Project' : 'Create Project'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Reusable Project Modal for Creating & Editing */}
+      <ProjectModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        project={editingProject}
+        clients={clients}
+        employees={employees}
+        onSuccess={() => fetchAll()}
+      />
     </div>
   );
 };

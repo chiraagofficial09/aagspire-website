@@ -9,6 +9,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed": "tsx src/scripts/seed.ts",
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
     "clear": "tsx src/scripts/clearData.ts",
     "mongo": "mongod --dbpath data/db"
   },

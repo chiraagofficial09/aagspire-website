@@ -5,6 +5,7 @@ import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
 import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';
+import { EmptyState } from '../../components/work/EmptyState';
 
 export const EmployeeProjects: React.FC = () => {
   const toast = useToast();
@@ -146,8 +147,12 @@ export const EmployeeProjects: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-500">
-                    No assigned projects found.
+                  <td colSpan={7} className="py-8">
+                    <EmptyState
+                      type="projects"
+                      title="No assigned projects"
+                      description="You will see projects listed here once you are assigned to production deliverables."
+                    />
                   </td>
                 </tr>
               )}

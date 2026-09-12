@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { ClockWidget } from '../../components/work/ClockWidget';
 import { StatusBadge } from '../../components/work/StatusBadge';
+import { EmptyState } from '../../components/work/EmptyState';
 
 export const EmployeeAttendance: React.FC = () => {
   const [history, setHistory] = useState<any[]>([]);
@@ -115,8 +116,11 @@ export const EmployeeAttendance: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-500">
-                    No attendance records found. Clock in to begin recording.
+                  <td colSpan={6} className="py-8">
+                    <EmptyState
+                      type="attendance"
+                      description="No attendance records found. Clock in using the widget above to begin recording."
+                    />
                   </td>
                 </tr>
               )}
