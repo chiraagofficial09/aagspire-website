@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+let isRedirecting = false;
+
 export const api = axios.create({
   baseURL: '/api',
   withCredentials: true,
+  timeout: 25000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -52,8 +55,12 @@ api.interceptors.response.use(
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      // If we get an unauthorized error inside the work portal, clear token
-      if (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/employee')) {
+      // If we get an unauthorized error inside the work portal, clear token and redirect once
+      if (
+        !isRedirecting &&
+        (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/employee'))
+      ) {
+        isRedirecting = true;
         localStorage.removeItem('aagspire_token');
         localStorage.removeItem('aagspire_user');
         window.location.href = '/work/login';

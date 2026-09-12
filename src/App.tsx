@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
@@ -6,7 +6,7 @@ import { ProtectedRoute } from './components/work/ProtectedRoute';
 import { ToastProvider } from './components/work/Toast';
 import { NotificationProvider } from './context/NotificationContext';
 
-// Public site components
+// Public site components (eager loaded for instant first render)
 import CursorEffect from './components/CursorEffect';
 import ImageProtection from './components/ImageProtection';
 import Navbar from './components/Navbar';
@@ -23,35 +23,42 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { EmployeeLayout } from './layouts/EmployeeLayout';
 import { AuthLayout } from './layouts/AuthLayout';
 
-// Auth Pages
-import { Login } from './pages/auth/Login';
-import { ForgotPassword } from './pages/auth/ForgotPassword';
-import { ResetPassword } from './pages/auth/ResetPassword';
+// Sleek loading spinner matching theme
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center min-h-[60vh] w-full">
+    <div className="w-7 h-7 rounded-full border-2 border-orange-500/20 border-t-orange-500 animate-spin" />
+  </div>
+);
 
-// Admin Pages
-import { AdminDashboard } from './pages/admin/Dashboard';
-import { AdminEmployees } from './pages/admin/Employees';
-import { AdminEmployeeDetails } from './pages/admin/EmployeeDetails';
-import { AdminClients } from './pages/admin/Clients';
-import { AdminClientDetails } from './pages/admin/ClientDetails';
-import { AdminProjects } from './pages/admin/Projects';
-import { AdminProjectDetails } from './pages/admin/ProjectDetails';
-import { AdminWorkLogs } from './pages/admin/WorkLogs';
-import { AdminAttendance } from './pages/admin/Attendance';
-import { AdminPayments } from './pages/admin/Payments';
-import { AdminCommissions } from './pages/admin/Commissions';
-import { AdminReceipts } from './pages/admin/Receipts';
-import { AdminAnalytics } from './pages/admin/Analytics';
-import { AdminSettings } from './pages/admin/Settings';
+// Lazy Loaded Auth Pages
+const Login = lazy(() => import('./pages/auth/Login').then((m) => ({ default: m.Login })));
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword').then((m) => ({ default: m.ForgotPassword })));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword').then((m) => ({ default: m.ResetPassword })));
 
-// Employee Pages
-import { EmployeeDashboard } from './pages/employee/Dashboard';
-import { EmployeeProjects } from './pages/employee/Projects';
-import { EmployeeProjectDetails } from './pages/employee/ProjectDetails';
-import { EmployeeWork } from './pages/employee/Work';
-import { EmployeeAttendance } from './pages/employee/Attendance';
-import { EmployeeReceipts } from './pages/employee/Receipts';
-import { EmployeeProfile } from './pages/employee/Profile';
+// Lazy Loaded Admin Pages
+const AdminDashboard = lazy(() => import('./pages/admin/Dashboard').then((m) => ({ default: m.AdminDashboard })));
+const AdminEmployees = lazy(() => import('./pages/admin/Employees').then((m) => ({ default: m.AdminEmployees })));
+const AdminEmployeeDetails = lazy(() => import('./pages/admin/EmployeeDetails').then((m) => ({ default: m.AdminEmployeeDetails })));
+const AdminClients = lazy(() => import('./pages/admin/Clients').then((m) => ({ default: m.AdminClients })));
+const AdminClientDetails = lazy(() => import('./pages/admin/ClientDetails').then((m) => ({ default: m.AdminClientDetails })));
+const AdminProjects = lazy(() => import('./pages/admin/Projects').then((m) => ({ default: m.AdminProjects })));
+const AdminProjectDetails = lazy(() => import('./pages/admin/ProjectDetails').then((m) => ({ default: m.AdminProjectDetails })));
+const AdminWorkLogs = lazy(() => import('./pages/admin/WorkLogs').then((m) => ({ default: m.AdminWorkLogs })));
+const AdminAttendance = lazy(() => import('./pages/admin/Attendance').then((m) => ({ default: m.AdminAttendance })));
+const AdminPayments = lazy(() => import('./pages/admin/Payments').then((m) => ({ default: m.AdminPayments })));
+const AdminCommissions = lazy(() => import('./pages/admin/Commissions').then((m) => ({ default: m.AdminCommissions })));
+const AdminReceipts = lazy(() => import('./pages/admin/Receipts').then((m) => ({ default: m.AdminReceipts })));
+const AdminAnalytics = lazy(() => import('./pages/admin/Analytics').then((m) => ({ default: m.AdminAnalytics })));
+const AdminSettings = lazy(() => import('./pages/admin/Settings').then((m) => ({ default: m.AdminSettings })));
+
+// Lazy Loaded Employee Pages
+const EmployeeDashboard = lazy(() => import('./pages/employee/Dashboard').then((m) => ({ default: m.EmployeeDashboard })));
+const EmployeeProjects = lazy(() => import('./pages/employee/Projects').then((m) => ({ default: m.EmployeeProjects })));
+const EmployeeProjectDetails = lazy(() => import('./pages/employee/ProjectDetails').then((m) => ({ default: m.EmployeeProjectDetails })));
+const EmployeeWork = lazy(() => import('./pages/employee/Work').then((m) => ({ default: m.EmployeeWork })));
+const EmployeeAttendance = lazy(() => import('./pages/employee/Attendance').then((m) => ({ default: m.EmployeeAttendance })));
+const EmployeeReceipts = lazy(() => import('./pages/employee/Receipts').then((m) => ({ default: m.EmployeeReceipts })));
+const EmployeeProfile = lazy(() => import('./pages/employee/Profile').then((m) => ({ default: m.EmployeeProfile })));
 
 const queryClient = new QueryClient();
 
@@ -131,92 +138,94 @@ export default function App() {
         <AuthProvider>
           <ToastProvider>
             <NotificationProvider>
-              <Routes>
-            {/* Public Landing Page */}
-            <Route path="/" element={<PublicWebsite />} />
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* Public Landing Page */}
+                  <Route path="/" element={<PublicWebsite />} />
 
-            {/* Authentication Portal */}
-            <Route
-              path="/work/login"
-              element={
-                <AuthLayout title="Aagspire Work Portal" subtitle="Sign in to your internal workspace">
-                  <Login />
-                </AuthLayout>
-              }
-            />
-            <Route
-              path="/work/forgot-password"
-              element={
-                <AuthLayout title="Reset Credentials" subtitle="Recover your Aagspire Work access">
-                  <ForgotPassword />
-                </AuthLayout>
-              }
-            />
-            <Route
-              path="/work/reset-password"
-              element={
-                <AuthLayout title="Set New Password" subtitle="Establish verified account password">
-                  <ResetPassword />
-                </AuthLayout>
-              }
-            />
+                  {/* Authentication Portal */}
+                  <Route
+                    path="/work/login"
+                    element={
+                      <AuthLayout title="Aagspire Work Portal" subtitle="Sign in to your internal workspace">
+                        <Login />
+                      </AuthLayout>
+                    }
+                  />
+                  <Route
+                    path="/work/forgot-password"
+                    element={
+                      <AuthLayout title="Reset Credentials" subtitle="Recover your Aagspire Work access">
+                        <ForgotPassword />
+                      </AuthLayout>
+                    }
+                  />
+                  <Route
+                    path="/work/reset-password"
+                    element={
+                      <AuthLayout title="Set New Password" subtitle="Establish verified account password">
+                        <ResetPassword />
+                      </AuthLayout>
+                    }
+                  />
 
-            {/* Admin Management System (Protected) */}
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="employees" element={<AdminEmployees />} />
-              <Route path="employees/:id" element={<AdminEmployeeDetails />} />
-              <Route path="clients" element={<AdminClients />} />
-              <Route path="clients/:id" element={<AdminClientDetails />} />
-              <Route path="projects" element={<AdminProjects />} />
-              <Route path="projects/:id" element={<AdminProjectDetails />} />
-              <Route path="work-logs" element={<AdminWorkLogs />} />
-              <Route path="attendance" element={<AdminAttendance />} />
-              <Route path="payments" element={<AdminPayments />} />
-              <Route path="commissions" element={<AdminCommissions />} />
-              <Route path="settlements" element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="receipts" element={<AdminReceipts />} />
-              <Route path="analytics" element={<AdminAnalytics />} />
-              <Route path="reports" element={<Navigate to="/admin/dashboard" replace />} />
-              <Route path="settings" element={<AdminSettings />} />
-            </Route>
+                  {/* Admin Management System (Protected) */}
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="employees" element={<AdminEmployees />} />
+                    <Route path="employees/:id" element={<AdminEmployeeDetails />} />
+                    <Route path="clients" element={<AdminClients />} />
+                    <Route path="clients/:id" element={<AdminClientDetails />} />
+                    <Route path="projects" element={<AdminProjects />} />
+                    <Route path="projects/:id" element={<AdminProjectDetails />} />
+                    <Route path="work-logs" element={<AdminWorkLogs />} />
+                    <Route path="attendance" element={<AdminAttendance />} />
+                    <Route path="payments" element={<AdminPayments />} />
+                    <Route path="commissions" element={<AdminCommissions />} />
+                    <Route path="settlements" element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="receipts" element={<AdminReceipts />} />
+                    <Route path="analytics" element={<AdminAnalytics />} />
+                    <Route path="reports" element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="settings" element={<AdminSettings />} />
+                  </Route>
 
-            {/* Employee Portal (Protected) */}
-            <Route
-              path="/employee"
-              element={
-                <ProtectedRoute allowedRoles={['employee']}>
-                  <EmployeeLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Navigate to="/employee/dashboard" replace />} />
-              <Route path="dashboard" element={<EmployeeDashboard />} />
-              <Route path="projects" element={<EmployeeProjects />} />
-              <Route path="projects/:id" element={<EmployeeProjectDetails />} />
-              <Route path="work" element={<EmployeeWork />} />
-              <Route path="timesheets" element={<Navigate to="/employee/work" replace />} />
-              <Route path="attendance" element={<EmployeeAttendance />} />
-              <Route path="calendar" element={<Navigate to="/employee/attendance" replace />} />
-              <Route path="earnings" element={<Navigate to="/employee/dashboard" replace />} />
-              <Route path="commissions" element={<Navigate to="/employee/dashboard" replace />} />
-              <Route path="settlements" element={<Navigate to="/employee/dashboard" replace />} />
-              <Route path="receipts" element={<EmployeeReceipts />} />
-              <Route path="reports" element={<Navigate to="/employee/receipts" replace />} />
-              <Route path="profile" element={<EmployeeProfile />} />
-            </Route>
+                  {/* Employee Portal (Protected) */}
+                  <Route
+                    path="/employee"
+                    element={
+                      <ProtectedRoute allowedRoles={['employee']}>
+                        <EmployeeLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route index element={<Navigate to="/employee/dashboard" replace />} />
+                    <Route path="dashboard" element={<EmployeeDashboard />} />
+                    <Route path="projects" element={<EmployeeProjects />} />
+                    <Route path="projects/:id" element={<EmployeeProjectDetails />} />
+                    <Route path="work" element={<EmployeeWork />} />
+                    <Route path="timesheets" element={<Navigate to="/employee/work" replace />} />
+                    <Route path="attendance" element={<EmployeeAttendance />} />
+                    <Route path="calendar" element={<Navigate to="/employee/attendance" replace />} />
+                    <Route path="earnings" element={<Navigate to="/employee/dashboard" replace />} />
+                    <Route path="commissions" element={<Navigate to="/employee/dashboard" replace />} />
+                    <Route path="settlements" element={<Navigate to="/employee/dashboard" replace />} />
+                    <Route path="receipts" element={<EmployeeReceipts />} />
+                    <Route path="reports" element={<Navigate to="/employee/receipts" replace />} />
+                    <Route path="profile" element={<EmployeeProfile />} />
+                  </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+                  {/* Fallback */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
             </NotificationProvider>
           </ToastProvider>
         </AuthProvider>

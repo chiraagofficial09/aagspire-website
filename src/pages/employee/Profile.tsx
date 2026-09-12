@@ -5,11 +5,9 @@ import {
   Check,
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/work/Toast';
 
 export const EmployeeProfile: React.FC = () => {
-  const { user } = useAuth();
   const toast = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);

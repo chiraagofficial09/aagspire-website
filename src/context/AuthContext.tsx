@@ -84,18 +84,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('aagspire_user');
   };
 
+  const authContextValue = React.useMemo(
+    () => ({
+      user,
+      token,
+      isAuthenticated: Boolean(user && token),
+      isLoading,
+      login,
+      logout,
+      refreshUser: fetchCurrentUser,
+    }),
+    [user, token, isLoading]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: Boolean(user && token),
-        isLoading,
-        login,
-        logout,
-        refreshUser: fetchCurrentUser,
-      }}
-    >
+    <AuthContext.Provider value={authContextValue}>
       {children}
     </AuthContext.Provider>
   );

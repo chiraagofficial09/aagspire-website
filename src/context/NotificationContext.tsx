@@ -53,25 +53,35 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   }, [user]);
 
-  // Initial fetch and auto-polling every 20 seconds while user is authenticated
+  // Initial fetch and auto-polling every 20 seconds while user is authenticated and tab is active
   useEffect(() => {
     if (!user) return;
 
     fetchNotifications();
 
     const interval = setInterval(() => {
-      fetchNotifications();
+      if (document.visibilityState === 'visible') {
+        fetchNotifications();
+      }
     }, 20000);
 
     const handleFocus = () => {
       fetchNotifications();
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications();
+      }
+    };
+
     window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user, fetchNotifications]);
 
@@ -113,18 +123,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
   };
 
+  const contextValue = React.useMemo(
+    () => ({
+      notifications,
+      unreadCount,
+      loading,
+      fetchNotifications,
+      markAsRead,
+      markAllAsRead,
+      clearRead,
+    }),
+    [notifications, unreadCount, loading, fetchNotifications]
+  );
+
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        loading,
-        fetchNotifications,
-        markAsRead,
-        markAllAsRead,
-        clearRead,
-      }}
-    >
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );

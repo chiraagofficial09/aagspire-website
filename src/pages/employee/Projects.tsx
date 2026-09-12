@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { api } from '../../services/api';
-import { StatusBadge } from '../../components/work/StatusBadge';
 import { formatINR } from '../../utils/formatters';
 import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';

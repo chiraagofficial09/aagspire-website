@@ -231,7 +231,6 @@ export const AdminSettlements: React.FC = () => {
               ) : settlements.length > 0 ? (
                 settlements.map((s) => {
                   const empName = s.employeeName || s.employee?.name || s.employeeId?.fullName || s.employeeId?.name || 'Staff Member';
-                  const empCode = s.employeeId?.employeeCode || s.employeeCode || 'N/A';
                   const grossAmt = Number(s.grossEarned ?? s.totalEarned ?? 0);
                   const netAmt = Number(s.finalPayable ?? s.netPayable ?? 0);
                   const adjAmt = Number(s.adjustments || 0);

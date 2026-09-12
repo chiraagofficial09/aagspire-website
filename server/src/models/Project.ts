@@ -49,4 +49,8 @@ const ProjectSchema = new Schema<IProject>(
   { timestamps: true }
 );
 
+ProjectSchema.index({ assignedEmployees: 1 });
+ProjectSchema.index({ clientId: 1, status: 1 });
+ProjectSchema.index({ status: 1, createdAt: -1 });
+
 export const Project = mongoose.model<IProject>('Project', ProjectSchema);

@@ -8,9 +8,9 @@ import { fromDecimal, round2 } from '../utils/decimalHelper.js';
 
 export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMonth?: string) {
   const [allProjects, allPayments, allCommissions] = await Promise.all([
-    Project.find(),
-    ClientPayment.find(),
-    ProjectCommission.find(),
+    Project.find().lean(),
+    ClientPayment.find().lean(),
+    ProjectCommission.find().lean(),
   ]);
 
   // Determine if specific targetMonth is selected (e.g. '2026-09')

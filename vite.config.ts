@@ -12,7 +12,27 @@ export default defineConfig({
       },
     },
   },
-  optimizeDeps: {
-    exclude: ['lucide-react'],
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor-react';
+            }
+            if (id.includes('recharts')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('lucide-react') || id.includes('react-icons')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('@tanstack') || id.includes('axios')) {
+              return 'vendor-query';
+            }
+          }
+        },
+      },
+    },
   },
 });

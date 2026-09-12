@@ -32,4 +32,6 @@ const LoginSessionSchema = new Schema<ILoginSession>(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
+LoginSessionSchema.index({ userId: 1, status: 1, loginAt: -1 });
+
 export const LoginSession = mongoose.model<ILoginSession>('LoginSession', LoginSessionSchema);

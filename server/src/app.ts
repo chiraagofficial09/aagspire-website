@@ -24,11 +24,16 @@ app.use(
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl) or matched origin
-      if (!origin || ENV.CLIENT_ORIGIN.includes(origin) || origin.startsWith('http://localhost:')) {
+      // Allow requests with no origin (mobile apps, server-to-server, curl)
+      if (!origin) return callback(null, true);
+
+      const isAllowed = ENV.CLIENT_ORIGIN.includes(origin) || origin.startsWith('http://localhost:');
+      if (isAllowed) {
         callback(null, true);
+      } else if (ENV.NODE_ENV !== 'production') {
+        callback(null, true); // Permissive in development
       } else {
-        callback(null, true); // Permissive in dev for smooth pair-programming
+        callback(new Error(`CORS blocked for origin: ${origin}`));
       }
     },
     credentials: true,

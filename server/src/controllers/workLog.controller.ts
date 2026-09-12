@@ -154,10 +154,18 @@ export async function updateWorkLog(req: AuthenticatedRequest, res: Response): P
       }
     }
 
+    const isEmployee = req.user?.role === 'employee';
     const allowedFields = ['taskName', 'description', 'workDate', 'startTime', 'endTime', 'totalMinutes', 'status'];
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
-        (workLog as any)[field] = req.body[field];
+        if (field === 'status' && isEmployee) {
+          // Employee can only transition between 'draft' and 'submitted'
+          if (['draft', 'submitted'].includes(req.body.status)) {
+            workLog.status = req.body.status;
+          }
+        } else {
+          (workLog as any)[field] = req.body[field];
+        }
       }
     });
 

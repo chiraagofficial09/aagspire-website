@@ -33,4 +33,8 @@ const ClientPaymentSchema = new Schema<IClientPayment>(
   { timestamps: true }
 );
 
+ClientPaymentSchema.index({ projectId: 1, paymentDate: -1 });
+ClientPaymentSchema.index({ clientId: 1, paymentDate: -1 });
+ClientPaymentSchema.index({ paymentDate: -1, createdAt: -1 });
+
 export const ClientPayment = mongoose.model<IClientPayment>('ClientPayment', ClientPaymentSchema);

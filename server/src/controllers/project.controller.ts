@@ -16,7 +16,7 @@ import {
   allocateEmployeePool,
   EmployeeShareInput,
 } from '../services/commission.service.js';
-import { calculateProjectEarningsForEmployee } from '../services/earnings.service.js';
+import { calculateProjectEarningsForEmployee, calculateEmployeeEarnings } from '../services/earnings.service.js';
 
 export async function listProjects(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -29,7 +29,7 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
         res.json({ success: true, count: 0, projects: [], data: [] });
         return;
       }
-      const peRecords = await ProjectEmployee.find({ employeeId: req.employee._id });
+      const peRecords = await ProjectEmployee.find({ employeeId: req.employee._id }).lean();
       const peProjectIds = peRecords.map((pe) => pe.projectId);
       filter.$or = [
         { assignedEmployees: req.employee._id },
@@ -63,73 +63,99 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
       .populate('assignedEmployees', 'fullName employeeCode designation')
       .sort({ createdAt: -1 });
 
-    // Enrich projects with payment progress and discount metrics
-    const enriched = await Promise.all(
-      projects.map(async (proj) => {
-        const payments = await ClientPayment.find({ projectId: proj._id });
-        const paymentsReceived = round2(
-          payments.reduce((sum, p) => sum + fromDecimal(p.amount), 0)
-        );
-        const grossVal = fromDecimal(proj.projectValue);
-        const discountPercent = Number(proj.discountPercent) || 0;
-        const discountAmount = proj.discountAmount
-          ? fromDecimal(proj.discountAmount)
-          : round2((grossVal * discountPercent) / 100);
-        const netVal = Math.max(0, round2(grossVal - discountAmount));
-        const outstanding = Math.max(0, round2(netVal - paymentsReceived));
+    const projectIds = projects.map((p) => p._id);
 
-        let userShare = 100;
-        let employeeCommission = null;
-        if (req.employee) {
-          const alloc = await ProjectEmployee.findOne({
-            projectId: proj._id,
-            employeeId: req.employee._id,
-          });
-          if (alloc) {
-            userShare = alloc.sharePercent ?? (alloc as any).sharePercentage ?? 100;
-          } else if (proj.assignedEmployees?.length) {
-            userShare = Math.round(100 / proj.assignedEmployees.length);
-          }
+    // 1. Batch fetch all payments for these projects in ONE single query
+    const allPayments = await ClientPayment.find({ projectId: { $in: projectIds } }).lean();
+    const paymentsByProject: Record<string, number> = {};
+    for (const p of allPayments) {
+      const pid = p.projectId?.toString();
+      if (pid) {
+        paymentsByProject[pid] = (paymentsByProject[pid] || 0) + fromDecimal(p.amount);
+      }
+    }
 
-          const pool = await calculateProjectEarningsForEmployee(req.employee._id, proj._id);
-          if (pool) {
-            const totalPool = pool.expectedCommission;
-            const paid = pool.paidCommission;
-            employeeCommission = {
-              totalCommission: totalPool,
-              expectedCommission: totalPool,
-              earnedCommission: pool.earnedCommission,
-              paidCommission: paid,
-              pendingCommission: Math.max(0, round2(totalPool - paid)),
-              payableBalance: pool.payableBalance,
-              sharePercent: pool.sharePercent ?? pool.employeeSharePercent ?? userShare,
-            };
-          }
+    // 2. If employee, batch fetch allocations and pre-calculate earnings ONCE
+    const allocMap = new Map<string, any>();
+    const earningsMap = new Map<string, any>();
+    if (req.employee && projectIds.length > 0) {
+      const [peAllocations, employeeEarnings] = await Promise.all([
+        ProjectEmployee.find({
+          employeeId: req.employee._id,
+          projectId: { $in: projectIds },
+        }).lean(),
+        calculateEmployeeEarnings(req.employee._id),
+      ]);
+
+      for (const a of peAllocations) {
+        allocMap.set(a.projectId.toString(), a);
+      }
+      for (const ep of employeeEarnings.projects || []) {
+        if (ep.projectId) earningsMap.set(ep.projectId.toString(), ep);
+        if (ep.id) earningsMap.set(ep.id.toString(), ep);
+      }
+    }
+
+    // 3. Fast in-memory enrichment without any extra database queries
+    const isEmployee = req.user?.role === 'employee';
+    const enriched = projects.map((proj) => {
+      const projIdStr = proj._id.toString();
+      const paymentsReceived = round2(paymentsByProject[projIdStr] || 0);
+      const grossVal = fromDecimal(proj.projectValue);
+      const discountPercent = Number(proj.discountPercent) || 0;
+      const discountAmount = proj.discountAmount
+        ? fromDecimal(proj.discountAmount)
+        : round2((grossVal * discountPercent) / 100);
+      const netVal = Math.max(0, round2(grossVal - discountAmount));
+      const outstanding = Math.max(0, round2(netVal - paymentsReceived));
+
+      let userShare = 100;
+      let employeeCommission = null;
+      if (req.employee) {
+        const alloc = allocMap.get(projIdStr);
+        if (alloc) {
+          userShare = alloc.sharePercent ?? alloc.sharePercentage ?? 100;
+        } else if (proj.assignedEmployees?.length) {
+          userShare = Math.round(100 / proj.assignedEmployees.length);
         }
 
-        const isEmployee = req.user?.role === 'employee';
-        return {
-          ...proj.toObject(),
-          id: proj._id.toString(),
-          title: proj.projectName,
-          projectName: proj.projectName,
-          sharePercent: userShare,
-          sharePercentage: userShare,
-          employeeCommission,
-          totalAmount: isEmployee ? 0 : netVal,
-          endDate: proj.deadline,
-          projectValue: isEmployee ? 0 : netVal,
-          grossProjectValue: isEmployee ? 0 : grossVal,
-          discountPercent: isEmployee ? 0 : discountPercent,
-          discountAmount: isEmployee ? 0 : discountAmount,
-          netProjectValue: isEmployee ? 0 : netVal,
-          paymentsReceived: isEmployee ? 0 : paymentsReceived,
-          outstanding: isEmployee ? 0 : outstanding,
-          clientDebt: isEmployee ? 0 : outstanding,
-          paymentProgressPercent: isEmployee ? 0 : (netVal > 0 ? Math.min(100, Math.round((paymentsReceived / netVal) * 100)) : 0),
-        };
-      })
-    );
+        const pool = earningsMap.get(projIdStr);
+        if (pool) {
+          const totalPool = pool.expectedCommission;
+          const paid = pool.paidCommission;
+          employeeCommission = {
+            totalCommission: totalPool,
+            expectedCommission: totalPool,
+            earnedCommission: pool.earnedCommission,
+            paidCommission: paid,
+            pendingCommission: Math.max(0, round2(totalPool - paid)),
+            payableBalance: pool.payableBalance,
+            sharePercent: pool.sharePercent ?? pool.employeeSharePercent ?? userShare,
+          };
+        }
+      }
+
+      return {
+        ...proj.toObject(),
+        id: projIdStr,
+        title: proj.projectName,
+        projectName: proj.projectName,
+        sharePercent: userShare,
+        sharePercentage: userShare,
+        employeeCommission,
+        totalAmount: isEmployee ? 0 : netVal,
+        endDate: proj.deadline,
+        projectValue: isEmployee ? 0 : netVal,
+        grossProjectValue: isEmployee ? 0 : grossVal,
+        discountPercent: isEmployee ? 0 : discountPercent,
+        discountAmount: isEmployee ? 0 : discountAmount,
+        netProjectValue: isEmployee ? 0 : netVal,
+        paymentsReceived: isEmployee ? 0 : paymentsReceived,
+        outstanding: isEmployee ? 0 : outstanding,
+        clientDebt: isEmployee ? 0 : outstanding,
+        paymentProgressPercent: isEmployee ? 0 : (netVal > 0 ? Math.min(100, Math.round((paymentsReceived / netVal) * 100)) : 0),
+      };
+    });
 
     res.json({ success: true, count: enriched.length, projects: enriched, data: enriched });
   } catch (error: any) {

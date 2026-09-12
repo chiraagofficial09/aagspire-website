@@ -25,49 +25,73 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
     }
 
     const clients = await Client.find(filter).sort({ createdAt: -1 });
+    const clientIds = clients.map((c) => c._id);
 
-    // Enrich with projects count and financial totals
-    const enriched = await Promise.all(
-      clients.map(async (client) => {
-        const projects = await Project.find({ clientId: client._id });
-        const totalValue = round2(
-          projects.reduce((sum, p) => {
-            const grossVal = fromDecimal(p.projectValue);
-            const discountPercent = Number(p.discountPercent) || 0;
-            const discountAmount = p.discountAmount
-              ? fromDecimal(p.discountAmount)
-              : round2((grossVal * discountPercent) / 100);
-            return sum + Math.max(0, round2(grossVal - discountAmount));
-          }, 0)
-        );
+    // Batch fetch all projects and payments for these clients in parallel
+    const [allProjects, allPayments] = await Promise.all([
+      Project.find({ clientId: { $in: clientIds } }).lean(),
+      ClientPayment.find({ clientId: { $in: clientIds } }).lean(),
+    ]);
 
-        const payments = await ClientPayment.find({ clientId: client._id });
-        const totalPaid = round2(
-          payments.reduce((sum, pm) => sum + fromDecimal(pm.amount), 0)
-        );
-        const outstanding = Math.max(0, round2(totalValue - totalPaid));
+    const projectsByClient = new Map<string, any[]>();
+    for (const p of allProjects) {
+      const cid = p.clientId?.toString();
+      if (cid) {
+        let arr = projectsByClient.get(cid);
+        if (!arr) {
+          arr = [];
+          projectsByClient.set(cid, arr);
+        }
+        arr.push(p);
+      }
+    }
 
-        return {
-          ...client.toObject(),
-          totalProjects: projects.length,
-          activeProjects: projects.filter((p) => ['in_progress', 'review'].includes(p.status)).length,
+    const paymentsByClient = new Map<string, number>();
+    for (const pm of allPayments) {
+      const cid = pm.clientId?.toString();
+      if (cid) {
+        paymentsByClient.set(cid, (paymentsByClient.get(cid) || 0) + fromDecimal(pm.amount));
+      }
+    }
+
+    // Fast in-memory enrichment without any extra database queries
+    const enriched = clients.map((client) => {
+      const cidStr = client._id.toString();
+      const projects = projectsByClient.get(cidStr) || [];
+      const totalValue = round2(
+        projects.reduce((sum, p) => {
+          const grossVal = fromDecimal(p.projectValue);
+          const discountPercent = Number(p.discountPercent) || 0;
+          const discountAmount = p.discountAmount
+            ? fromDecimal(p.discountAmount)
+            : round2((grossVal * discountPercent) / 100);
+          return sum + Math.max(0, round2(grossVal - discountAmount));
+        }, 0)
+      );
+
+      const totalPaid = round2(paymentsByClient.get(cidStr) || 0);
+      const outstanding = Math.max(0, round2(totalValue - totalPaid));
+
+      return {
+        ...client.toObject(),
+        totalProjects: projects.length,
+        activeProjects: projects.filter((p) => ['in_progress', 'review'].includes(p.status)).length,
+        totalBusinessValue: totalValue,
+        totalContractValue: totalValue,
+        totalPaid,
+        totalPaymentsReceived: totalPaid,
+        pendingPayment: outstanding,
+        outstanding,
+        financials: {
           totalBusinessValue: totalValue,
           totalContractValue: totalValue,
           totalPaid,
           totalPaymentsReceived: totalPaid,
           pendingPayment: outstanding,
           outstanding,
-          financials: {
-            totalBusinessValue: totalValue,
-            totalContractValue: totalValue,
-            totalPaid,
-            totalPaymentsReceived: totalPaid,
-            pendingPayment: outstanding,
-            outstanding,
-          },
-        };
-      })
-    );
+        },
+      };
+    });
 
     res.json({ success: true, count: enriched.length, clients: enriched, data: enriched });
   } catch (error: any) {

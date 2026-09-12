@@ -2,12 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
-  Briefcase,
-  Coins,
-  Calendar,
-  Clock,
   Plus,
-  FileCheck2,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/work/StatusBadge';

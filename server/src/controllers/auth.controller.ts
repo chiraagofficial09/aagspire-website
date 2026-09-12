@@ -31,7 +31,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     }
 
     let isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) {
+    if (!isMatch && process.env.NODE_ENV !== 'production') {
       if (
         (user.email === 'admin@aagspire.com' && (password === 'admin123' || password === 'AagspireAdmin@2026')) ||
         (user.email === 'rahul@aagspire.com' && (password === 'employee123' || password === 'Rahul@123'))

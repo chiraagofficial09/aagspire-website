@@ -42,4 +42,7 @@ const WorkLogSchema = new Schema<IWorkLog>(
   { timestamps: true }
 );
 
+WorkLogSchema.index({ employeeId: 1, workDate: -1 });
+WorkLogSchema.index({ projectId: 1, status: 1 });
+
 export const WorkLog = mongoose.model<IWorkLog>('WorkLog', WorkLogSchema);
