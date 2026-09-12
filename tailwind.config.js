@@ -4,16 +4,25 @@ export default {
   theme: {
     extend: {
       colors: {
-        obsidian: '#050505',
+        obsidian: '#07080B',
+        'surface-base': '#08090D',
+        'surface-card': '#0E1118',
+        'surface-elevated': '#151923',
+        'surface-border': 'rgba(255,255,255,0.08)',
+        'surface-subtle': 'rgba(255,255,255,0.03)',
         ember: '#FF5A1F',
         'ember-deep': '#CC3D0A',
         'ember-light': '#FF7A45',
         'glass-white': 'rgba(255,255,255,0.04)',
         'glass-border': 'rgba(255,255,255,0.08)',
+        'luxury-gold': '#F59E0B',
+        'luxury-emerald': '#10B981',
+        'corporate-slate': '#0F172A',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',

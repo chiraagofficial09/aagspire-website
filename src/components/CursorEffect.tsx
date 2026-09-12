@@ -340,14 +340,19 @@ export default function CursorEffect() {
       setEnabled(!isMobile);
       if (isMobile) {
         document.documentElement.classList.add('no-custom-cursor');
+        document.documentElement.classList.remove('has-custom-cursor');
       } else {
         document.documentElement.classList.remove('no-custom-cursor');
+        document.documentElement.classList.add('has-custom-cursor');
       }
     };
 
     updateStatus();
     window.addEventListener('resize', updateStatus);
-    return () => window.removeEventListener('resize', updateStatus);
+    return () => {
+      document.documentElement.classList.remove('has-custom-cursor');
+      window.removeEventListener('resize', updateStatus);
+    };
   }, []);
 
   if (!enabled) {

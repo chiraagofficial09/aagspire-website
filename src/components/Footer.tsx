@@ -142,10 +142,16 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="flex items-center justify-center pt-8 border-t border-white/5 text-center">
+        <div className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t border-white/5 text-center gap-2">
           <p className="text-xs text-white/30">
             © {new Date().getFullYear()} <strong className="font-bold text-white/60">Aagspire</strong> . All rights reserved.
           </p>
+          <a
+            href="/work/login"
+            className="text-[11px] font-mono text-white/30 hover:text-ember transition-colors"
+          >
+            Staff Portal &rarr;
+          </a>
         </div>
       </div>
     </footer>
