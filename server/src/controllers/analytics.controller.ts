@@ -27,21 +27,26 @@ export async function getAdminAnalytics(req: AuthenticatedRequest, res: Response
       targetMonth = currentMonthKey; // Default to current month
     }
 
-    const metrics = await getAdminDashboardMetrics(monthsNum, targetMonth);
-    const recentProjects = await Project.find()
-      .populate('clientId', 'name companyName')
-      .sort({ createdAt: -1 })
-      .limit(5);
-    const pendingWorkLogs = await WorkLog.find({ status: 'submitted' })
-      .populate('employeeId', 'fullName employeeCode')
-      .populate('projectId', 'projectName projectCode')
-      .sort({ createdAt: -1 })
-      .limit(5);
-    const recentPayments = await ClientPayment.find()
-      .populate('clientId', 'name companyName')
-      .populate('projectId', 'projectName projectCode')
-      .sort({ paymentDate: -1, createdAt: -1 })
-      .limit(5);
+    const [metrics, recentProjects, pendingWorkLogs, recentPayments] = await Promise.all([
+      getAdminDashboardMetrics(monthsNum, targetMonth),
+      Project.find()
+        .populate('clientId', 'name companyName')
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean(),
+      WorkLog.find({ status: 'submitted' })
+        .populate('employeeId', 'fullName employeeCode')
+        .populate('projectId', 'projectName projectCode')
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean(),
+      ClientPayment.find()
+        .populate('clientId', 'name companyName')
+        .populate('projectId', 'projectName projectCode')
+        .sort({ paymentDate: -1, createdAt: -1 })
+        .limit(5)
+        .lean(),
+    ]);
 
     const fullData = {
       ...metrics,

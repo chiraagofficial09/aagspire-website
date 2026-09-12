@@ -56,22 +56,20 @@ export async function login(req: Request, res: Response): Promise<void> {
       }
     }
 
-    // Update lastLoginAt
-    user.lastLoginAt = new Date();
-    await user.save();
+    // Update lastLoginAt & log session asynchronously (non-blocking for fast login)
+    User.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date() } }).exec().catch(console.error);
 
-    // Create LoginSession record
     const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress;
     const userAgent = req.headers['user-agent'] || '';
 
-    await LoginSession.create({
+    LoginSession.create({
       userId: user._id,
       loginAt: new Date(),
       lastActivityAt: new Date(),
       ipAddress,
       userAgent,
       status: 'active',
-    });
+    }).catch(console.error);
 
     // Generate JWT
     const token = signToken({

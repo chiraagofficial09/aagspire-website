@@ -13,7 +13,11 @@ export async function connectDatabase(): Promise<void> {
     mongoose.set('strictQuery', true);
     console.log('[Database] Connecting to MongoDB...');
     await mongoose.connect(ENV.MONGODB_URI, {
+      maxPoolSize: 10,
+      minPoolSize: 2,
       serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      heartbeatFrequencyMS: 10000,
     });
     console.log(`[Database] MongoDB connected successfully to database: ${mongoose.connection.name}`);
   } catch (error: any) {

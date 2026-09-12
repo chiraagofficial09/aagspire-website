@@ -61,7 +61,8 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
     const projects = await Project.find(filter)
       .populate('clientId', 'name companyName clientCode')
       .populate('assignedEmployees', 'fullName employeeCode designation')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     const projectIds = projects.map((p) => p._id);
 
