@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff, Flame } from 'lucide-react';
+import { Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
@@ -43,16 +43,12 @@ export const Login: React.FC = () => {
     <div className="rounded-3xl bg-[#0b0c11] border border-white/[0.08] p-8 sm:p-10 shadow-[0_25px_70px_rgba(0,0,0,0.9)] relative">
       {/* Brand Header matching mockup */}
       <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-0.5 select-none mb-2.5">
-          <span className="text-3xl sm:text-4xl font-black tracking-tight text-[#FF5A1F]">Aag</span>
-          <span className="text-3xl sm:text-4xl font-black tracking-tight text-white flex items-center">
-            sp
-            <span className="relative inline-flex justify-center">
-              <Flame className="w-4 h-4 text-[#FF5A1F] fill-[#FF5A1F] absolute -top-2 left-1/2 -translate-x-1/2" />
-              <span>ı</span>
-            </span>
-            re
-          </span>
+        <div className="flex items-center justify-center mb-3">
+          <img
+            src="/Aagspire_Logo.png"
+            alt="Aagspire"
+            className="h-9 sm:h-10 w-auto object-contain"
+          />
         </div>
         <div className="text-[11px] font-mono tracking-[0.25em] text-white/90 font-bold uppercase">
           WORKSPACE PORTAL

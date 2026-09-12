@@ -19,7 +19,6 @@ import {
   LogOut,
   X,
   Menu,
-  Flame,
   Folder,
   Calendar,
   User,
@@ -77,17 +76,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       <div className="h-20 px-6 flex items-center justify-between shrink-0">
         <NavLink
           to={role === 'admin' ? '/admin/dashboard' : '/employee/dashboard'}
-          className="flex items-center gap-0.5 select-none group"
+          className="flex items-center gap-2 select-none group py-1"
         >
-          <span className="text-2xl font-black tracking-tight text-[#FF5A1F]">Aag</span>
-          <span className="text-2xl font-black tracking-tight text-white flex items-center">
-            sp
-            <span className="relative inline-flex justify-center">
-              <Flame className="w-3.5 h-3.5 text-[#FF5A1F] fill-[#FF5A1F] absolute -top-1.5 left-1/2 -translate-x-1/2" />
-              <span>ı</span>
-            </span>
-            re
-          </span>
+          <img
+            src="/Aagspire_Logo.png"
+            alt="Aagspire"
+            className="h-7 w-auto object-contain transition-opacity duration-200 group-hover:opacity-90"
+          />
         </NavLink>
 
         {/* Mobile close button */}
