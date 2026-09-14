@@ -136,8 +136,9 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
         }
       }
 
+      const projObj = typeof (proj as any).toObject === 'function' ? (proj as any).toObject() : proj;
       return {
-        ...proj.toObject(),
+        ...projObj,
         id: projIdStr,
         title: proj.projectName,
         projectName: proj.projectName,

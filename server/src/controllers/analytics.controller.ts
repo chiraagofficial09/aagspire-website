@@ -110,8 +110,9 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       const poolEarned = prjEarning?.earnedCommission ?? 0;
       const poolPending = Math.max(0, poolTotal - poolPaid);
 
+      const pObj = typeof (p as any).toObject === 'function' ? (p as any).toObject() : p;
       return {
-        ...p.toObject(),
+        ...pObj,
         id: p._id.toString(),
         title: p.projectName,
         projectName: p.projectName,
@@ -173,8 +174,9 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
 
     const formattedWorkLogs = recentWorkLogs.map((log) => {
       const mins = log.totalMinutes || 0;
+      const logObj = typeof (log as any).toObject === 'function' ? (log as any).toObject() : log;
       return {
-        ...log.toObject(),
+        ...logObj,
         hoursWorked: round2(mins / 60),
         durationMinutes: mins,
         logDate: log.workDate,
