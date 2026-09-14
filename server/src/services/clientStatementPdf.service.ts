@@ -118,9 +118,9 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   // Left: Brand Identity Logo (White spire text on dark background)
   const candidateLogos = [
     path.resolve(process.cwd(), 'server/src/assets/Aagspire_Logo.png'),
+    path.resolve(process.cwd(), 'server/dist/assets/Aagspire_Logo.png'),
+    path.resolve(process.cwd(), 'src/assets/Aagspire_Logo.png'),
     path.resolve(process.cwd(), 'public/Aagspire_Logo.png'),
-    path.resolve(process.cwd(), 'server/src/assets/Aagspire_1.png'),
-    path.resolve(process.cwd(), 'public/Aagspire_1.png'),
   ];
   const logoFile = candidateLogos.find((p) => fs.existsSync(p));
   if (logoFile) {

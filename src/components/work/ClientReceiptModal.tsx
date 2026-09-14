@@ -370,13 +370,13 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
             <div className="receipt-printable space-y-6 bg-[#080808] border border-white/10 rounded-2xl p-6 sm:p-8 text-white shadow-inner">
               {/* Header */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/10 pb-6">
-                <div className="w-[155px] sm:w-[175px]">
+                <div className="w-[160px] sm:w-[190px]">
                   <img
-                    src="/Aagspire_1.svg"
+                    src="/Aagspire%20Logo%20.svg"
                     alt="Aagspire"
                     className="w-full h-auto object-contain block"
                     onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = '/Aagspire_1.png';
+                      (e.currentTarget as HTMLImageElement).src = '/Aagspire_Logo.png';
                     }}
                   />
                 </div>
