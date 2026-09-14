@@ -251,19 +251,18 @@ export const AdminClientDetails: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5">
-          {/* Statement PDF */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Combine Projects (Colorless) */}
           <button
             type="button"
-            onClick={handleQuickDownloadPdf}
-            disabled={downloadingPdf}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0c0d12] border border-white/[0.08] hover:bg-white/5 text-white text-xs font-medium transition-all disabled:opacity-50 cursor-pointer"
+            onClick={() => setIsReceiptModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0c0d12] border border-white/[0.08] hover:bg-white/5 text-white text-xs font-medium transition-all cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-zinc-400" />
-            <span>{downloadingPdf ? 'Generating...' : 'Statement PDF'}</span>
+            <ReceiptText className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Combine Projects</span>
           </button>
 
-          {/* Record Payment (Orange CTA) */}
+          {/* Record Payment (Colorless) */}
           <button
             type="button"
             onClick={() => {
@@ -275,9 +274,20 @@ export const AdminClientDetails: React.FC = () => {
               setPayProjectId(projects.length === 1 ? projects[0]._id : '');
               setIsPayModalOpen(true);
             }}
-            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold transition-all shadow-sm cursor-pointer"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-[#0c0d12] border border-white/[0.08] hover:bg-white/5 text-white text-xs font-medium transition-all cursor-pointer"
           >
             <span>Record Payment</span>
+          </button>
+
+          {/* Download Statement PDF (Orange CTA) */}
+          <button
+            type="button"
+            onClick={handleQuickDownloadPdf}
+            disabled={downloadingPdf}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold transition-all disabled:opacity-50 shadow-sm cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>{downloadingPdf ? 'Generating...' : 'Download Statement PDF'}</span>
           </button>
 
           {/* Triple-dot menu for additional options */}
@@ -302,17 +312,6 @@ export const AdminClientDetails: React.FC = () => {
                 >
                   <Pencil className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Edit Client</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsHeaderMenuOpen(false);
-                    setIsReceiptModalOpen(true);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-white/80 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
-                >
-                  <ReceiptText className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Combine Projects</span>
                 </button>
                 <div className="my-1 border-t border-white/5" />
                 <button

@@ -49,17 +49,23 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   const pageWidth = doc.page.width; // 595.28 for A4
   const pageHeight = doc.page.height; // 841.89 for A4
 
-  // Register TrueType fonts that support Unicode Indian Rupee symbol (₹)
+  // Register TrueType fonts that support Unicode Indian Rupee symbol (₹) and match website invoice typography (Plus Jakarta Sans)
   const fontRegularCandidates = [
+    path.resolve(process.cwd(), 'server/src/assets/fonts/PlusJakartaSans-Regular.ttf'),
+    path.resolve(process.cwd(), 'src/assets/fonts/PlusJakartaSans-Regular.ttf'),
+    path.resolve(process.cwd(), 'server/dist/assets/fonts/PlusJakartaSans-Regular.ttf'),
+    path.resolve(process.cwd(), 'dist/assets/fonts/PlusJakartaSans-Regular.ttf'),
     path.resolve(process.cwd(), 'server/src/assets/fonts/segoeui.ttf'),
-    path.resolve(process.cwd(), 'server/dist/assets/fonts/segoeui.ttf'),
     path.resolve(process.cwd(), 'src/assets/fonts/segoeui.ttf'),
     'C:/Windows/Fonts/segoeui.ttf',
     'C:/Windows/Fonts/arial.ttf',
   ];
   const fontBoldCandidates = [
+    path.resolve(process.cwd(), 'server/src/assets/fonts/PlusJakartaSans-Bold.ttf'),
+    path.resolve(process.cwd(), 'src/assets/fonts/PlusJakartaSans-Bold.ttf'),
+    path.resolve(process.cwd(), 'server/dist/assets/fonts/PlusJakartaSans-Bold.ttf'),
+    path.resolve(process.cwd(), 'dist/assets/fonts/PlusJakartaSans-Bold.ttf'),
     path.resolve(process.cwd(), 'server/src/assets/fonts/segoeuib.ttf'),
-    path.resolve(process.cwd(), 'server/dist/assets/fonts/segoeuib.ttf'),
     path.resolve(process.cwd(), 'src/assets/fonts/segoeuib.ttf'),
     'C:/Windows/Fonts/segoeuib.ttf',
     'C:/Windows/Fonts/arialbd.ttf',
