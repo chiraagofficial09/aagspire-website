@@ -51,7 +51,7 @@ export function generateReceiptPdfStream(data: ReceiptPdfData, res: Response): v
   // Left: Brand Identity
   doc.fillColor('#0F172A').fontSize(22).font('Helvetica-Bold').text('AAGSPIRE', 40, cursorY, { characterSpacing: 1 });
   doc.fillColor('#64748B').fontSize(8).font('Helvetica-Bold').text('CREATIVE PRODUCTION & STAFF MANAGEMENT', 40, cursorY + 26, { characterSpacing: 0.5 });
-  doc.fillColor('#475569').fontSize(7.5).font('Helvetica').text('Disbursement Authority: Aagspire Creative Media Pvt. Ltd.', 40, cursorY + 38);
+  doc.fillColor('#475569').fontSize(7.5).font('Helvetica').text('Disbursement Authority: Aagspire', 40, cursorY + 38);
   doc.fillColor('#64748B').fontSize(7.5).text('finance@aagspire.com  •  www.aagspire.com  •  Staff ID Portal', 40, cursorY + 49);
 
   // Right: Document Metadata
@@ -268,7 +268,7 @@ export function generateReceiptPdfStream(data: ReceiptPdfData, res: Response): v
   const sigX = 400;
   doc.strokeColor('#94A3B8').lineWidth(0.75).moveTo(sigX, footerY + 44).lineTo(pageWidth - 40, footerY + 44).stroke();
   doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text('Finance Controller / Authorized', sigX, footerY + 48, { align: 'center', width: pageWidth - 40 - sigX });
-  doc.fillColor('#64748B').fontSize(7).font('Helvetica').text('Aagspire Creative Media Pvt. Ltd.', sigX, footerY + 59, { align: 'center', width: pageWidth - 40 - sigX });
+  doc.fillColor('#64748B').fontSize(7).font('Helvetica').text('Aagspire', sigX, footerY + 59, { align: 'center', width: pageWidth - 40 - sigX });
 
   // Final Bottom Disclaimer
   doc.fillColor('#94A3B8').fontSize(6.5).font('Helvetica').text(

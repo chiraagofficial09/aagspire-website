@@ -68,7 +68,7 @@ export const AdminSettings: React.FC = () => {
             <input
               type="text"
               disabled
-              value="Aagspire Creative Media Pvt Ltd"
+              value="Aagspire"
               className="w-full px-3.5 py-2.5 bg-[#0d0e14] border border-white/[0.06] rounded-xl text-zinc-400 text-xs font-medium cursor-not-allowed"
             />
           </div>

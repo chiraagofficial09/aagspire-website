@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
@@ -12,12 +12,14 @@ import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
 import { EmptyState } from '../../components/work/EmptyState';
+import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
 
 export const AdminClients: React.FC = () => {
   const toast = useToast();
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -34,10 +36,41 @@ export const AdminClients: React.FC = () => {
     taxId: '',
   });
 
-  const fetchClients = async () => {
+  const now = useMemo(() => new Date(), []);
+  const availableMonths: MonthOption[] = useMemo(() => {
+    const monthsSet = new Set<string>();
+    for (let i = 0; i <= 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    return Array.from(monthsSet)
+      .sort((a, b) => b.localeCompare(a))
+      .map((key) => {
+        const [y, m] = key.split('-').map(Number);
+        const d = new Date(y, m - 1, 1);
+        return {
+          key,
+          label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
+        };
+      });
+  }, [now]);
+
+  const selectedMonthLabel = useMemo(() => {
+    if (selectedMonth === 'all') return 'All Months';
+    const [yr, mo] = selectedMonth.split('-').map(Number);
+    const d = new Date(yr, mo - 1, 1);
+    return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  }, [selectedMonth]);
+
+  const fetchClients = async (monthVal = selectedMonth) => {
     try {
       setLoading(true);
-      const res = await api.get('/admin/clients');
+      const params = new URLSearchParams();
+      if (monthVal && monthVal !== 'all') {
+        params.append('month', monthVal);
+      }
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await api.get(`/admin/clients${qs}`);
       setClients(res.data.data || res.data.clients || []);
     } catch (err) {
       console.error('Error loading clients', err);
@@ -47,8 +80,8 @@ export const AdminClients: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    fetchClients(selectedMonth);
+  }, [selectedMonth]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -155,7 +188,7 @@ export const AdminClients: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="pt-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -166,7 +199,37 @@ export const AdminClients: React.FC = () => {
             className="w-full pl-10 pr-4 py-2 bg-[#0d0e14] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/20 transition-colors"
           />
         </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-400 hidden sm:inline">Billing Month:</span>
+          <MonthSelectDropdown
+            value={selectedMonth}
+            onChange={(val) => setSelectedMonth(val)}
+            availableMonths={availableMonths}
+            allMonthsLabel="All Months"
+            className="w-full sm:w-44"
+          />
+        </div>
       </div>
+
+      {/* Active Month Filter Notification Banner */}
+      {selectedMonth !== 'all' && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
+            <span className="text-zinc-300">
+              Showing client statistics for <span className="font-semibold text-white">{selectedMonthLabel}</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedMonth('all')}
+            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
+          >
+            Show All Months
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
@@ -176,7 +239,6 @@ export const AdminClients: React.FC = () => {
               <tr className="border-b border-white/[0.06]">
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CLIENT</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CONTACT</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PROJECTS</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TOTAL</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PAID</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PENDING</th>
@@ -186,14 +248,13 @@ export const AdminClients: React.FC = () => {
             <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-500 font-mono">
+                  <td colSpan={6} className="py-12 text-center text-zinc-500 font-mono">
                     Loading clients...
                   </td>
                 </tr>
               ) : filtered.length > 0 ? (
                 filtered.map((client) => {
                   const displayName = client.companyName || client.name;
-                  const count = client.projectsCount || client.projects?.length || 0;
                   const totalContract = Number(
                     client.totalContractValue ??
                     client.totalBusinessValue ??
@@ -225,11 +286,6 @@ export const AdminClients: React.FC = () => {
                             <div className="text-[11px] text-zinc-500 font-mono mt-0.5">{client.phone}</div>
                           )}
                         </div>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono bg-white/[0.04] text-zinc-300 border border-white/[0.06]">
-                          {count} {count === 1 ? 'deal' : 'deals'}
-                        </span>
                       </td>
                       <td className="py-4 px-6">
                         <span className="text-sm font-semibold font-mono text-white">

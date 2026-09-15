@@ -81,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
           <img
             src="/Aagspire_Logo.png"
             alt="Aagspire"
-            className="h-7 w-auto object-contain transition-opacity duration-200 group-hover:opacity-90"
+            className="h-10 w-auto object-contain transition-opacity duration-200 group-hover:opacity-90"
           />
         </NavLink>
 

@@ -27,6 +27,17 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
     const clients = await Client.find(filter).sort({ createdAt: -1 });
     const clientIds = clients.map((c) => c._id);
 
+    const monthQuery = (req.query.month as string) || '';
+    let startOfMonth: Date | null = null;
+    let endOfMonth: Date | null = null;
+    if (monthQuery && monthQuery !== 'all') {
+      const [yr, mo] = monthQuery.split('-').map(Number);
+      if (yr && mo) {
+        startOfMonth = new Date(yr, mo - 1, 1, 0, 0, 0, 0);
+        endOfMonth = new Date(yr, mo, 0, 23, 59, 59, 999);
+      }
+    }
+
     // Batch fetch all projects and payments for these clients in parallel
     const [allProjects, allPayments] = await Promise.all([
       Project.find({ clientId: { $in: clientIds } }).lean(),
@@ -37,6 +48,10 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
     for (const p of allProjects) {
       const cid = p.clientId?.toString();
       if (cid) {
+        if (endOfMonth) {
+          const pDate = new Date(p.startDate || p.createdAt || 0);
+          if (pDate > endOfMonth) continue;
+        }
         let arr = projectsByClient.get(cid);
         if (!arr) {
           arr = [];
@@ -46,11 +61,24 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
       }
     }
 
-    const paymentsByClient = new Map<string, number>();
+    const paymentsByClientInMonth = new Map<string, number>();
+    const paymentsByClientCumulative = new Map<string, number>();
     for (const pm of allPayments) {
       const cid = pm.clientId?.toString();
       if (cid) {
-        paymentsByClient.set(cid, (paymentsByClient.get(cid) || 0) + fromDecimal(pm.amount));
+        const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
+        const amt = fromDecimal(pm.amount);
+        if (endOfMonth) {
+          if (pmDate <= endOfMonth) {
+            paymentsByClientCumulative.set(cid, (paymentsByClientCumulative.get(cid) || 0) + amt);
+          }
+          if (startOfMonth && pmDate >= startOfMonth && pmDate <= endOfMonth) {
+            paymentsByClientInMonth.set(cid, (paymentsByClientInMonth.get(cid) || 0) + amt);
+          }
+        } else {
+          paymentsByClientInMonth.set(cid, (paymentsByClientInMonth.get(cid) || 0) + amt);
+          paymentsByClientCumulative.set(cid, (paymentsByClientCumulative.get(cid) || 0) + amt);
+        }
       }
     }
 
@@ -69,16 +97,23 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
         }, 0)
       );
 
-      const totalPaid = round2(paymentsByClient.get(cidStr) || 0);
-      const outstanding = Math.max(0, round2(totalValue - totalPaid));
+      const totalPaid = round2(
+        endOfMonth
+          ? (paymentsByClientInMonth.get(cidStr) || 0)
+          : (paymentsByClientCumulative.get(cidStr) || 0)
+      );
+      const totalPaidCumulative = round2(paymentsByClientCumulative.get(cidStr) || 0);
+      const outstanding = Math.max(0, round2(totalValue - totalPaidCumulative));
 
       return {
         ...client.toObject(),
         totalProjects: projects.length,
+        projectsCount: projects.length,
         activeProjects: projects.filter((p) => ['in_progress', 'review'].includes(p.status)).length,
         totalBusinessValue: totalValue,
         totalContractValue: totalValue,
         totalPaid,
+        totalPaidCumulative,
         totalPaymentsReceived: totalPaid,
         pendingPayment: outstanding,
         outstanding,
@@ -86,6 +121,7 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
           totalBusinessValue: totalValue,
           totalContractValue: totalValue,
           totalPaid,
+          totalPaidCumulative,
           totalPaymentsReceived: totalPaid,
           pendingPayment: outstanding,
           outstanding,
@@ -314,6 +350,24 @@ export async function deleteClient(req: AuthenticatedRequest, res: Response): Pr
   }
 }
 
+export function getNextInvoiceNumber(current?: string | number, step = 1): string {
+  if (current === undefined || current === null || String(current).trim() === '') {
+    return '001';
+  }
+  const str = String(current).trim();
+  const match = str.match(/^(.*?)(\d+)([^\d]*)$/);
+  if (!match) {
+    return `${str}-001`;
+  }
+  const prefix = match[1];
+  const digits = match[2];
+  const suffix = match[3];
+  const num = parseInt(digits, 10);
+  const nextNum = Math.max(0, num + step);
+  const padded = String(nextNum).padStart(digits.length, '0');
+  return `${prefix}${padded}${suffix}`;
+}
+
 export async function downloadClientStatementPdf(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const id = req.params.id || req.params.clientId;
@@ -332,9 +386,60 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       rawProjects = rawProjects.filter((p) => selectedIds.includes(p._id.toString()));
     }
 
-    const rawPayments = selectedIds.length > 0
+    let rawPayments = selectedIds.length > 0
       ? await ClientPayment.find({ projectId: { $in: rawProjects.map((p) => p._id) } }).sort({ paymentDate: -1 })
       : await ClientPayment.find({ clientId: client._id }).sort({ paymentDate: -1 });
+
+    const monthQuery = (req.query.month as string) || (req.body?.month as string) || '';
+    let billingMonthLabel: string | undefined;
+    let billingPeriodLabel: string | undefined;
+    let statementDate = new Date().toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+
+    if (monthQuery && monthQuery !== 'all') {
+      const [yr, mo] = monthQuery.split('-').map(Number);
+      if (yr && mo) {
+        const startOfMonth = new Date(yr, mo - 1, 1, 0, 0, 0, 0);
+        const endOfMonth = new Date(yr, mo, 0, 23, 59, 59, 999);
+        billingMonthLabel = startOfMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        billingPeriodLabel = `${startOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${endOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+        // When sending invoice to client at end of month, invoice date is set to end of that month
+        statementDate = endOfMonth.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        });
+
+        if (selectedIds.length === 0) {
+          rawProjects = rawProjects.filter((p) => {
+            const pDate = new Date(p.startDate || p.createdAt || 0);
+            return pDate >= startOfMonth && pDate <= endOfMonth;
+          });
+        }
+
+        rawPayments = rawPayments.filter((pm) => {
+          const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
+          return pmDate <= endOfMonth;
+        });
+      }
+    }
+
+    const customDateParam = (req.query.invoiceDate as string) || (req.body?.invoiceDate as string);
+    if (customDateParam) {
+      const parsed = new Date(customDateParam.includes('T') ? customDateParam : `${customDateParam}T00:00:00`);
+      if (!isNaN(parsed.getTime())) {
+        statementDate = parsed.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        });
+      } else {
+        statementDate = customDateParam;
+      }
+    }
 
     const digits = client.clientCode?.match(/\d+/g);
     const defaultNum = digits && digits.length > 0
@@ -344,6 +449,16 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
     const taxPercent = Number(req.query.taxPercent || req.body?.taxPercent || 0);
     const discountAmount = Number(req.query.discountAmount || req.body?.discountAmount || 0);
     const notes = (req.query.notes as string) || req.body?.notes || '';
+
+    let customDiscounts: Record<string, number> = {};
+    const rawProjectDiscounts = (req.query.projectDiscounts as string) || req.body?.projectDiscounts;
+    if (rawProjectDiscounts) {
+      try {
+        customDiscounts = typeof rawProjectDiscounts === 'string' ? JSON.parse(rawProjectDiscounts) : rawProjectDiscounts;
+      } catch (e) {
+        customDiscounts = {};
+      }
+    }
 
     const subtotal = round2(
       rawProjects.reduce((sum, p) => sum + fromDecimal(p.projectValue), 0)
@@ -361,71 +476,80 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         const pPayments = await ClientPayment.find({ projectId: p._id });
         const paid = round2(pPayments.reduce((sum, pm) => sum + fromDecimal(pm.amount), 0));
         const val = fromDecimal(p.projectValue);
-        const discountPercent = Number(p.discountPercent) || 0;
-        const discountAmount = p.discountAmount
-          ? fromDecimal(p.discountAmount)
-          : round2((val * discountPercent) / 100);
-        const netVal = Math.max(0, round2(val - discountAmount));
+        const pIdStr = String(p._id);
+        const manualDiscount = customDiscounts[pIdStr] !== undefined
+          ? Number(customDiscounts[pIdStr]) || 0
+          : (p.discountAmount ? fromDecimal(p.discountAmount) : 0);
+        const grossPrice = round2(val + manualDiscount);
         return {
           projectCode: p.projectCode,
           projectName: p.projectName,
           status: p.status,
           projectValue: val,
-          grossProjectValue: val,
-          discountPercent,
-          discountAmount,
+          grossProjectValue: grossPrice,
+          discountPercent: Number(p.discountPercent) || 0,
+          discountAmount: manualDiscount,
           paidAmount: paid,
-          balance: netVal,
+          balance: val,
           startDate: p.startDate ? new Date(p.startDate).toLocaleDateString('en-IN') : undefined,
           deadline: p.deadline ? new Date(p.deadline).toLocaleDateString('en-IN') : undefined,
         };
       })
     );
 
-    const safeFileIdentifier = (invoiceNumber || client.clientCode || 'Invoice').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec'];
+    let targetDate = new Date();
+    if (monthQuery && monthQuery !== 'all') {
+      const [yr, mo] = monthQuery.split('-').map(Number);
+      if (yr && mo) targetDate = new Date(yr, mo - 1, 1);
+    } else if (customDateParam) {
+      const parsed = new Date(customDateParam.includes('T') ? customDateParam : `${customDateParam}T00:00:00`);
+      if (!isNaN(parsed.getTime())) targetDate = parsed;
+    }
+    const monthSlug = monthNames[targetDate.getMonth()];
+    const yearSlug = targetDate.getFullYear();
+    const fileName = `Aagspire_invoice_${monthSlug}_${yearSlug}.pdf`;
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="Aagspire_Invoice_${safeFileIdentifier}.pdf"`
-    );
-
-    // 1. Check if this exact invoice number was already issued to this client
-    const isAlreadyIssued = Boolean(
-      client.lastInvoiceNumber && client.lastInvoiceNumber.trim() === invoiceNumber.trim()
+      `attachment; filename="${fileName}"`
     );
 
     // Save client's lastInvoiceNumber in MongoDB
     client.lastInvoiceNumber = invoiceNumber;
     await client.save().catch(() => {});
 
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, X-Invoice-Already-Issued');
-    res.setHeader('X-Invoice-Already-Issued', isAlreadyIssued ? 'true' : 'false');
-
-    // 2. Only advance invoice counter in MongoDB by +3 if it is a NEW invoice (same invoice re-download does NOT increment)
-    if (!isAlreadyIssued) {
-      try {
-        let counter = await InvoiceCounter.findOne({ key: 'client_invoice_sequence' });
-        const curNum = parseInt(String(invoiceNumber).replace(/\D/g, ''), 10) || 10;
-        const step = counter?.step || 3;
-        const nextNum = curNum + step;
-        if (counter) {
-          if (counter.currentNumber <= curNum) {
-            counter.currentNumber = nextNum;
-          }
-          counter.lastIssuedAt = new Date();
-          await counter.save();
-        } else {
-          await InvoiceCounter.create({
-            key: 'client_invoice_sequence',
-            currentNumber: nextNum,
-            step: 3,
-            lastIssuedAt: new Date(),
-          });
-        }
-      } catch (cntErr) {
-        console.error('Failed to advance database invoice counter:', cntErr);
+    // Advance global invoice counter in MongoDB and compute next invoice number on every download
+    let nextInvoiceNumber = getNextInvoiceNumber(invoiceNumber, 1);
+    try {
+      let counter = await InvoiceCounter.findOne({ key: 'client_invoice_sequence' });
+      const step = counter?.step || 1;
+      nextInvoiceNumber = getNextInvoiceNumber(invoiceNumber, step);
+      const curNum = parseInt(String(invoiceNumber).replace(/\D/g, ''), 10) || 0;
+      const nextNum = curNum + step;
+      if (counter) {
+        counter.currentNumber = nextNum;
+        counter.lastIssuedAt = new Date();
+        await counter.save();
+      } else {
+        await InvoiceCounter.create({
+          key: 'client_invoice_sequence',
+          currentNumber: nextNum,
+          step: 1,
+          lastIssuedAt: new Date(),
+        });
       }
+    } catch (cntErr) {
+      console.error('Failed to advance database invoice counter:', cntErr);
     }
+
+    res.setHeader(
+      'Access-Control-Expose-Headers',
+      'Content-Disposition, X-Next-Invoice-Number, X-Invoice-Number'
+    );
+    res.setHeader('X-Invoice-Number', invoiceNumber);
+    res.setHeader('X-Next-Invoice-Number', nextInvoiceNumber);
 
     generateClientStatementPdfStream(
       {
@@ -438,11 +562,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         phone: client.phone,
         address: client.address,
         gstNumber: client.gstNumber,
-        statementDate: new Date().toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        }),
+        statementDate,
         subtotal,
         taxPercent,
         taxAmount,
@@ -466,15 +586,15 @@ export async function getInvoiceCounter(req: AuthenticatedRequest, res: Response
     if (!counter) {
       counter = await InvoiceCounter.create({
         key: 'client_invoice_sequence',
-        currentNumber: 10,
-        step: 3,
+        currentNumber: 1,
+        step: 1,
       });
     }
     res.json({
       success: true,
       data: {
         currentNumber: String(counter.currentNumber),
-        step: counter.step,
+        step: counter.step || 1,
         lastIssuedAt: counter.lastIssuedAt,
       },
     });
@@ -490,13 +610,13 @@ export async function updateInvoiceCounter(req: AuthenticatedRequest, res: Respo
     if (!counter) {
       counter = new InvoiceCounter({
         key: 'client_invoice_sequence',
-        currentNumber: 10,
-        step: 3,
+        currentNumber: 1,
+        step: 1,
       });
     }
 
     if (increment) {
-      counter.currentNumber += (counter.step || 3);
+      counter.currentNumber += (counter.step || 1);
     } else if (currentNumber !== undefined) {
       const parsed = parseInt(String(currentNumber).replace(/\D/g, ''), 10);
       if (!isNaN(parsed)) {

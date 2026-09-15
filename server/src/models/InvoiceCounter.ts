@@ -12,8 +12,8 @@ export interface IInvoiceCounter extends Document {
 const InvoiceCounterSchema = new Schema<IInvoiceCounter>(
   {
     key: { type: String, required: true, unique: true, default: 'client_invoice_sequence' },
-    currentNumber: { type: Number, required: true, default: 10 },
-    step: { type: Number, required: true, default: 3 },
+    currentNumber: { type: Number, required: true, default: 1 },
+    step: { type: Number, required: true, default: 1 },
     lastIssuedAt: { type: Date },
   },
   { timestamps: true }

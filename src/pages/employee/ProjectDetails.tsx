@@ -128,11 +128,7 @@ export const EmployeeProjectDetails: React.FC = () => {
             <p className="text-xl sm:text-2xl font-extrabold font-mono text-white tracking-tight">
               {formatINR(poolTotal)}
             </p>
-            <span className="text-[10px] text-zinc-500 block">
-              {poolEarned > 0 && poolEarned !== poolTotal
-                ? `Earned: ${formatINR(poolEarned)}`
-                : 'Total commission'}
-            </span>
+            <span className="text-[10px] text-zinc-500 block">Total commission</span>
           </div>
 
           <div className="premium-card p-4 rounded-2xl space-y-1">
@@ -148,11 +144,7 @@ export const EmployeeProjectDetails: React.FC = () => {
             <p className="text-xl sm:text-2xl font-extrabold font-mono text-[#FF5A1F] tracking-tight">
               {formatINR(poolPending)}
             </p>
-            <span className="text-[10px] text-zinc-500 block">
-              {(employeeCommission?.payableBalance ?? 0) > 0
-                ? `Ready to settle: ${formatINR(employeeCommission.payableBalance)}`
-                : 'Pending balance'}
-            </span>
+            <span className="text-[10px] text-zinc-500 block">Pending balance</span>
           </div>
         </div>
       </div>

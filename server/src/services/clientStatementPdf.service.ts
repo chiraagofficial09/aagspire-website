@@ -1,8 +1,8 @@
 import PDFDocument from 'pdfkit';
 import { Response } from 'express';
-import { numberToIndianWords } from '../utils/numberToWords.js';
 import fs from 'fs';
 import path from 'path';
+import { PHONE_ICON_BUF, EMAIL_ICON_BUF } from '../assets/contactIconsBase64.js';
 
 export interface ClientStatementProjectItem {
   projectCode: string;
@@ -29,6 +29,8 @@ export interface ClientStatementPdfData {
   address?: string;
   gstNumber?: string;
   statementDate: string;
+  billingMonth?: string;
+  billingPeriod?: string;
   subtotal?: number;
   taxPercent?: number;
   taxAmount?: number;
@@ -40,15 +42,90 @@ export interface ClientStatementPdfData {
   projects: ClientStatementProjectItem[];
 }
 
+const allTerms = [
+  'All prices listed are average estimates and may vary based on project complexity, scope of work, and client requirements.',
+  '2 revisions are included in the base price. Additional revisions will be chargeable.',
+  'A 50% deposit is required to initiate the project.',
+  'The final payment is due upon project completion and client approval.',
+  'Late payments may incur interest charges.',
+  'Clients are responsible for providing all necessary content for the project.',
+  'We offer custom packages tailored to specific client needs and budgets.',
+  'If the project is canceled by the client before completion, the client will be responsible for paying fees incurred up to the date of cancellation.',
+  'Upon full payment, clients will receive ownership of the final project deliverables.',
+  'Project delivery timeline will be discussed and finalized before project start. Delays caused by client-side (late content, feedback) may extend the timeline.',
+  'Urgent or priority projects may incur an additional 25%–50% charge depending on the deadline.',
+  'All printing designs (banner, visiting card, brochure, etc.) will be delivered in print-ready formats only.',
+  'In digital designs, open/editable source files (such as PSD, AI, CDR, etc.) will not be provided.',
+  'Final deliverables are for intended use only. Resale or redistribution without permission is not allowed.',
+  'We reserve the right to showcase completed work in our portfolio and social media unless agreed otherwise.',
+  'Final files will be delivered only after 100% payment clearance.',
+];
+
+function calculateStatementHeight(
+  data: ClientStatementPdfData,
+  contentW: number,
+  regularFontFile?: string
+): number {
+  const measureDoc = new PDFDocument({ margin: 0 });
+  const regularFont = regularFontFile ? 'App-Regular' : 'Helvetica';
+  if (regularFontFile) {
+    try { measureDoc.registerFont('App-Regular', regularFontFile); } catch {}
+  }
+
+  const marginY = 24;
+  let y = marginY + 28; // Card top inner padding
+  const logoH = 48.6;
+  const headerGap = 22; // Equal spacing above and below divider border
+  y += logoH + headerGap; // Logo bottom to divider line
+  y += headerGap; // Divider line to Billed To card
+
+  const hasContact = Boolean(data.contactPerson);
+  const hasGstin = Boolean(data.gstNumber);
+  const billedCardH = (hasContact || hasGstin) ? 72 : 64;
+  y += billedCardH + 20;
+
+  y += 22; // Table header
+  const items = data.projects && data.projects.length > 0 ? data.projects : [];
+  y += items.slice(0, 12).length * 32;
+  if (items.length === 0) y += 34;
+  y += 12 + 16;
+
+  let sY = y;
+  sY += 18; // Subtotal
+  if (data.taxAmount && data.taxAmount > 0) sY += 18;
+  if (data.discountAmount && data.discountAmount > 0) sY += 18;
+  sY += 18 + 6; // Paid Money
+  sY += 34; // Balance Due Card
+  sY += 3 + 12; // *T&C apply.
+  y = sY + 18;
+
+  // Section divider between Deliverables & Terms
+  y += 16;
+  y += 24;
+
+  // Terms and Conditions header
+  y += 24; // Title
+  y += 14; // Space to first term
+
+  // All Clauses
+  for (const term of allTerms) {
+    const termH = measureDoc.font(regularFont).fontSize(9.2).heightOfString(term, { width: contentW - 48, lineGap: 3.5 });
+    y += termH + 8.5;
+  }
+
+  // Contact cards
+  y += 22;
+  y += 48; // Card height
+
+  // Bottom footer & outer bottom margin
+  y += 22;
+  y += 24;
+  y += marginY;
+
+  return Math.ceil(y);
+}
+
 export function generateClientStatementPdfStream(data: ClientStatementPdfData, res: Response): void {
-  const doc = new PDFDocument({ margin: 0, size: 'A4', bufferPages: true });
-
-  // Stream PDF directly to HTTP response
-  doc.pipe(res);
-
-  const pageWidth = doc.page.width; // 595.28 for A4
-  const pageHeight = doc.page.height; // 841.89 for A4
-
   // Register TrueType fonts that support Unicode Indian Rupee symbol (₹) and match website invoice typography (Plus Jakarta Sans)
   const fontRegularCandidates = [
     path.resolve(process.cwd(), 'server/src/assets/fonts/PlusJakartaSans-Regular.ttf'),
@@ -77,6 +154,22 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   const regularFont = regularFontFile ? 'App-Regular' : 'Helvetica';
   const boldFont = boldFontFile ? 'App-Bold' : 'Helvetica-Bold';
 
+  const pageWidth = 595.28;
+  const marginX = 24;
+  const marginY = 24;
+  const cardW = pageWidth - marginX * 2;
+  const contentX = marginX + 28;
+  const contentW = cardW - 56; // 491.28 pt
+
+  // Dynamically calculate the single continuous page height to fit only the content length
+  const pageHeight = calculateStatementHeight(data, contentW, regularFontFile);
+  const cardH = pageHeight - marginY * 2;
+
+  const doc = new PDFDocument({ margin: 0, size: [pageWidth, pageHeight], bufferPages: true });
+
+  // Stream PDF directly to HTTP response
+  doc.pipe(res);
+
   if (regularFontFile) {
     try {
       doc.registerFont('App-Regular', regularFontFile);
@@ -92,7 +185,7 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
     }
   }
 
-  const formatINRVal = (val: any): string => {
+  const formatINRVal = (val: number | string | undefined): string => {
     const num = typeof val === 'number' ? val : Number(val) || 0;
     return `₹${num.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   };
@@ -101,16 +194,8 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   doc.rect(0, 0, pageWidth, pageHeight).fill('#080808');
 
   // Outer Container Card with sleek rounded border matching preview UI
-  const marginX = 24;
-  const marginY = 24;
-  const cardW = pageWidth - marginX * 2;
-  const cardH = pageHeight - marginY * 2;
-
   doc.roundedRect(marginX, marginY, cardW, cardH, 16).fill('#0B0B0B');
   doc.roundedRect(marginX, marginY, cardW, cardH, 16).strokeColor('#1F1F1F').lineWidth(1.2).stroke();
-
-  const contentX = marginX + 28;
-  const contentW = cardW - 56; // 491.28 pt
 
   // 2. Invoice Header
   let cursorY = marginY + 28;
@@ -135,74 +220,101 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
     doc.fillColor('#FFFFFF').fontSize(24).font(boldFont).text('spire');
   }
 
-  // Right: Document Title ("Invoice" in bright Orange #FF5A1F)
+  // Right: Document Title ("Invoice" with vibrant Orange Gradient, vertically centered with logo)
   const rightColW = 200;
   const rightColX = contentX + contentW - rightColW;
 
-  doc.fillColor('#FF5A1F').fontSize(38).font(boldFont).text('Invoice', rightColX, cursorY - 4, {
+  const invoiceY = cursorY - 1;
+  const invoiceGrad = doc.linearGradient(rightColX + 80, invoiceY, rightColX + rightColW, invoiceY);
+  invoiceGrad.stop(0, '#FF5A1F');
+  invoiceGrad.stop(1, '#FFA05C');
+
+  doc.fillColor(invoiceGrad).fontSize(38).font(boldFont).text('Invoice', rightColX, invoiceY, {
     align: 'right',
     width: rightColW,
   });
 
-  // Divider Line below header
-  cursorY += 56;
+  // Divider Line below header (Equal spacing between logo & border, and border & Billed To card)
+  const logoH = 48.6;
+  const headerGap = 22;
+  cursorY += logoH + headerGap;
   doc.strokeColor('#1E1E1E').lineWidth(1).moveTo(contentX, cursorY).lineTo(contentX + contentW, cursorY).stroke();
 
-  // 3. Billed To & Invoice Details Card
-  cursorY += 16;
-  const billedCardH = 66;
+  // 3. Billed To & Invoice Details Card (Same spacing as above divider)
+  cursorY += headerGap;
+  const hasContact = Boolean(data.contactPerson);
+  const hasGstin = Boolean(data.gstNumber);
+  const billedCardH = (hasContact || hasGstin) ? 72 : 64;
 
   doc.roundedRect(contentX, cursorY, contentW, billedCardH, 8).fill('#111111');
   doc.roundedRect(contentX, cursorY, contentW, billedCardH, 8).strokeColor('#202020').lineWidth(0.8).stroke();
 
-  // Left side: Billed To / Client
+  // Left side: Billed To/Client (Centered on Y-axis)
   const col1X = contentX + 18;
-  doc.fillColor('#666666').fontSize(7.5).font(boldFont).text('BILLED TO / CLIENT', col1X, cursorY + 12, { characterSpacing: 0.6 });
-  doc.fillColor('#FFFFFF').fontSize(11.5).font(boldFont).text(data.companyName || data.clientName, col1X, cursorY + 26, { width: 240, ellipsis: true });
-  if (data.contactPerson) {
-    doc.fillColor('#888888').fontSize(8.5).font(regularFont).text(`Attn: ${data.contactPerson}`, col1X, cursorY + 43, { width: 240, ellipsis: true });
+  if (hasContact) {
+    const leftStartY = cursorY + 13;
+    doc.fillColor('#666666').fontSize(7.5).font(boldFont).text('BILLED TO/CLIENT', col1X, leftStartY, { characterSpacing: 0.6 });
+    doc.fillColor('#FFFFFF').fontSize(11).font(boldFont).text(data.companyName || data.clientName, col1X, leftStartY + 14, { width: 240, ellipsis: true });
+    doc.fillColor('#888888').fontSize(8).font(regularFont).text(`Attn: ${data.contactPerson}`, col1X, leftStartY + 30, { width: 240, ellipsis: true });
+  } else {
+    const leftStartY = cursorY + Math.round((billedCardH - 26) / 2);
+    doc.fillColor('#666666').fontSize(7.5).font(boldFont).text('BILLED TO/CLIENT', col1X, leftStartY, { characterSpacing: 0.6 });
+    doc.fillColor('#FFFFFF').fontSize(11).font(boldFont).text(data.companyName || data.clientName, col1X, leftStartY + 14, { width: 240, ellipsis: true });
   }
 
-  // Right side: Invoice Info & Tax Details
+  // Right side: Metadata (Invoice No, Date, GSTIN shifted right and vertically centered)
   const col2W = 180;
   const col2X = contentX + contentW - col2W - 18;
+  const rightRowGap = 16;
+  const rightItemCount = hasGstin ? 3 : 2;
+  const rightTotalH = (rightItemCount - 1) * rightRowGap + 10;
+  let rowMetaY = cursorY + Math.round((billedCardH - rightTotalH) / 2);
+
+  // Invoice No
   const digits = data.clientCode?.match(/\d+/g);
   const defaultNum = digits && digits.length > 0
     ? (digits[digits.length - 1].length === 4 && digits[digits.length - 1].startsWith('0') ? digits[digits.length - 1].substring(1) : digits[digits.length - 1])
     : '001';
   const displayInvoiceNo = data.invoiceNumber || defaultNum;
 
-  // Invoice No
-  doc.fillColor('#777777').fontSize(8.5).font(regularFont).text('Invoice No:', col2X, cursorY + 14);
-  doc.fillColor('#FFFFFF').fontSize(9).font(boldFont).text(displayInvoiceNo, col2X, cursorY + 14, { align: 'right', width: col2W });
+  doc.fillColor('#777777').fontSize(8).font(regularFont).text('Invoice No:', col2X, rowMetaY);
+  doc.fillColor('#FFFFFF').fontSize(8.5).font(boldFont).text(displayInvoiceNo, col2X, rowMetaY, { align: 'right', width: col2W });
+  rowMetaY += rightRowGap;
 
   // Date
-  doc.fillColor('#777777').fontSize(8.5).font(regularFont).text('Date:', col2X, cursorY + 30);
-  doc.fillColor('#FFFFFF').fontSize(8.5).font(regularFont).text(data.statementDate, col2X, cursorY + 30, { align: 'right', width: col2W });
+  doc.fillColor('#777777').fontSize(8).font(regularFont).text('Invoice Date:', col2X, rowMetaY);
+  doc.fillColor('#FFFFFF').fontSize(8.5).font(regularFont).text(data.statementDate, col2X, rowMetaY, { align: 'right', width: col2W });
+  rowMetaY += rightRowGap;
 
-  // GSTIN (if applicable)
-  if (data.gstNumber) {
-    doc.fillColor('#777777').fontSize(8.5).font(regularFont).text('GSTIN:', col2X, cursorY + 45);
-    doc.fillColor('#FF5A1F').fontSize(8.5).font(boldFont).text(data.gstNumber, col2X, cursorY + 45, { align: 'right', width: col2W });
+  // GSTIN (if applicable with orange gradient)
+  if (hasGstin) {
+    const gstinGrad = doc.linearGradient(col2X + 50, rowMetaY, col2X + col2W, rowMetaY);
+    gstinGrad.stop(0, '#FF5A1F');
+    gstinGrad.stop(1, '#FFA05C');
+    doc.fillColor('#777777').fontSize(8).font(regularFont).text('GSTIN:', col2X, rowMetaY);
+    doc.fillColor(gstinGrad).fontSize(8.5).font(boldFont).text(data.gstNumber!, col2X, rowMetaY, { align: 'right', width: col2W });
   }
 
   // 4. Deliverables Table
   cursorY += billedCardH + 20;
 
-  const colW_No = 35;
-  const colW_Project = 210;
-  const colW_Price = 85;
-  const colW_Disc = 80;
-  const colW_Total = contentW - (colW_No + colW_Project + colW_Price + colW_Disc); // ~81.28 pt
+  const colX_No = contentX + 6;
+  const colX_Project = contentX + 28;
+  const colX_Price = contentX + 264;
+  const colX_Disc = contentX + 348;
+  const colX_Total = contentX + 432;
+  const colW_Block = 70;
+  const colW_Total = contentX + contentW - colX_Total;
 
-  // Table Header (NO., PROJECT, PRICE (₹), DISCOUNT (₹), TOTAL (₹))
-  const tableHeaderH = 20;
+  // Table Header (NO., PROJECT / DELIVERABLE, PRICE (₹), DISCOUNT (₹), TOTAL (₹))
+  const tableHeaderH = 22;
+  doc.roundedRect(contentX, cursorY, contentW, tableHeaderH, 4).fill('#111111');
   doc.fillColor('#71717A').fontSize(7.5).font(boldFont);
-  doc.text('NO.', contentX + 4, cursorY + 4, { width: colW_No - 4 });
-  doc.text('PROJECT', contentX + colW_No, cursorY + 4, { width: colW_Project - 4 });
-  doc.text('PRICE (₹)', contentX + colW_No + colW_Project, cursorY + 4, { width: colW_Price - 6, align: 'right' });
-  doc.text('DISCOUNT (₹)', contentX + colW_No + colW_Project + colW_Price, cursorY + 4, { width: colW_Disc - 6, align: 'right' });
-  doc.text('TOTAL (₹)', contentX + colW_No + colW_Project + colW_Price + colW_Disc, cursorY + 4, { width: colW_Total - 4, align: 'right' });
+  doc.text('NO.', colX_No, cursorY + 6, { width: 20 });
+  doc.text('PROJECT / DELIVERABLE', colX_Project, cursorY + 6, { width: colX_Price - colX_Project - 10 });
+  doc.text('PRICE (₹)', colX_Price, cursorY + 6, { width: colW_Block, align: 'left' });
+  doc.text('DISCOUNT (₹)', colX_Disc, cursorY + 6, { width: colW_Block, align: 'left' });
+  doc.text('TOTAL (₹)', colX_Total, cursorY + 6, { width: colW_Total, align: 'left' });
 
   cursorY += tableHeaderH;
 
@@ -223,39 +335,39 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
 
     // NO.
     doc.fillColor('#71717A').fontSize(8.5).font(regularFont);
-    doc.text(String(idx + 1), contentX + 4, cursorY + 3, { width: colW_No - 4 });
+    doc.text(String(idx + 1), colX_No, cursorY + 3, { width: 20 });
 
     // Project Name
     doc.font(boldFont).fillColor('#FFFFFF').fontSize(8.5);
-    doc.text(proj.projectName || proj.projectCode, contentX + colW_No, cursorY + 3, { width: colW_Project - 10, ellipsis: true });
+    doc.text(proj.projectName || proj.projectCode, colX_Project, cursorY + 3, { width: colX_Price - colX_Project - 10, ellipsis: true });
 
-    // Price (₹)
+    // Price (₹) - Right side position, left aligned values
     const pVal = proj.grossProjectValue ?? proj.projectValue;
     doc.fillColor('#FFFFFF').font(boldFont).fontSize(8.5);
-    doc.text(formatINRVal(pVal), contentX + colW_No + colW_Project, cursorY + 3, {
-      width: colW_Price - 6,
-      align: 'right',
+    doc.text(formatINRVal(pVal), colX_Price, cursorY + 3, {
+      width: colW_Block,
+      align: 'left',
     });
 
-    // Discount (₹)
+    // Discount (₹) - Right side position, left aligned values
     const pDiscount = proj.discountAmount || 0;
     doc.font(regularFont).fillColor('#D4D4D8').fontSize(8.5);
     doc.text(
       pDiscount > 0 ? `-${formatINRVal(pDiscount)}` : '₹0',
-      contentX + colW_No + colW_Project + colW_Price,
+      colX_Disc,
       cursorY + 3,
       {
-        width: colW_Disc - 6,
-        align: 'right',
+        width: colW_Block,
+        align: 'left',
       }
     );
 
-    // Total (₹)
-    const pTotal = proj.balance ?? Math.max(0, pVal - pDiscount);
-    doc.fillColor('#FFFFFF').font(boldFont).fontSize(8.5);
-    doc.text(formatINRVal(pTotal), contentX + colW_No + colW_Project + colW_Price + colW_Disc, cursorY + 3, {
-      width: colW_Total - 4,
-      align: 'right',
+    // Total (₹) - Left aligned parallel to and exact below invoice date
+    const pTotal = Math.max(0, pVal - pDiscount);
+    doc.fillColor('#D4D4D8').font(boldFont).fontSize(8.5);
+    doc.text(formatINRVal(pTotal), colX_Total, cursorY + 3, {
+      width: colW_Total,
+      align: 'left',
     });
 
     cursorY += rowH - 4;
@@ -270,22 +382,21 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   // Divider line below deliverables table (border-t before summary)
   cursorY += 12;
   doc.strokeColor('#1E1E1E').lineWidth(0.8).moveTo(contentX, cursorY).lineTo(contentX + contentW, cursorY).stroke();
-  cursorY += 18;
+  cursorY += 16;
 
-  // 5. Summary Totals Section (Right-aligned matching screenshot)
-  const summaryBlockTop = cursorY;
-  const summaryW = 250;
+  // 5. Summary Totals Section (Matching web preview modal: left-aligned labels, right-aligned values)
+  const summaryW = 240;
   const summaryRightX = contentX + contentW - summaryW;
-  const sumLabelW = 135;
-  const sumValW = summaryW - sumLabelW;
+  const sumLabelX = summaryRightX + 14; // Perfectly aligned with Balance Due: label inside card
+  const sumValW = summaryW - 14;
 
-  let sY = summaryBlockTop;
+  let sY = cursorY;
   const rowStep = 18;
 
   // Combined Subtotal
   const subtotalVal = data.subtotal ?? data.totalRevenue;
-  doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Combined Subtotal:', summaryRightX, sY, { width: sumLabelW });
-  doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(formatINRVal(subtotalVal), summaryRightX + sumLabelW, sY, {
+  doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Combined Subtotal:', sumLabelX, sY, { width: 140, align: 'left' });
+  doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(formatINRVal(subtotalVal), summaryRightX, sY, {
     width: sumValW,
     align: 'right',
   });
@@ -293,8 +404,8 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
 
   // GST (if applicable)
   if (data.taxAmount && data.taxAmount > 0) {
-    doc.font(regularFont).fontSize(8.5).fillColor('#888888').text(`GST (${data.taxPercent || 0}%):`, summaryRightX, sY, { width: sumLabelW });
-    doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(`+${formatINRVal(data.taxAmount)}`, summaryRightX + sumLabelW, sY, {
+    doc.font(regularFont).fontSize(8.5).fillColor('#888888').text(`GST (${data.taxPercent || 0}%):`, sumLabelX, sY, { width: 140, align: 'left' });
+    doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(`+${formatINRVal(data.taxAmount)}`, summaryRightX, sY, {
       width: sumValW,
       align: 'right',
     });
@@ -303,8 +414,8 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
 
   // Extra Special Discount (if applicable)
   if (data.discountAmount && data.discountAmount > 0) {
-    doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Extra Special Discount:', summaryRightX, sY, { width: sumLabelW });
-    doc.fillColor('#D4D4D8').font(boldFont).fontSize(9.5).text(`-${formatINRVal(data.discountAmount)}`, summaryRightX + sumLabelW, sY, {
+    doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Extra Special Discount:', sumLabelX, sY, { width: 140, align: 'left' });
+    doc.fillColor('#D4D4D8').font(boldFont).fontSize(9.5).text(`-${formatINRVal(data.discountAmount)}`, summaryRightX, sY, {
       width: sumValW,
       align: 'right',
     });
@@ -312,64 +423,105 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   }
 
   // Paid Money
-  doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Paid Money:', summaryRightX, sY, { width: sumLabelW });
-  doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(`-${formatINRVal(data.totalPaid)}`, summaryRightX + sumLabelW, sY, {
+  doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Paid Money:', sumLabelX, sY, { width: 140, align: 'left' });
+  doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(`-${formatINRVal(data.totalPaid)}`, summaryRightX, sY, {
     width: sumValW,
     align: 'right',
   });
   sY += rowStep + 6;
 
-  // Balance Due Highlighted Container (Dark Brown/Orange Glow)
+  // Balance Due Highlighted Container
   const balanceCardH = 34;
-  doc.roundedRect(summaryRightX - 8, sY - 4, summaryW + 8, balanceCardH, 6).fill('#1A0D07');
-  doc.roundedRect(summaryRightX - 8, sY - 4, summaryW + 8, balanceCardH, 6).strokeColor('#4D1E0B').lineWidth(1).stroke();
+  const balCardX = summaryRightX;
+  const balCardW = summaryW;
 
-  doc.font(boldFont).fontSize(10.5).fillColor('#FFFFFF').text('Balance Due:', summaryRightX + 4, sY + 6, { width: sumLabelW });
-  doc.fillColor('#FF5A1F').fontSize(13.5).font(boldFont).text(
+  const balBorderGrad = doc.linearGradient(balCardX, sY - 4, balCardX + balCardW, sY - 4);
+  balBorderGrad.stop(0, '#FF5A1F');
+  balBorderGrad.stop(1, '#FFA05C');
+
+  const balTextGrad = doc.linearGradient(balCardX + balCardW - 120, sY + 4, balCardX + balCardW - 14, sY + 4);
+  balTextGrad.stop(0, '#FF5A1F');
+  balTextGrad.stop(1, '#FFA05C');
+
+  doc.roundedRect(balCardX, sY - 4, balCardW, balanceCardH, 8).fill('#1F1008');
+  doc.roundedRect(balCardX, sY - 4, balCardW, balanceCardH, 8).strokeColor(balBorderGrad).lineWidth(1.1).stroke();
+
+  doc.font(boldFont).fontSize(9.5).fillColor('#FFFFFF').text('Balance Due:', sumLabelX, sY + 7, { width: 120, align: 'left' });
+  doc.fillColor(balTextGrad).fontSize(12.5).font(boldFont).text(
     formatINRVal(data.pendingBalance),
-    summaryRightX + sumLabelW,
-    sY + 4,
-    { width: sumValW, align: 'right' }
+    balCardX,
+    sY + 5,
+    { width: balCardW - 14, align: 'right' }
   );
 
-  // 6. Terms & Notes (Below summary with divider line above, exactly like preview)
-  const notesText = (data.notes && data.notes.trim()) || 'Includes all approved deliverables and production revisions.';
-  const notesY = Math.max(sY + balanceCardH + 22, summaryBlockTop + 96);
+  // *T&C apply. directly below Balance Due card
+  const tncY = sY + balanceCardH + 3;
+  doc.font(regularFont).fontSize(8).fillColor('#71717A').text('*T&C apply.', balCardX, tncY, {
+    width: balCardW - 2,
+    align: 'right',
+  });
 
-  // Divider above notes
-  doc.strokeColor('#1E1E1E').lineWidth(0.8).moveTo(contentX, notesY - 8).lineTo(contentX + contentW, notesY - 8).stroke();
+  cursorY = tncY + 18;
 
-  doc.fillColor('#A1A1AA').fontSize(8).font(boldFont).text('Terms & Notes: ', contentX, notesY + 4, { continued: true });
-  doc.fillColor('#71717A').fontSize(8).font(regularFont).text(notesText, { lineGap: 2 });
+  // 6. Section Divider between Deliverables & Terms
+  doc.strokeColor('#1E1E1E').lineWidth(0.8).moveTo(contentX, cursorY).lineTo(contentX + contentW, cursorY).stroke();
+  cursorY += 24;
 
-  // 7. Formal Sign-off and "Amount in Words" Footer (Clean bottom bar)
-  const footerY = pageHeight - marginY - 76;
+  // 7. Terms and Conditions Header (with radiant Orange Gradient)
+  const termsGrad = doc.linearGradient(contentX, cursorY, contentX + 280, cursorY);
+  termsGrad.stop(0, '#FF5A1F');
+  termsGrad.stop(1, '#FFA05C');
+  doc.fillColor(termsGrad).fontSize(18).font(boldFont).text('TERMS AND CONDITIONS', contentX, cursorY);
+  cursorY = doc.y + 14;
 
+  // All Clauses in ONE SINGLE COLUMN (Indented cleanly, never touches or overflows boundary)
+  const bulletX = contentX + 4;
+  const bulletW = 14;
+  const textX = contentX + 20;
+  const textW = contentW - 48; // Safe 48pt margin from card right boundary
+
+  allTerms.forEach((item) => {
+    const bulletGrad = doc.linearGradient(bulletX, cursorY, bulletX + 8, cursorY + 8);
+    bulletGrad.stop(0, '#FFA05C');
+    bulletGrad.stop(1, '#FF5A1F');
+    doc.fillColor(bulletGrad).fontSize(9.5).font(boldFont).text('•', bulletX, cursorY, { width: bulletW });
+    doc.fillColor('#D4D4D8').font(regularFont).fontSize(9.2).text(item, textX, cursorY, { width: textW, lineGap: 3.5 });
+    cursorY = doc.y + 8.5;
+  });
+
+  // 8. Contact Cards (2 Cards matching the invoice preview)
+  cursorY = Math.max(cursorY + 16, doc.y + 16);
+  const cCardY = cursorY;
+  const contactGap = 12;
+  const cCardW = (contentW - contactGap) / 2; // ~239.5pt
+  const cCardH = 48;
+  const iconSize = 28;
+  const iconY = cCardY + (cCardH - iconSize) / 2;
+
+  // Card 1: Phone / WhatsApp
+  const c1X = contentX;
+  doc.roundedRect(c1X, cCardY, cCardW, cCardH, 10).fill('#111111');
+  doc.roundedRect(c1X, cCardY, cCardW, cCardH, 10).strokeColor('#202020').lineWidth(0.8).stroke();
+  doc.image(PHONE_ICON_BUF, c1X + 12, iconY, { width: iconSize, height: iconSize });
+  doc.fillColor('#71717A').fontSize(7).font(boldFont).text('PHONE / WHATSAPP', c1X + 50, cCardY + 11, { characterSpacing: 0.4 });
+  doc.fillColor('#FFFFFF').fontSize(8.5).font(boldFont).text('+91 90812 50040', c1X + 50, cCardY + 24);
+
+  // Card 2: Email
+  const c2X = contentX + cCardW + contactGap;
+  doc.roundedRect(c2X, cCardY, cCardW, cCardH, 10).fill('#111111');
+  doc.roundedRect(c2X, cCardY, cCardW, cCardH, 10).strokeColor('#202020').lineWidth(0.8).stroke();
+  doc.image(EMAIL_ICON_BUF, c2X + 12, iconY, { width: iconSize, height: iconSize });
+  doc.fillColor('#71717A').fontSize(7).font(boldFont).text('EMAIL', c2X + 50, cCardY + 11, { characterSpacing: 0.4 });
+  doc.fillColor('#FFFFFF').fontSize(8.5).font(boldFont).text('aagspire@gmail.com', c2X + 50, cCardY + 24);
+
+  cursorY = cCardY + cCardH;
+
+  // 9. Bottom Footer (Single Continuous Page Footer)
+  const footerY = cursorY + 22;
   doc.strokeColor('#1E1E1E').lineWidth(0.8).moveTo(contentX, footerY).lineTo(contentX + contentW, footerY).stroke();
-
-  // Amount in Words
-  const amountForWords = data.pendingBalance > 0 ? data.pendingBalance : (data.totalRevenue || 0);
-  const words = numberToIndianWords(Math.round(amountForWords));
-  doc.fillColor('#71717A').fontSize(7).font(boldFont).text(
-    data.pendingBalance > 0 ? 'NET BALANCE DUE IN WORDS:' : 'TOTAL INVOICE AMOUNT IN WORDS:',
-    contentX,
-    footerY + 10
-  );
-  doc.fillColor('#E4E4E7').fontSize(7.5).font(boldFont).text(words, contentX, footerY + 21, { width: 280 });
-
-  // Authorized Signatory Block
-  const sigX = contentX + contentW - 140;
-  doc.strokeColor('#333333').lineWidth(0.75).moveTo(sigX, footerY + 36).lineTo(contentX + contentW, footerY + 36).stroke();
-  doc.fillColor('#FFFFFF').fontSize(7.5).font(boldFont).text('Authorized Signatory', sigX, footerY + 40, { align: 'center', width: 140 });
-  doc.fillColor('#71717A').fontSize(6.5).font(regularFont).text('Aagspire Creative Media Pvt. Ltd.', sigX, footerY + 50, { align: 'center', width: 140 });
-
-  // Final Bottom Disclaimer
-  doc.fillColor('#52525B').fontSize(6).font(regularFont).text(
-    'This is an official computer-generated invoice issued under the authority of Aagspire Creative Media. No physical signature required.',
-    contentX,
-    footerY + 62,
-    { align: 'center', width: contentW }
-  );
+  doc.fillColor('#71717A').fontSize(7.5).font(regularFont);
+  doc.text('Aagspire', contentX, footerY + 8);
+  doc.text('End of Agreement', contentX + contentW - 140, footerY + 8, { width: 140, align: 'right' });
 
   doc.end();
 }

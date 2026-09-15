@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -16,6 +16,30 @@ import { formatINR } from '../../utils/formatters';
 import { ClientReceiptModal } from '../../components/work/ClientReceiptModal';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
+import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
+
+const getProjectNetValue = (p: any): number => {
+  if (!p) return 0;
+  if (p.projectValue !== undefined && p.projectValue !== null) {
+    return typeof p.projectValue === 'object' && p.projectValue.$numberDecimal
+      ? Number(p.projectValue.$numberDecimal)
+      : Number(p.projectValue);
+  }
+  if (p.totalAmount !== undefined && p.totalAmount !== null) {
+    return Number(p.totalAmount);
+  }
+  return 0;
+};
+
+const getPaymentAmount = (pm: any): number => {
+  if (!pm) return 0;
+  if (pm.amount !== undefined && pm.amount !== null) {
+    return typeof pm.amount === 'object' && pm.amount.$numberDecimal
+      ? Number(pm.amount.$numberDecimal)
+      : Number(pm.amount);
+  }
+  return 0;
+};
 
 export const AdminClientDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +53,14 @@ export const AdminClientDetails: React.FC = () => {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
+
+  // Month-wise billing state
+  const now = useMemo(() => new Date(), []);
+  const currentMonthKey = useMemo(
+    () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    [now]
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
 
   // Dropdown states
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
@@ -124,16 +156,56 @@ export const AdminClientDetails: React.FC = () => {
     }
   };
 
+  const availableMonths: MonthOption[] = useMemo(() => {
+    const monthsSet = new Set<string>();
+    monthsSet.add(currentMonthKey);
+    for (let i = 1; i <= 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    if (client) {
+      (client.payments || []).forEach((p: any) => {
+        const d = new Date(p.paymentDate || p.createdAt);
+        if (!isNaN(d.getTime())) {
+          monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+      });
+      (client.projects || []).forEach((p: any) => {
+        const d = new Date(p.createdAt || p.startDate);
+        if (!isNaN(d.getTime())) {
+          monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+      });
+    }
+
+    return Array.from(monthsSet)
+      .sort((a, b) => b.localeCompare(a))
+      .map((key) => {
+        const [y, m] = key.split('-').map(Number);
+        const d = new Date(y, m - 1, 1);
+        return {
+          key,
+          label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
+        };
+      });
+  }, [client, currentMonthKey, now]);
+
   const handleQuickDownloadPdf = async () => {
     try {
       setDownloadingPdf(true);
-      const res = await api.get(`/admin/clients/${id}/pdf`, { responseType: 'blob' });
+      const params = new URLSearchParams();
+      if (selectedMonth && selectedMonth !== 'all') {
+        params.append('month', selectedMonth);
+      }
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await api.get(`/admin/clients/${id}/pdf${qs}`, { responseType: 'blob' });
       const blob = new Blob([res.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       const safeCode = (client.clientCode || 'Client').replace(/[^a-zA-Z0-9_-]/g, '_');
-      link.setAttribute('download', `Aagspire_Statement_${safeCode}.pdf`);
+      const monthTag = selectedMonth && selectedMonth !== 'all' ? `_${selectedMonth}` : '';
+      link.setAttribute('download', `Aagspire_Statement_${safeCode}${monthTag}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -147,10 +219,96 @@ export const AdminClientDetails: React.FC = () => {
     }
   };
 
-  const totalContractVal = Number(client?.totalContractValue || client?.financials?.totalBusinessValue || 0);
-  const totalPaidVal = Number(client?.totalPaid || client?.financials?.totalPaymentsReceived || 0);
-  const remainingDueVal = Math.max(0, totalContractVal - totalPaidVal);
-  const percentPaid = totalContractVal > 0 ? Math.min(100, Math.round((totalPaidVal / totalContractVal) * 100)) : 0;
+  // Month filtering bounds and label
+  const isAllMonths = !selectedMonth || selectedMonth === 'all';
+
+  const { startOfMonth, endOfMonth, selectedMonthLabel } = useMemo(() => {
+    if (isAllMonths) {
+      return { startOfMonth: null, endOfMonth: null, selectedMonthLabel: 'All Months' };
+    }
+    const [yr, mo] = selectedMonth.split('-').map(Number);
+    const start = new Date(yr, mo - 1, 1, 0, 0, 0, 0);
+    const end = new Date(yr, mo, 0, 23, 59, 59, 999);
+    const label = start.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    return { startOfMonth: start, endOfMonth: end, selectedMonthLabel: label };
+  }, [selectedMonth, isAllMonths]);
+
+  // Raw arrays from client
+  const allProjects = useMemo(() => client?.projects || [], [client]);
+  const allPayments = useMemo(() => client?.payments || [], [client]);
+
+  // All-time totals for payment limits and validation
+  const allTimeContractVal = useMemo(() => {
+    return (
+      Number(client?.totalContractValue || client?.financials?.totalBusinessValue || 0) ||
+      allProjects.reduce((sum: number, p: any) => sum + getProjectNetValue(p), 0)
+    );
+  }, [client, allProjects]);
+
+  const allTimePaidVal = useMemo(() => {
+    return (
+      Number(client?.totalPaid || client?.financials?.totalPaymentsReceived || 0) ||
+      allPayments.reduce((sum: number, pm: any) => sum + getPaymentAmount(pm), 0)
+    );
+  }, [client, allPayments]);
+
+  const allTimeRemainingDue = useMemo(() => {
+    return Math.max(0, allTimeContractVal - allTimePaidVal);
+  }, [allTimeContractVal, allTimePaidVal]);
+
+  // Projects belonging specifically to the selected month (or all if All Months)
+  const filteredProjects = useMemo(() => {
+    if (isAllMonths || !startOfMonth || !endOfMonth) return allProjects;
+    return allProjects.filter((p: any) => {
+      const d = new Date(p.startDate || p.createdAt || 0);
+      return !isNaN(d.getTime()) && d >= startOfMonth && d <= endOfMonth;
+    });
+  }, [allProjects, isAllMonths, startOfMonth, endOfMonth]);
+
+  // Payments received specifically within the selected month
+  const filteredPayments = useMemo(() => {
+    if (isAllMonths || !startOfMonth || !endOfMonth) return allPayments;
+    return allPayments.filter((pm: any) => {
+      const d = new Date(pm.paymentDate || pm.createdAt);
+      return !isNaN(d.getTime()) && d >= startOfMonth && d <= endOfMonth;
+    });
+  }, [allPayments, isAllMonths, startOfMonth, endOfMonth]);
+
+  // Payments received cumulatively up to the end of the selected month
+  const paymentsUpToMonth = useMemo(() => {
+    if (isAllMonths || !endOfMonth) return allPayments;
+    return allPayments.filter((pm: any) => {
+      const d = new Date(pm.paymentDate || pm.createdAt);
+      return !isNaN(d.getTime()) && d <= endOfMonth;
+    });
+  }, [allPayments, isAllMonths, endOfMonth]);
+
+  // Month-wise display metrics
+  const displayedContractVal = useMemo(() => {
+    if (isAllMonths) return allTimeContractVal;
+    return filteredProjects.reduce((sum: number, p: any) => sum + getProjectNetValue(p), 0);
+  }, [isAllMonths, allTimeContractVal, filteredProjects]);
+
+  const displayedReceivedVal = useMemo(() => {
+    if (isAllMonths) return allTimePaidVal;
+    return filteredPayments.reduce((sum: number, pm: any) => sum + getPaymentAmount(pm), 0);
+  }, [isAllMonths, allTimePaidVal, filteredPayments]);
+
+  const displayedCumulativePaid = useMemo(() => {
+    if (isAllMonths) return allTimePaidVal;
+    return paymentsUpToMonth.reduce((sum: number, pm: any) => sum + getPaymentAmount(pm), 0);
+  }, [isAllMonths, allTimePaidVal, paymentsUpToMonth]);
+
+  const displayedOutstandingVal = useMemo(() => {
+    if (isAllMonths) return allTimeRemainingDue;
+    return Math.max(0, displayedContractVal - displayedCumulativePaid);
+  }, [isAllMonths, allTimeRemainingDue, displayedContractVal, displayedCumulativePaid]);
+
+  const displayedPercentPaid = useMemo(() => {
+    if (displayedContractVal <= 0) return 0;
+    const paidPortion = isAllMonths ? allTimePaidVal : displayedCumulativePaid;
+    return Math.min(100, Math.round((paidPortion / displayedContractVal) * 100));
+  }, [displayedContractVal, isAllMonths, allTimePaidVal, displayedCumulativePaid]);
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,12 +318,12 @@ export const AdminClientDetails: React.FC = () => {
       return;
     }
 
-    if (totalContractVal > 0 && remainingDueVal <= 0) {
+    if (allTimeContractVal > 0 && allTimeRemainingDue <= 0) {
       toast.error('This client account is already fully paid. Cannot add further payments.');
       return;
     }
-    if (totalContractVal > 0 && entered > remainingDueVal) {
-      toast.error(`Cannot record more than remaining client balance (${formatINR(remainingDueVal)}).`);
+    if (allTimeContractVal > 0 && entered > allTimeRemainingDue) {
+      toast.error(`Cannot record more than remaining client balance (${formatINR(allTimeRemainingDue)}).`);
       return;
     }
 
@@ -173,7 +331,7 @@ export const AdminClientDetails: React.FC = () => {
       setSubmittingPayment(true);
       await api.post('/admin/payments', {
         clientId: id,
-        projectId: payProjectId || (projects.length === 1 ? projects[0]._id : undefined),
+        projectId: payProjectId || (filteredProjects.length === 1 ? filteredProjects[0]._id : (allProjects.length === 1 ? allProjects[0]._id : undefined)),
         amount: entered,
         paymentMethod: payMethod,
         transactionReference: payRef,
@@ -217,8 +375,8 @@ export const AdminClientDetails: React.FC = () => {
     return <div className="p-8 text-center text-white/50 font-mono">Client not found.</div>;
   }
 
-  const projects = client.projects || [];
-  const payments = client.payments || [];
+  const projects = filteredProjects;
+  const payments = filteredPayments;
 
   return (
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto pb-12">
@@ -252,6 +410,15 @@ export const AdminClientDetails: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Billing Month Selector */}
+          <MonthSelectDropdown
+            value={selectedMonth}
+            onChange={(val) => setSelectedMonth(val)}
+            availableMonths={availableMonths}
+            allMonthsLabel="All Months"
+            className="w-36 sm:w-44"
+          />
+
           {/* Combine Projects (Colorless) */}
           <button
             type="button"
@@ -271,7 +438,7 @@ export const AdminClientDetails: React.FC = () => {
               setPayNotes('');
               setPayDate(new Date().toISOString().slice(0, 10));
               setPayMethod('bank_transfer');
-              setPayProjectId(projects.length === 1 ? projects[0]._id : '');
+              setPayProjectId(filteredProjects.length === 1 ? filteredProjects[0]._id : (allProjects.length === 1 ? allProjects[0]._id : ''));
               setIsPayModalOpen(true);
             }}
             className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-[#0c0d12] border border-white/[0.08] hover:bg-white/5 text-white text-xs font-medium transition-all cursor-pointer"
@@ -313,6 +480,17 @@ export const AdminClientDetails: React.FC = () => {
                   <Pencil className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Edit Client</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsHeaderMenuOpen(false);
+                    setIsReceiptModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-white/80 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
+                >
+                  <ReceiptText className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Combine Projects</span>
+                </button>
                 <div className="my-1 border-t border-white/5" />
                 <button
                   type="button"
@@ -331,26 +509,72 @@ export const AdminClientDetails: React.FC = () => {
         </div>
       </div>
 
+      {/* Active Month Filter Notification Banner */}
+      {!isAllMonths && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
+            <span className="text-zinc-300">
+              Filtered for <span className="font-semibold text-white">{selectedMonthLabel}</span>
+            </span>
+            <span className="text-zinc-600 hidden sm:inline">&bull;</span>
+            <span className="text-zinc-400 hidden sm:inline">
+              {filteredProjects.length} {filteredProjects.length === 1 ? 'deal active' : 'deals active'} &bull; {filteredPayments.length} {filteredPayments.length === 1 ? 'payment' : 'payments'} in this month
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedMonth('all')}
+            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
+          >
+            Show All Months
+          </button>
+        </div>
+      )}
+
       {/* Financial Overview Card */}
       <div className="rounded-2xl bg-[#0c0d12] border border-white/[0.06] p-6 sm:p-7 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="space-y-1.5">
-            <span className="text-xs text-white/50 block font-normal">Total contract</span>
+            <span className="text-xs text-white/50 block font-normal">
+              {isAllMonths ? 'Total contract' : `Contract value (${selectedMonthLabel})`}
+            </span>
             <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              {formatINR(totalContractVal)}
+              {formatINR(displayedContractVal)}
             </p>
+            {!isAllMonths && (
+              <span className="text-[11px] text-zinc-500 block">
+                {filteredProjects.length} {filteredProjects.length === 1 ? 'deal active' : 'deals active'}
+              </span>
+            )}
           </div>
           <div className="space-y-1.5">
-            <span className="text-xs text-white/50 block font-normal">Received</span>
+            <span className="text-xs text-white/50 block font-normal">
+              {isAllMonths ? 'Received' : `Received in ${selectedMonthLabel}`}
+            </span>
             <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              {formatINR(totalPaidVal)}
+              {formatINR(displayedReceivedVal)}
             </p>
+            {!isAllMonths && (
+              <span className="text-[11px] text-zinc-500 block">
+                {displayedCumulativePaid !== displayedReceivedVal
+                  ? `${formatINR(displayedCumulativePaid)} cumulative to date`
+                  : `${filteredPayments.length} ${filteredPayments.length === 1 ? 'payment' : 'payments'}`}
+              </span>
+            )}
           </div>
           <div className="space-y-1.5">
-            <span className="text-xs text-white/50 block font-normal">Outstanding</span>
+            <span className="text-xs text-white/50 block font-normal">
+              {isAllMonths ? 'Outstanding' : 'Outstanding balance'}
+            </span>
             <p className="text-2xl sm:text-3xl font-bold text-[#FF5A1F] tracking-tight">
-              {formatINR(remainingDueVal)}
+              {formatINR(displayedOutstandingVal)}
             </p>
+            {!isAllMonths && (
+              <span className="text-[11px] text-zinc-500 block">
+                As of end of {selectedMonthLabel}
+              </span>
+            )}
           </div>
         </div>
 
@@ -359,22 +583,51 @@ export const AdminClientDetails: React.FC = () => {
           <div className="w-full bg-[#181920] h-2.5 rounded-full overflow-hidden">
             <div
               className="bg-[#FF5A1F] h-full rounded-full transition-all duration-500"
-              style={{ width: `${percentPaid}%` }}
+              style={{ width: `${displayedPercentPaid}%` }}
             />
           </div>
-          <p className="text-xs text-white/50 font-normal">
-            {percentPaid}% payment received
-          </p>
+          <div className="flex items-center justify-between text-xs text-white/50 font-normal">
+            <span>{displayedPercentPaid}% payment received</span>
+            {!isAllMonths && (
+              <div className="flex items-center gap-2">
+                <span className="text-zinc-400">
+                  Filtered by <span className="text-white font-medium">{selectedMonthLabel}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMonth('all')}
+                  className="text-[#FF5A1F] hover:underline cursor-pointer"
+                >
+                  (Reset to all)
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Projects Card */}
       <div className="rounded-2xl bg-[#0c0d12] border border-white/[0.06] p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-bold text-white tracking-tight">Projects</h2>
-          <span className="px-2.5 py-0.5 rounded-full bg-[#181920] border border-white/5 text-xs font-mono text-zinc-400">
-            {projects.length}
-          </span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-white tracking-tight">Projects</h2>
+            <span className="px-2.5 py-0.5 rounded-full bg-[#181920] border border-white/5 text-xs font-mono text-zinc-400">
+              {filteredProjects.length}
+            </span>
+            {!isAllMonths && (
+              <span className="text-xs text-zinc-500 hidden sm:inline">
+                in {selectedMonthLabel}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsReceiptModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-colors cursor-pointer"
+          >
+            <ReceiptText className="w-3.5 h-3.5 text-[#FF5A1F]" />
+            <span>Combine Projects ({filteredProjects.length})</span>
+          </button>
         </div>
 
         <div className="overflow-x-auto">
@@ -388,8 +641,8 @@ export const AdminClientDetails: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {projects.length > 0 ? (
-                projects.map((p: any) => (
+              {filteredProjects.length > 0 ? (
+                filteredProjects.map((p: any) => (
                   <tr key={p._id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3.5 px-3">
                       <span className="font-medium text-white text-sm block">
@@ -418,7 +671,20 @@ export const AdminClientDetails: React.FC = () => {
               ) : (
                 <tr>
                   <td colSpan={4} className="py-8 text-center text-white/40 font-mono">
-                    No projects found for this client.
+                    {isAllMonths ? (
+                      'No projects found for this client.'
+                    ) : (
+                      <div className="space-y-1.5 font-sans">
+                        <p className="text-zinc-400">No active projects found for {selectedMonthLabel}.</p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMonth('all')}
+                          className="text-xs text-[#FF5A1F] hover:underline font-medium cursor-pointer"
+                        >
+                          View all projects across all months &rarr;
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               )}
@@ -429,11 +695,30 @@ export const AdminClientDetails: React.FC = () => {
 
       {/* Payment History Card */}
       <div className="rounded-2xl bg-[#0c0d12] border border-white/[0.06] p-6 space-y-5">
-        <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">Payment history</h2>
-          <p className="text-xs text-white/50 font-normal mt-0.5">
-            {payments.length} {payments.length === 1 ? 'payment' : 'payments'} &bull; Total received {formatINR(totalPaidVal)}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-bold text-white tracking-tight">Payment history</h2>
+            <p className="text-xs text-white/50 font-normal mt-0.5">
+              {isAllMonths ? (
+                <>
+                  {filteredPayments.length} {filteredPayments.length === 1 ? 'payment' : 'payments'} &bull; Total received {formatINR(displayedReceivedVal)}
+                </>
+              ) : (
+                <>
+                  {filteredPayments.length} {filteredPayments.length === 1 ? 'payment' : 'payments'} in {selectedMonthLabel} &bull; Received {formatINR(displayedReceivedVal)}
+                </>
+              )}
+            </p>
+          </div>
+          {!isAllMonths && (
+            <button
+              type="button"
+              onClick={() => setSelectedMonth('all')}
+              className="text-xs text-[#FF5A1F] hover:underline self-start sm:self-auto cursor-pointer"
+            >
+              Show all payment history
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -450,8 +735,8 @@ export const AdminClientDetails: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {payments.length > 0 ? (
-                payments.map((p: any) => {
+              {filteredPayments.length > 0 ? (
+                filteredPayments.map((p: any) => {
                   const formattedDate = new Date(p.paymentDate || p.createdAt).toLocaleDateString('en-GB', {
                     day: '2-digit',
                     month: 'short',
@@ -530,7 +815,20 @@ export const AdminClientDetails: React.FC = () => {
               ) : (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-white/40 font-mono">
-                    No client payments recorded yet. Click &quot;Record Payment&quot; to add one.
+                    {isAllMonths ? (
+                      'No client payments recorded yet. Click "Record Payment" to add one.'
+                    ) : (
+                      <div className="space-y-1.5 font-sans">
+                        <p className="text-zinc-400">No client payments recorded in {selectedMonthLabel}.</p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMonth('all')}
+                          className="text-xs text-[#FF5A1F] hover:underline font-medium cursor-pointer"
+                        >
+                          View all payment history &rarr;
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               )}
@@ -659,17 +957,17 @@ export const AdminClientDetails: React.FC = () => {
             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 space-y-1.5">
               <div className="flex justify-between items-center text-[11px]">
                 <span className="text-white/50">TOTAL:</span>
-                <span className="font-mono font-semibold text-white">{formatINR(totalContractVal)}</span>
+                <span className="font-mono font-semibold text-white">{formatINR(allTimeContractVal)}</span>
               </div>
               <div className="flex justify-between items-center text-[11px]">
                 <span className="text-white/50">PAID:</span>
-                <span className="font-mono text-white font-semibold">{formatINR(totalPaidVal)}</span>
+                <span className="font-mono text-white font-semibold">{formatINR(allTimePaidVal)}</span>
               </div>
               <div className="flex justify-between items-center text-[11px] pt-1 border-t border-white/5">
                 <span className="text-white/70 font-medium">PENDING:</span>
-                <span className="font-mono font-bold text-[#FF5A1F]">{formatINR(remainingDueVal)}</span>
+                <span className="font-mono font-bold text-[#FF5A1F]">{formatINR(allTimeRemainingDue)}</span>
               </div>
-              {totalContractVal > 0 && remainingDueVal <= 0 && (
+              {allTimeContractVal > 0 && allTimeRemainingDue <= 0 && (
                 <div className="text-[11px] text-emerald-400 font-medium pt-1">
                   ✓ This client account is fully settled.
                 </div>
@@ -680,13 +978,13 @@ export const AdminClientDetails: React.FC = () => {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="text-white/60 block">Amount (₹) *</label>
-                  {remainingDueVal > 0 && (
+                  {allTimeRemainingDue > 0 && (
                     <button
                       type="button"
-                      onClick={() => setPayAmount(String(remainingDueVal))}
+                      onClick={() => setPayAmount(String(allTimeRemainingDue))}
                       className="text-[10px] text-[#FF5A1F] hover:underline font-mono"
                     >
-                      Fill Max ({formatINR(remainingDueVal)})
+                      Fill Max ({formatINR(allTimeRemainingDue)})
                     </button>
                   )}
                 </div>
@@ -694,26 +992,26 @@ export const AdminClientDetails: React.FC = () => {
                   type="number"
                   required
                   min="1"
-                  max={remainingDueVal > 0 ? remainingDueVal : undefined}
+                  max={allTimeRemainingDue > 0 ? allTimeRemainingDue : undefined}
                   step="any"
-                  disabled={totalContractVal > 0 && remainingDueVal <= 0}
-                  placeholder={remainingDueVal > 0 ? `Max: ${remainingDueVal}` : 'Enter amount'}
+                  disabled={allTimeContractVal > 0 && allTimeRemainingDue <= 0}
+                  placeholder={allTimeRemainingDue > 0 ? `Max: ${allTimeRemainingDue}` : 'Enter amount'}
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
                   className={`w-full px-3 py-2 bg-white/5 border rounded-xl text-white font-mono focus:outline-none ${
-                    totalContractVal > 0 && Number(payAmount) > remainingDueVal
+                    allTimeContractVal > 0 && Number(payAmount) > allTimeRemainingDue
                       ? 'border-red-500 focus:border-red-500'
                       : 'border-white/10 focus:border-[#FF5A1F]'
                   }`}
                 />
-                {totalContractVal > 0 && Number(payAmount) > remainingDueVal && (
+                {allTimeContractVal > 0 && Number(payAmount) > allTimeRemainingDue && (
                   <p className="text-[11px] text-red-400 mt-1 font-medium">
-                    Payment cannot exceed remaining client balance of {formatINR(remainingDueVal)}.
+                    Payment cannot exceed remaining client balance of {formatINR(allTimeRemainingDue)}.
                   </p>
                 )}
               </div>
 
-              {projects.length > 0 && (
+              {allProjects.length > 0 && (
                 <div>
                   <label className="text-white/60 block mb-1">Attributed Deliverable / Project (Optional)</label>
                   <CustomSelect
@@ -721,7 +1019,7 @@ export const AdminClientDetails: React.FC = () => {
                     onChange={(val) => setPayProjectId(val)}
                     options={[
                       { value: '', label: 'General / Entire Client Account' },
-                      ...projects.map((p: any) => ({
+                      ...allProjects.map((p: any) => ({
                         value: p._id,
                         label: `${p.projectName || p.title} (${formatINR(p.projectValue ?? p.totalAmount)})`,
                       })),
@@ -740,25 +1038,26 @@ export const AdminClientDetails: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-white/60 block mb-1">Payment Method</label>
+                  <label className="text-white/60 block mb-1">Method</label>
                   <CustomSelect
                     value={payMethod}
                     onChange={(val) => setPayMethod(val)}
                     options={[
                       { value: 'bank_transfer', label: 'Bank Transfer' },
                       { value: 'upi', label: 'UPI' },
-                      { value: 'cheque', label: 'Cheque' },
                       { value: 'cash', label: 'Cash' },
+                      { value: 'cheque', label: 'Cheque' },
+                      { value: 'other', label: 'Other' },
                     ]}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-white/60 block mb-1">Transaction Ref / UTR</label>
+                <label className="text-white/60 block mb-1">Reference (UTR / Txn ID)</label>
                 <input
                   type="text"
-                  placeholder="e.g. UTR202609081234"
+                  placeholder="Optional reference"
                   value={payRef}
                   onChange={(e) => setPayRef(e.target.value)}
                   className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#FF5A1F] focus:outline-none"
@@ -788,8 +1087,8 @@ export const AdminClientDetails: React.FC = () => {
                   type="submit"
                   disabled={
                     submittingPayment ||
-                    (totalContractVal > 0 && remainingDueVal <= 0) ||
-                    (totalContractVal > 0 && Number(payAmount) > remainingDueVal) ||
+                    (allTimeContractVal > 0 && allTimeRemainingDue <= 0) ||
+                    (allTimeContractVal > 0 && Number(payAmount) > allTimeRemainingDue) ||
                     Number(payAmount) <= 0 ||
                     !payAmount
                   }
@@ -804,12 +1103,16 @@ export const AdminClientDetails: React.FC = () => {
       )}
 
       {/* Combine Projects & Receipt Modal */}
-      <ClientReceiptModal
-        isOpen={isReceiptModalOpen}
-        onClose={() => setIsReceiptModalOpen(false)}
-        client={client}
-        projects={projects}
-      />
+      {isReceiptModalOpen && (
+        <ClientReceiptModal
+          isOpen={isReceiptModalOpen}
+          onClose={() => setIsReceiptModalOpen(false)}
+          client={client}
+          projects={allProjects}
+          onRefreshClient={fetchClient}
+          initialMonth={selectedMonth}
+        />
+      )}
     </div>
   );
 };

@@ -150,11 +150,7 @@ export const EmployeeDashboard: React.FC = () => {
               {formatINR(totalCommission)}
             </span>
           </div>
-          <span className="text-xs text-zinc-500 block mt-1">
-            {totalEarned > 0 && totalEarned !== totalCommission
-              ? `Earned: ${formatINR(totalEarned)}`
-              : 'Total commission'}
-          </span>
+          <span className="text-xs text-zinc-500 block mt-1">Total commission</span>
         </div>
 
         {/* Card 2: PAID */}
@@ -191,11 +187,7 @@ export const EmployeeDashboard: React.FC = () => {
               {formatINR(remainingBalance)}
             </span>
           </div>
-          <span className="text-xs text-zinc-500 block mt-1">
-            {netPayable > 0
-              ? `Ready to settle: ${formatINR(netPayable)}`
-              : 'Pending balance'}
-          </span>
+          <span className="text-xs text-zinc-500 block mt-1">Pending balance</span>
         </div>
       </div>
 
