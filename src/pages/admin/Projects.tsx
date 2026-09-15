@@ -86,6 +86,32 @@ export const AdminProjects: React.FC = () => {
     }
   };
 
+  const handleStatusChange = async (projectId: string, newStatus: string) => {
+    // Optimistic UI update
+    const nowIso = new Date().toISOString();
+    const deliveredAtVal = newStatus === 'delivered' ? nowIso : undefined;
+    setProjects((prev) =>
+      prev.map((p) =>
+        p._id === projectId
+          ? {
+              ...p,
+              status: newStatus,
+              updatedAt: nowIso,
+              deliveredAt: deliveredAtVal,
+            }
+          : p
+      )
+    );
+    try {
+      await api.patch(`/admin/projects/${projectId}`, { status: newStatus });
+      toast.success(`Project status updated to ${newStatus.replace('_', ' ')}`);
+      fetchAll();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update project status');
+      fetchAll();
+    }
+  };
+
   const filtered = projects.filter((p) => {
     const term = search.toLowerCase();
     const title = p.projectName || p.title || '';
@@ -102,6 +128,23 @@ export const AdminProjects: React.FC = () => {
       employeeMatch;
     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
     return matchesSearch && matchesStatus;
+  });
+
+  // Delivered projects are placed at the end of the list;
+  // among delivered projects, newly delivered appears first, and the first delivered project stays at the very last end ("last ma last")
+  const sortedProjects = [...filtered].sort((a, b) => {
+    const aDelivered = (a.status || '').toLowerCase() === 'delivered';
+    const bDelivered = (b.status || '').toLowerCase() === 'delivered';
+    if (aDelivered && !bDelivered) return 1;
+    if (!aDelivered && bDelivered) return -1;
+    if (aDelivered && bDelivered) {
+      const timeA = new Date(a.deliveredAt || a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.deliveredAt || b.updatedAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    }
+    const timeA = new Date(a.createdAt || 0).getTime();
+    const timeB = new Date(b.createdAt || 0).getTime();
+    return timeB - timeA;
   });
 
   return (
@@ -172,8 +215,8 @@ export const AdminProjects: React.FC = () => {
                     Loading projects...
                   </td>
                 </tr>
-              ) : filtered.length > 0 ? (
-                filtered.map((prj) => {
+              ) : sortedProjects.length > 0 ? (
+                sortedProjects.map((prj) => {
                   const clientName = prj.clientId?.companyName || prj.clientId?.name || 'Jyotnar Natural Foods';
 
                   return (
@@ -205,7 +248,21 @@ export const AdminProjects: React.FC = () => {
                         )}
                       </td>
                       <td className="py-4 px-6">
-                        <StatusBadge status={prj.status || 'in_progress'} type="project" />
+                        <div className="w-36">
+                          <CustomSelect
+                            value={prj.status || 'in_progress'}
+                            onChange={(val) => handleStatusChange(prj._id, val)}
+                            options={[
+                              { value: 'confirmed', label: 'Confirmed' },
+                              { value: 'in_progress', label: 'In Progress' },
+                              { value: 'review', label: 'In Review' },
+                              { value: 'completed', label: 'Completed' },
+                              { value: 'delivered', label: 'Delivered' },
+                              { value: 'signed', label: 'Signed' },
+                              { value: 'cancelled', label: 'Cancelled' },
+                            ]}
+                          />
+                        </div>
                       </td>
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-2 relative">
@@ -256,7 +313,7 @@ export const AdminProjects: React.FC = () => {
 
       {/* Fixed-position Dropdown Action Menu (rendered outside table to avoid overflow clipping) */}
       {activeMenuId && (() => {
-        const activePrj = filtered.find((p) => p._id === activeMenuId);
+        const activePrj = sortedProjects.find((p) => p._id === activeMenuId);
         if (!activePrj) return null;
         return (
           <div
@@ -284,7 +341,7 @@ export const AdminProjects: React.FC = () => {
 
       {/* Row count indicator matching reference */}
       <div className="text-xs text-zinc-500 px-1">
-        {filtered.length} {filtered.length === 1 ? 'project' : 'projects'}
+        {sortedProjects.length} {sortedProjects.length === 1 ? 'project' : 'projects'}
       </div>
 
       {/* Reusable Project Modal for Creating & Editing */}

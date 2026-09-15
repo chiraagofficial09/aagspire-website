@@ -20,6 +20,7 @@ export interface IProject extends Document {
   startDate?: Date;
   deadline?: Date;
   status: ProjectStatus;
+  deliveredAt?: Date;
   assignedEmployees: Types.ObjectId[];
   createdBy: Types.ObjectId;
   createdAt: Date;
@@ -37,6 +38,7 @@ const ProjectSchema = new Schema<IProject>(
     discountAmount: { type: Schema.Types.Decimal128, default: 0 },
     startDate: { type: Date },
     deadline: { type: Date },
+    deliveredAt: { type: Date },
     status: {
       type: String,
       enum: ['lead', 'confirmed', 'in_progress', 'review', 'completed', 'delivered', 'cancelled'],

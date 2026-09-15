@@ -159,6 +159,23 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
       };
     });
 
+    // Delivered projects should always show at the end of the list,
+    // but within delivered projects, the newly delivered appears first, and the first delivered project stays at the very last end ("last ma last")
+    enriched.sort((a, b) => {
+      const aDelivered = (a.status || '').toLowerCase() === 'delivered';
+      const bDelivered = (b.status || '').toLowerCase() === 'delivered';
+      if (aDelivered && !bDelivered) return 1;
+      if (!aDelivered && bDelivered) return -1;
+      if (aDelivered && bDelivered) {
+        const timeA = new Date(a.deliveredAt || a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.deliveredAt || b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      }
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+
     res.json({ success: true, count: enriched.length, projects: enriched, data: enriched });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -494,7 +511,13 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
     const newDeadline = req.body.deadline || req.body.endDate;
     if (newDeadline !== undefined) project.deadline = newDeadline ? new Date(newDeadline) : undefined;
     if (req.body.status) {
-      project.status = req.body.status === 'signed' ? 'confirmed' : req.body.status;
+      const newStatus = req.body.status === 'signed' ? 'confirmed' : req.body.status;
+      if (newStatus === 'delivered' && project.status !== 'delivered') {
+        project.deliveredAt = new Date();
+      } else if (newStatus !== 'delivered') {
+        project.deliveredAt = undefined;
+      }
+      project.status = newStatus;
     }
     if (req.body.clientId) {
       project.clientId = new Types.ObjectId(req.body.clientId);
@@ -736,6 +759,11 @@ export async function updateProjectStatusByEmployee(req: AuthenticatedRequest, r
 
     const oldStatus = project.status;
     project.status = status;
+    if (status === 'delivered' && oldStatus !== 'delivered') {
+      project.deliveredAt = new Date();
+    } else if (status !== 'delivered') {
+      project.deliveredAt = undefined;
+    }
     await project.save();
 
     await logAudit({

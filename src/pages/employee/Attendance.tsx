@@ -42,8 +42,8 @@ export const EmployeeAttendance: React.FC = () => {
           <p className="text-2xl font-bold font-mono text-white mt-1">{totalHours.toFixed(1)} hrs</p>
         </div>
         <div className="bg-[#08090d] border border-white/[0.06] p-5 rounded-2xl">
-          <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block">Sessions Recorded</span>
-          <p className="text-2xl font-bold font-mono text-white mt-1">{history.length} sessions</p>
+          <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block">Days Attended</span>
+          <p className="text-2xl font-bold font-mono text-white mt-1">{history.length} Days</p>
         </div>
       </div>
 
@@ -130,7 +130,7 @@ export const EmployeeAttendance: React.FC = () => {
       </div>
 
       <div className="text-xs text-zinc-500 px-1">
-        {history.length} {history.length === 1 ? 'session' : 'sessions'}
+        {history.length} {history.length === 1 ? 'Day' : 'Days'}
       </div>
     </div>
   );

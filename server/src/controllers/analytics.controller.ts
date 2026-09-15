@@ -73,8 +73,25 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       return;
     }
 
-    // 1. Personal Earnings Breakdown
-    const earnings = await calculateEmployeeEarnings(employeeId);
+    const monthParam = req.query.month as string | undefined;
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const targetMonth = monthParam === 'all' ? 'all' : (monthParam || currentMonthKey);
+
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+    if (targetMonth && targetMonth !== 'all') {
+      const [yearStr, monthStr] = targetMonth.split('-');
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      if (!isNaN(year) && !isNaN(month)) {
+        startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
+        endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      }
+    }
+
+    // 1. Personal Earnings Breakdown (month-filtered)
+    const earnings = await calculateEmployeeEarnings(employeeId, targetMonth);
 
     // 2. Assigned Projects (support both Project.assignedEmployees and ProjectEmployee)
     const peRecords = await ProjectEmployee.find({ employeeId });
@@ -90,7 +107,16 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       .populate('assignedEmployees', 'fullName employeeCode designation')
       .sort({ createdAt: -1 });
 
-    const enrichedAssignedProjects = assignedProjectsDocs.map((p) => {
+    // Filter projects if specific month is requested
+    const filteredProjectsDocs = assignedProjectsDocs.filter((p) => {
+      if (!startDate || !endDate) return true;
+      const inEarnings = earnings.projects?.some((ep) => ep.projectId?.toString() === p._id.toString());
+      if (inEarnings) return true;
+      const pDate = new Date(p.startDate || p.createdAt);
+      return pDate >= startDate && pDate <= endDate;
+    });
+
+    const enrichedAssignedProjects = filteredProjectsDocs.map((p) => {
       const pe = peRecords.find((r) => r.projectId?.toString() === p._id.toString());
       const share = pe ? (pe.sharePercent ?? (pe as any).sharePercentage ?? 100) : (p.assignedEmployees?.length ? Math.round(100 / p.assignedEmployees.length) : 100);
       const prjEarning = earnings.projects?.find(
@@ -145,6 +171,22 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       };
     });
 
+    // Delivered projects appear at the end (newly delivered first, first delivered at the very last end)
+    enrichedAssignedProjects.sort((a, b) => {
+      const aDelivered = (a.status || '').toLowerCase() === 'delivered';
+      const bDelivered = (b.status || '').toLowerCase() === 'delivered';
+      if (aDelivered && !bDelivered) return 1;
+      if (!aDelivered && bDelivered) return -1;
+      if (aDelivered && bDelivered) {
+        const timeA = new Date(a.deliveredAt || a.updatedAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.deliveredAt || b.updatedAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      }
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+
     const activeProjects = enrichedAssignedProjects.filter((p) =>
       ['confirmed', 'in_progress', 'review'].includes(p.status)
     );
@@ -152,12 +194,16 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       ['completed', 'delivered'].includes(p.status)
     );
 
-    // 3. Approved Hours & Logged Hours from WorkLog
-    const approvedLogs = await WorkLog.find({ employeeId, status: 'approved' });
+    // 3. Approved Hours & Logged Hours from WorkLog (filtered by month)
+    const workLogQuery: any = { employeeId };
+    if (startDate && endDate) {
+      workLogQuery.workDate = { $gte: startDate, $lte: endDate };
+    }
+    const approvedLogs = await WorkLog.find({ ...workLogQuery, status: 'approved' });
     const approvedMinutes = approvedLogs.reduce((sum, log) => sum + (log.totalMinutes || 0), 0);
     const approvedHours = round2(approvedMinutes / 60);
 
-    const allLogs = await WorkLog.find({ employeeId });
+    const allLogs = await WorkLog.find(workLogQuery);
     const totalMinutes = allLogs.reduce((sum, log) => sum + (log.totalMinutes || 0), 0);
     const totalHours = round2(totalMinutes / 60);
 
@@ -166,8 +212,8 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
     today.setHours(0, 0, 0, 0);
     const todayAttendance = await Attendance.findOne({ employeeId, date: today });
 
-    // 5. Recent Work Logs
-    const recentWorkLogs = await WorkLog.find({ employeeId })
+    // 5. Recent Work Logs (filtered by month)
+    const recentWorkLogs = await WorkLog.find(workLogQuery)
       .populate('projectId', 'projectName projectCode')
       .sort({ workDate: -1, createdAt: -1 })
       .limit(5);
@@ -183,8 +229,12 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       };
     });
 
-    // 6. Recent Receipts
-    const recentReceipts = await Receipt.find({ employeeId })
+    // 6. Recent Receipts (filtered by month)
+    const receiptQuery: any = { employeeId };
+    if (startDate && endDate) {
+      receiptQuery.issuedAt = { $gte: startDate, $lte: endDate };
+    }
+    const recentReceipts = await Receipt.find(receiptQuery)
       .sort({ issuedAt: -1 })
       .limit(5);
 
@@ -214,6 +264,7 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       assignedProjects: enrichedAssignedProjects,
       recentWorkLogs: formattedWorkLogs,
       recentReceipts,
+      selectedMonth: targetMonth,
     };
 
     res.json({

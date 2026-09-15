@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useNotifications, NotificationItem } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 
 function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -179,6 +180,8 @@ export const NotificationBell: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'payment' | 'attendance' | 'work_log'>('all');
   const popoverRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const {
     notifications,
@@ -187,6 +190,13 @@ export const NotificationBell: React.FC = () => {
     markAllAsRead,
     clearRead,
   } = useNotifications();
+
+  // Reset active filter if non-admin somehow has payment selected
+  useEffect(() => {
+    if (!isAdmin && activeFilter === 'payment') {
+      setActiveFilter('all');
+    }
+  }, [isAdmin, activeFilter]);
 
   // Close on outside click
   useEffect(() => {
@@ -217,13 +227,29 @@ export const NotificationBell: React.FC = () => {
 
   // Filtered notifications list
   const filteredNotifications = useMemo(() => {
-    if (activeFilter === 'all') return notifications;
+    let list = notifications;
 
-    return notifications.filter((n) => {
+    // For employee: completely exclude payment and settlement notifications (admin-only)
+    if (!isAdmin) {
+      list = list.filter((n) => {
+        const config = getNotificationIcon(n);
+        return (
+          config.category !== 'payment' &&
+          n.type !== 'payment' &&
+          n.type !== 'settlement' &&
+          !n.title?.toLowerCase().includes('payment') &&
+          !n.message?.toLowerCase().includes('payout of')
+        );
+      });
+    }
+
+    if (activeFilter === 'all') return list;
+
+    return list.filter((n) => {
       const config = getNotificationIcon(n);
       return config.category === activeFilter;
     });
-  }, [notifications, activeFilter]);
+  }, [notifications, activeFilter, isAdmin]);
 
   const hasReadNotifications = notifications.some((n) => n.isRead);
 
@@ -273,7 +299,7 @@ export const NotificationBell: React.FC = () => {
           <div className="px-3.5 py-2 border-b border-white/[0.04] flex items-center gap-1.5 bg-white/[0.01]">
             {[
               { id: 'all', label: 'All' },
-              { id: 'payment', label: 'Payments' },
+              ...(isAdmin ? [{ id: 'payment', label: 'Payments' }] : []),
               { id: 'attendance', label: 'Check In/Out' },
               { id: 'work_log', label: 'Work' },
             ].map((tab) => {

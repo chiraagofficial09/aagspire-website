@@ -76,9 +76,22 @@ export async function calculateProjectEarningsForEmployee(
 }
 
 export async function calculateEmployeeEarnings(
-  employeeId: string | Types.ObjectId
+  employeeId: string | Types.ObjectId,
+  targetMonth?: string
 ): Promise<EmployeeEarningsSummary> {
   const rawId = new Types.ObjectId(employeeId.toString());
+
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+  if (targetMonth && targetMonth !== 'all') {
+    const [yearStr, monthStr] = targetMonth.split('-');
+    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr, 10);
+    if (!isNaN(year) && !isNaN(month)) {
+      startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
+      endDate = new Date(year, month, 0, 23, 59, 59, 999);
+    }
+  }
 
   // Resolve both Employee._id and associated User._id to guarantee complete coverage
   const employeeDoc = (await Employee.findById(rawId)) || (await Employee.findOne({ userId: rawId }));
@@ -144,6 +157,38 @@ export async function calculateEmployeeEarnings(
     if (!project) continue;
 
     const projId = project._id;
+
+    // Filter project by month if specified
+    if (startDate && endDate) {
+      const pDate = new Date(project.startDate || project.createdAt);
+      const isProjectInMonth = pDate >= startDate && pDate <= endDate;
+
+      const paymentsInMonth = await ClientPayment.countDocuments({
+        projectId: projId,
+        paymentDate: { $gte: startDate, $lte: endDate },
+      });
+
+      const paidItemsInMonth = await SettlementItem.find({
+        employeeId: { $in: allEmpIds },
+        projectId: projId,
+      });
+      let hasSettlementInMonth = false;
+      for (const item of paidItemsInMonth) {
+        const s = await Settlement.findById(item.settlementId);
+        if (s && s.status === 'paid') {
+          const sDate = new Date(s.paymentDate || s.createdAt);
+          if (sDate >= startDate && sDate <= endDate) {
+            hasSettlementInMonth = true;
+            break;
+          }
+        }
+      }
+
+      if (!isProjectInMonth && paymentsInMonth === 0 && !hasSettlementInMonth) {
+        continue;
+      }
+    }
+
     const grossValue = fromDecimal(project.projectValue);
     const discountPercent = Number(project.discountPercent) || 0;
     const discountAmount = project.discountAmount
@@ -192,7 +237,14 @@ export async function calculateEmployeeEarnings(
     for (const item of paidItems) {
       const settlement = await Settlement.findById(item.settlementId);
       if (settlement && settlement.status === 'paid') {
-        paidForProject += fromDecimal(item.earnedAmount);
+        if (startDate && endDate) {
+          const sDate = new Date(settlement.paymentDate || settlement.createdAt);
+          if (sDate >= startDate && sDate <= endDate) {
+            paidForProject += fromDecimal(item.earnedAmount);
+          }
+        } else {
+          paidForProject += fromDecimal(item.earnedAmount);
+        }
       }
     }
     paidForProject = round2(paidForProject);
@@ -236,11 +288,18 @@ export async function calculateEmployeeEarnings(
     });
   }
 
-  // 2. Compute total paid across all settlements for this employee
-  const paidSettlements = await Settlement.find({
+  // 2. Compute total paid across all settlements for this employee (month filtered if specified)
+  const settlementFilter: any = {
     employeeId: { $in: allEmpIds },
     status: 'paid',
-  });
+  };
+  if (startDate && endDate) {
+    settlementFilter.$or = [
+      { paymentDate: { $gte: startDate, $lte: endDate } },
+      { createdAt: { $gte: startDate, $lte: endDate } },
+    ];
+  }
+  const paidSettlements = await Settlement.find(settlementFilter);
   const totalPaid = round2(
     paidSettlements.reduce((sum, s) => sum + fromDecimal(s.finalPayable), 0)
   );
@@ -248,7 +307,7 @@ export async function calculateEmployeeEarnings(
   totalExpected = round2(totalExpected);
   totalEarned = round2(totalEarned);
   const totalPayable = Math.max(0, round2(totalEarned - totalPaid));
-  const totalPending = Math.max(0, round2(totalExpected - totalEarned));
+  const totalPending = Math.max(0, round2(totalExpected - totalPaid));
 
   // Reconcile project-level paid commission with total actual payouts disbursed to employee
   // Any payout amount not explicitly tagged to a project via SettlementItem is attributed across assigned projects

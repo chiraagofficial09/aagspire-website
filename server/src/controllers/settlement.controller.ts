@@ -343,19 +343,8 @@ export async function paySettlement(req: AuthenticatedRequest, res: Response): P
 
     const payableVal = fromDecimal(settlement.finalPayable);
     Employee.findById(settlement.employeeId)
-      .select('userId fullName')
+      .select('fullName')
       .then((emp) => {
-        if (emp?.userId) {
-          createNotification({
-            recipient: emp.userId,
-            role: 'employee',
-            type: 'settlement',
-            title: 'Commission Payout Disbursed',
-            message: `Payout of ₹${payableVal.toLocaleString('en-IN')} has been disbursed. Receipt: ${receiptCode}.`,
-            link: '/employee/settlements',
-            metadata: { settlementId: settlement._id, receiptCode },
-          }).catch(() => {});
-        }
         createNotification({
           role: 'admin',
           type: 'settlement',

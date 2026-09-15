@@ -433,17 +433,14 @@ export async function payEmployeeDirect(req: AuthenticatedRequest, res: Response
       },
     });
 
-    if (employee.userId) {
-      createNotification({
-        recipient: employee.userId,
-        role: 'employee',
-        type: 'settlement',
-        title: 'Payment Received',
-        message: `Payout of ₹${numAmount.toLocaleString('en-IN')} has been disbursed via ${paymentMethod || 'Bank Transfer'}. Receipt: ${receiptCode}.`,
-        link: '/employee/earnings',
-        metadata: { settlementId: settlement._id, receiptCode },
-      }).catch(() => {});
-    }
+    createNotification({
+      role: 'admin',
+      type: 'payment',
+      title: 'Employee Payout Disbursed',
+      message: `Payout of ₹${numAmount.toLocaleString('en-IN')} disbursed to ${employee.fullName} via ${paymentMethod || 'Bank Transfer'}. Receipt: ${receiptCode}.`,
+      link: '/admin/employees',
+      metadata: { settlementId: settlement._id, receiptCode },
+    }).catch(() => {});
 
     res.status(201).json({
       success: true,

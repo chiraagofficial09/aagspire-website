@@ -15,10 +15,19 @@ function getUserFilter(req: AuthenticatedRequest) {
     };
   }
 
+  // For employee: never show payment or settlement notifications (client payments/payouts are admin-only)
   return {
-    $or: [
-      { recipient: userId },
-      { role: { $in: ['employee', 'all'] } },
+    $and: [
+      {
+        $or: [
+          { recipient: userId },
+          { role: { $in: ['employee', 'all'] } },
+        ],
+      },
+      {
+        type: { $nin: ['payment', 'settlement'] },
+        title: { $not: /payment/i },
+      },
     ],
   };
 }

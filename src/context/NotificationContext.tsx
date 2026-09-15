@@ -42,8 +42,17 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     try {
       const res = await api.get('/notifications');
-      const items = res.data?.data || [];
-      const unread = typeof res.data?.unreadCount === 'number' ? res.data.unreadCount : items.filter((n: any) => !n.isRead).length;
+      let items: NotificationItem[] = res.data?.data || [];
+      if (user?.role === 'employee') {
+        items = items.filter(
+          (n) =>
+            n.type !== 'payment' &&
+            n.type !== 'settlement' &&
+            !n.title?.toLowerCase().includes('payment') &&
+            !n.message?.toLowerCase().includes('payout of')
+        );
+      }
+      const unread = items.filter((n) => !n.isRead).length;
       setNotifications(items);
       setUnreadCount(unread);
     } catch (err) {

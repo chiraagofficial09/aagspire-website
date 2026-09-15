@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Coins,
@@ -15,16 +15,51 @@ import { ClockWidget } from '../../components/work/ClockWidget';
 import { NotificationBell } from '../../components/work/NotificationBell';
 import { formatINR } from '../../utils/formatters';
 import { StatusBadge } from '../../components/work/StatusBadge';
+import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
 
 export const EmployeeDashboard: React.FC = () => {
   const { user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchDashboard = async () => {
+  // Month-wise filter setup
+  const now = useMemo(() => new Date(), []);
+  const currentMonthKey = useMemo(
+    () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    [now]
+  );
+  const availableMonths: MonthOption[] = useMemo(() => {
+    const monthsSet = new Set<string>();
+    for (let i = 0; i <= 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    return Array.from(monthsSet)
+      .sort((a, b) => b.localeCompare(a))
+      .map((key) => {
+        const [y, m] = key.split('-').map(Number);
+        const d = new Date(y, m - 1, 1);
+        return {
+          key,
+          label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
+        };
+      });
+  }, [now]);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
+
+  const selectedMonthLabel = useMemo(() => {
+    if (selectedMonth === 'all') return 'All Months';
+    const [yr, mo] = selectedMonth.split('-').map(Number);
+    const d = new Date(yr, mo - 1, 1);
+    return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  }, [selectedMonth]);
+
+  const fetchDashboard = async (monthVal = selectedMonth) => {
     try {
       setLoading(true);
-      const res = await api.get('/employee/dashboard');
+      const query = monthVal ? `?month=${encodeURIComponent(monthVal)}` : '';
+      const res = await api.get(`/employee/dashboard${query}`);
       const payload = res.data?.kpis
         ? res.data
         : res.data?.data?.kpis
@@ -39,8 +74,8 @@ export const EmployeeDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDashboard();
-  }, []);
+    fetchDashboard(selectedMonth);
+  }, [selectedMonth]);
 
   if (loading) {
     return (
@@ -103,9 +138,16 @@ export const EmployeeDashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* Right: Notifications, User profile & Date */}
-        <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
-          <div className="flex items-center gap-3">
+        {/* Right: Month Filter, Notifications, User profile & Date */}
+        <div className="flex flex-col items-start sm:items-end gap-2.5 shrink-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <MonthSelectDropdown
+              value={selectedMonth}
+              onChange={(val) => setSelectedMonth(val)}
+              availableMonths={availableMonths}
+              allMonthsLabel="All Months"
+            />
+
             <NotificationBell />
 
             <div className="flex items-center gap-2.5 pl-2">
@@ -129,6 +171,21 @@ export const EmployeeDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Month Filter Active Status Banner */}
+      {selectedMonth !== 'all' && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#FF5A1F]/10 border border-[#FF5A1F]/25 text-xs">
+          <span className="text-zinc-300">
+            Showing performance &amp; commission for <span className="font-semibold text-white">{selectedMonthLabel}</span>
+          </span>
+          <button
+            onClick={() => setSelectedMonth('all')}
+            className="text-xs font-semibold text-[#FF5A1F] hover:text-[#ff7543] underline transition-colors cursor-pointer"
+          >
+            Show All Months
+          </button>
+        </div>
+      )}
+
       {/* Daily Attendance Card Widget */}
       <ClockWidget onStatusChange={fetchDashboard} />
 
@@ -150,7 +207,9 @@ export const EmployeeDashboard: React.FC = () => {
               {formatINR(totalCommission)}
             </span>
           </div>
-          <span className="text-xs text-zinc-500 block mt-1">Total commission</span>
+          <span className="text-xs text-zinc-500 block mt-1">
+            {selectedMonth !== 'all' ? `Commission in ${selectedMonthLabel}` : 'Total commission'}
+          </span>
         </div>
 
         {/* Card 2: PAID */}
@@ -166,7 +225,9 @@ export const EmployeeDashboard: React.FC = () => {
               {formatINR(totalPaid)}
             </span>
           </div>
-          <span className="text-xs text-zinc-500 block mt-1">Paid to you</span>
+          <span className="text-xs text-zinc-500 block mt-1">
+            {selectedMonth !== 'all' ? `Paid in ${selectedMonthLabel}` : 'Paid to you'}
+          </span>
         </div>
 
         {/* Card 3: PENDING */}
@@ -187,7 +248,9 @@ export const EmployeeDashboard: React.FC = () => {
               {formatINR(remainingBalance)}
             </span>
           </div>
-          <span className="text-xs text-zinc-500 block mt-1">Pending balance</span>
+          <span className="text-xs text-zinc-500 block mt-1">
+            {selectedMonth !== 'all' ? `Pending in ${selectedMonthLabel}` : 'Pending balance'}
+          </span>
         </div>
       </div>
 
@@ -296,7 +359,9 @@ export const EmployeeDashboard: React.FC = () => {
               })
             ) : (
               <div className="py-12 text-center text-zinc-500 font-mono text-xs">
-                No active projects assigned yet.
+                {selectedMonth !== 'all'
+                  ? `No active projects assigned in ${selectedMonthLabel}.`
+                  : 'No active projects assigned yet.'}
               </div>
             )}
           </div>
@@ -348,7 +413,9 @@ export const EmployeeDashboard: React.FC = () => {
               <div className="w-14 h-14 rounded-2xl bg-white/[0.02] border border-white/[0.05] flex items-center justify-center text-zinc-500 mb-3">
                 <Clock className="w-7 h-7 stroke-[1.5]" />
               </div>
-              <h3 className="text-sm font-semibold text-zinc-300">No production logs yet</h3>
+              <h3 className="text-sm font-semibold text-zinc-300">
+                {selectedMonth !== 'all' ? `No production logs in ${selectedMonthLabel}` : 'No production logs yet'}
+              </h3>
               <p className="text-xs text-zinc-500 mt-1 max-w-xs">
                 Your submitted work hours will appear here.
               </p>

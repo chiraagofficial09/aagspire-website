@@ -30,12 +30,46 @@ export const EmployeeProjects: React.FC = () => {
   }, []);
 
   const handleStatusChange = async (projectId: string, newStatus: string) => {
+    // Optimistic UI update
+    const nowIso = new Date().toISOString();
+    const deliveredAtVal = newStatus === 'delivered' ? nowIso : undefined;
+    setProjects((prev) =>
+      prev.map((item) => {
+        const prj = item.projectId || item;
+        const itemId = item._id || prj._id;
+        if (itemId === projectId || prj._id === projectId) {
+          if (item.projectId) {
+            return {
+              ...item,
+              status: newStatus,
+              updatedAt: nowIso,
+              deliveredAt: deliveredAtVal,
+              projectId: {
+                ...item.projectId,
+                status: newStatus,
+                updatedAt: nowIso,
+                deliveredAt: deliveredAtVal,
+              },
+            };
+          }
+          return {
+            ...item,
+            status: newStatus,
+            updatedAt: nowIso,
+            deliveredAt: deliveredAtVal,
+          };
+        }
+        return item;
+      })
+    );
+
     try {
       await api.patch(`/employee/projects/${projectId}/status`, { status: newStatus });
       toast.success(`Project status updated to ${newStatus.replace('_', ' ')}`);
       fetchProjects();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to update project status');
+      fetchProjects();
     }
   };
 
@@ -47,6 +81,25 @@ export const EmployeeProjects: React.FC = () => {
       prj.projectCode?.toLowerCase().includes(term) ||
       (prj.clientId?.name || prj.clientId?.companyName)?.toLowerCase().includes(term)
     );
+  });
+
+  // Delivered projects are placed at the end of the list;
+  // among delivered projects, newly delivered appears first, and the first delivered project stays at the very last end ("last ma last")
+  const sortedProjects = [...filtered].sort((a, b) => {
+    const prjA = a.projectId || a;
+    const prjB = b.projectId || b;
+    const aDelivered = (prjA.status || a.status || '').toLowerCase() === 'delivered';
+    const bDelivered = (prjB.status || b.status || '').toLowerCase() === 'delivered';
+    if (aDelivered && !bDelivered) return 1;
+    if (!aDelivered && bDelivered) return -1;
+    if (aDelivered && bDelivered) {
+      const timeA = new Date(prjA.deliveredAt || a.deliveredAt || prjA.updatedAt || a.updatedAt || prjA.createdAt || a.createdAt || 0).getTime();
+      const timeB = new Date(prjB.deliveredAt || b.deliveredAt || prjB.updatedAt || b.updatedAt || prjB.createdAt || b.createdAt || 0).getTime();
+      return timeB - timeA;
+    }
+    const timeA = new Date(prjA.createdAt || a.createdAt || 0).getTime();
+    const timeB = new Date(prjB.createdAt || b.createdAt || 0).getTime();
+    return timeB - timeA;
   });
 
   return (
@@ -80,8 +133,6 @@ export const EmployeeProjects: React.FC = () => {
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PROJECT</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CLIENT</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TOTAL</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PAID</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PENDING</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">STATUS</th>
                 <th className="py-4 px-6 text-right"></th>
               </tr>
@@ -89,17 +140,15 @@ export const EmployeeProjects: React.FC = () => {
             <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-500 font-mono">
+                  <td colSpan={5} className="py-12 text-center text-zinc-500 font-mono">
                     Loading assigned projects...
                   </td>
                 </tr>
-              ) : filtered.length > 0 ? (
-                filtered.map((item) => {
+              ) : sortedProjects.length > 0 ? (
+                sortedProjects.map((item) => {
                   const prj = item.projectId || item;
                   const pool = item.employeeCommission || {};
                   const poolTotal = pool.totalCommission ?? pool.expectedCommission ?? 0;
-                  const poolPaid = pool.paidCommission ?? 0;
-                  const poolPending = pool.pendingCommission ?? Math.max(0, poolTotal - poolPaid);
 
                   return (
                     <tr key={item._id || prj._id} className="hover:bg-white/[0.015] transition-colors">
@@ -109,14 +158,8 @@ export const EmployeeProjects: React.FC = () => {
                       <td className="py-4 px-6 text-sm text-zinc-300">
                         {prj.clientId?.companyName || prj.clientId?.name || 'Client Production'}
                       </td>
-                      <td className="py-4 px-6 font-mono text-sm font-semibold text-white">
-                        {formatINR(poolTotal)}
-                      </td>
-                      <td className="py-4 px-6 font-mono text-sm font-semibold text-white">
-                        {formatINR(poolPaid)}
-                      </td>
                       <td className="py-4 px-6 font-mono text-sm font-semibold text-[#FF5A1F]">
-                        {formatINR(poolPending)}
+                        {formatINR(poolTotal)}
                       </td>
                       <td className="py-4 px-6">
                         <div className="w-36">
@@ -147,7 +190,7 @@ export const EmployeeProjects: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-8">
+                  <td colSpan={5} className="py-8">
                     <EmptyState
                       type="projects"
                       title="No assigned projects"
@@ -162,7 +205,7 @@ export const EmployeeProjects: React.FC = () => {
       </div>
 
       <div className="text-xs text-zinc-500 px-1">
-        {filtered.length} {filtered.length === 1 ? 'project' : 'projects'}
+        {sortedProjects.length} {sortedProjects.length === 1 ? 'project' : 'projects'}
       </div>
     </div>
   );

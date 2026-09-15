@@ -222,11 +222,13 @@ export const AdminProjectDetails: React.FC = () => {
               onChange={(val) => handleUpdateStatus(val)}
               className="w-36"
               options={[
-                { value: 'lead', label: 'Lead' },
-                { value: 'signed', label: 'Signed' },
+                { value: 'confirmed', label: 'Confirmed' },
                 { value: 'in_progress', label: 'In Progress' },
                 { value: 'review', label: 'In Review' },
                 { value: 'completed', label: 'Completed' },
+                { value: 'delivered', label: 'Delivered' },
+                { value: 'signed', label: 'Signed' },
+                { value: 'lead', label: 'Lead' },
                 { value: 'cancelled', label: 'Cancelled' },
               ]}
             />
