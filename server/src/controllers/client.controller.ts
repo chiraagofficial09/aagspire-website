@@ -10,6 +10,7 @@ import { fromDecimal, round2 } from '../utils/decimalHelper.js';
 import { generateClientStatementPdfStream } from '../services/clientStatementPdf.service.js';
 import { InvoiceCounter } from '../models/InvoiceCounter.js';
 import { calculateFinancialMetrics } from '../services/dashboardFinance.js';
+import { getMonthDateRange } from '../utils/dateHelper.js';
 
 export async function listClients(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -29,15 +30,9 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
     const clientIds = clients.map((c) => c._id);
 
     const monthQuery = (req.query.month as string) || '';
-    let startOfMonth: Date | null = null;
-    let endOfMonth: Date | null = null;
-    if (monthQuery && monthQuery !== 'all') {
-      const [yr, mo] = monthQuery.split('-').map(Number);
-      if (yr && mo) {
-        startOfMonth = new Date(yr, mo - 1, 1, 0, 0, 0, 0);
-        endOfMonth = new Date(yr, mo, 0, 23, 59, 59, 999);
-      }
-    }
+    const monthRange = getMonthDateRange(monthQuery);
+    const startOfMonth = monthRange?.startOfMonth || null;
+    const endOfMonth = monthRange?.endOfMonth || null;
 
     // Batch fetch all projects and payments for these clients in parallel
     const [allProjects, allPayments] = await Promise.all([
@@ -411,32 +406,29 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       year: 'numeric',
     });
 
-    if (monthQuery && monthQuery !== 'all') {
-      const [yr, mo] = monthQuery.split('-').map(Number);
-      if (yr && mo) {
-        const startOfMonth = new Date(yr, mo - 1, 1, 0, 0, 0, 0);
-        const endOfMonth = new Date(yr, mo, 0, 23, 59, 59, 999);
-        billingMonthLabel = startOfMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-        billingPeriodLabel = `${startOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${endOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
-        // When sending invoice to client at end of month, invoice date is set to end of that month
-        statementDate = endOfMonth.toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        });
+    const monthRange = getMonthDateRange(monthQuery);
+    if (monthRange) {
+      const { startOfMonth, endOfMonth } = monthRange;
+      billingMonthLabel = startOfMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      billingPeriodLabel = `${startOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${endOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+      // When sending invoice to client at end of month, invoice date is set to end of that month
+      statementDate = endOfMonth.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
 
-        if (selectedIds.length === 0) {
-          rawProjects = rawProjects.filter((p) => {
-            const pDate = new Date(p.startDate || p.createdAt || 0);
-            return pDate >= startOfMonth && pDate <= endOfMonth;
-          });
-        }
-
-        rawPayments = rawPayments.filter((pm) => {
-          const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
-          return pmDate <= endOfMonth;
+      if (selectedIds.length === 0) {
+        rawProjects = rawProjects.filter((p) => {
+          const pDate = new Date(p.startDate || p.createdAt || 0);
+          return pDate >= startOfMonth && pDate <= endOfMonth;
         });
       }
+
+      rawPayments = rawPayments.filter((pm) => {
+        const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
+        return pmDate <= endOfMonth;
+      });
     }
 
     const customDateParam = (req.query.invoiceDate as string) || (req.body?.invoiceDate as string);
@@ -510,11 +502,8 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
     );
 
     const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec'];
-    let targetDate = new Date();
-    if (monthQuery && monthQuery !== 'all') {
-      const [yr, mo] = monthQuery.split('-').map(Number);
-      if (yr && mo) targetDate = new Date(yr, mo - 1, 1);
-    } else if (customDateParam) {
+    let targetDate = monthRange ? monthRange.startOfMonth : new Date();
+    if (!monthRange && customDateParam) {
       const parsed = new Date(customDateParam.includes('T') ? customDateParam : `${customDateParam}T00:00:00`);
       if (!isNaN(parsed.getTime())) targetDate = parsed;
     }

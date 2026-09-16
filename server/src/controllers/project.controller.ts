@@ -17,6 +17,7 @@ import {
   EmployeeShareInput,
 } from '../services/commission.service.js';
 import { calculateProjectEarningsForEmployee, calculateEmployeeEarnings } from '../services/earnings.service.js';
+import { getMonthDateRange } from '../utils/dateHelper.js';
 
 export async function listProjects(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -45,26 +46,24 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
       filter.clientId = clientId;
     }
 
-    if (month && month !== 'all') {
-      const [yr, mo] = (month as string).split('-').map(Number);
-      if (yr && mo) {
-        const startOfMonth = new Date(yr, mo - 1, 1, 0, 0, 0, 0);
-        const endOfMonth = new Date(yr, mo, 0, 23, 59, 59, 999);
-        const dateMatch = {
-          $or: [
-            { startDate: { $gte: startOfMonth, $lte: endOfMonth } },
-            { createdAt: { $gte: startOfMonth, $lte: endOfMonth } },
-          ],
-        };
+    const monthRange = getMonthDateRange(month as string);
+    if (monthRange) {
+      const { startOfMonth, endOfMonth } = monthRange;
+      const dateMatch = {
+        $or: [
+          { startDate: { $gte: startOfMonth, $lte: endOfMonth } },
+          { startDate: null, createdAt: { $gte: startOfMonth, $lte: endOfMonth } },
+          { startDate: { $exists: false }, createdAt: { $gte: startOfMonth, $lte: endOfMonth } },
+        ],
+      };
 
-        if (filter.$and) {
-          filter.$and.push(dateMatch);
-        } else if (filter.$or) {
-          filter.$and = [{ $or: filter.$or }, dateMatch];
-          delete filter.$or;
-        } else {
-          filter.$or = dateMatch.$or;
-        }
+      if (filter.$and) {
+        filter.$and.push(dateMatch);
+      } else if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, dateMatch];
+        delete filter.$or;
+      } else {
+        filter.$or = dateMatch.$or;
       }
     }
 

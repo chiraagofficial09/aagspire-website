@@ -88,7 +88,7 @@ export const EmployeeDashboard: React.FC = () => {
   const kpis = data?.kpis || {};
   const earnings = data?.earnings || {};
   const earningsProjects = earnings?.projects || [];
-  const projects = data?.activeProjects || data?.assignedProjects || [];
+  const projects = data?.assignedProjects || data?.activeProjects || [];
   const recentLogs = data?.recentWorkLogs || [];
 
   const totalCommission = Number(
@@ -271,13 +271,11 @@ export const EmployeeDashboard: React.FC = () => {
             </Link>
           </div>
 
-          {/* Table Header: Consistent with Projects page */}
+          {/* Table Header */}
           <div className="grid grid-cols-12 px-3 pb-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-            <div className="col-span-3">PROJECT NAME</div>
-            <div className="col-span-2 text-center">TOTAL</div>
-            <div className="col-span-2 text-center">PAID</div>
-            <div className="col-span-2 text-center">PENDING</div>
-            <div className="col-span-2 text-center">STATUS</div>
+            <div className="col-span-5">PROJECT NAME</div>
+            <div className="col-span-3 text-center">EMPLOYEE SHARE</div>
+            <div className="col-span-3 text-center">STATUS</div>
             <div className="col-span-1 text-right">ACTION</div>
           </div>
 
@@ -301,47 +299,25 @@ export const EmployeeDashboard: React.FC = () => {
                   item.employeeCommission?.expectedCommission ??
                   item.expectedCommission ??
                   0;
-                const poolPaid =
-                  prjEarning?.paidCommission ??
-                  item.poolPaid ??
-                  item.employeeCommission?.paidCommission ??
-                  item.paidCommission ??
-                  0;
-                const poolPending =
-                  prjEarning != null
-                    ? Math.max(0, (prjEarning.expectedCommission || 0) - (prjEarning.paidCommission || 0))
-                    : item.poolPending ?? item.employeeCommission?.pendingCommission ?? Math.max(0, poolTotal - poolPaid);
 
                 return (
                   <div
                     key={prjId}
                     className="grid grid-cols-12 items-center p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08] transition-all"
                   >
-                    <div className="col-span-3 min-w-0 pr-2">
+                    <div className="col-span-5 min-w-0 pr-2">
                       <span className="font-semibold text-xs text-white block truncate" title={projectName}>
                         {projectName}
                       </span>
                     </div>
 
-                    <div className="col-span-2 text-center">
+                    <div className="col-span-3 text-center">
                       <span className="font-mono text-xs font-semibold text-white">
                         {formatINR(poolTotal)}
                       </span>
                     </div>
 
-                    <div className="col-span-2 text-center">
-                      <span className="font-mono text-xs font-semibold text-white/80">
-                        {formatINR(poolPaid)}
-                      </span>
-                    </div>
-
-                    <div className="col-span-2 text-center">
-                      <span className="font-mono text-xs font-bold text-[#FF5A1F]">
-                        {formatINR(poolPending)}
-                      </span>
-                    </div>
-
-                    <div className="col-span-2 flex justify-center">
+                    <div className="col-span-3 flex justify-center">
                       <StatusBadge status={prj.status || item.status || 'in_progress'} type="project" />
                     </div>
 
@@ -360,8 +336,8 @@ export const EmployeeDashboard: React.FC = () => {
             ) : (
               <div className="py-12 text-center text-zinc-500 font-mono text-xs">
                 {selectedMonth !== 'all'
-                  ? `No active projects assigned in ${selectedMonthLabel}.`
-                  : 'No active projects assigned yet.'}
+                  ? `No projects assigned in ${selectedMonthLabel}.`
+                  : 'No projects assigned yet.'}
               </div>
             )}
           </div>

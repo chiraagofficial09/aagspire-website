@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { Clock, LogIn, LogOut, CheckCircle2, ArrowRight, FileText, X, AlertCircle, Loader2 } from 'lucide-react';
+import { CustomSelect, SelectOption } from './CustomSelect';
 
 interface ClockWidgetProps {
   compact?: boolean;
@@ -114,6 +115,14 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
     }
   };
 
+  const projectOptions: SelectOption<string>[] = [
+    { value: '', label: 'General Work / No Specific Project' },
+    ...projects.map((p) => ({
+      value: String(p._id),
+      label: `${p.projectName || p.title}${p.projectCode ? ` (${p.projectCode})` : ''}`,
+    })),
+  ];
+
   const renderModal = () => {
     if (!isModalOpen) return null;
 
@@ -200,18 +209,12 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
               <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
                 Related Project (Optional)
               </label>
-              <select
+              <CustomSelect
                 value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                className="w-full bg-[#08090d] border border-white/[0.08] rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#FF5A1F]/50 transition-colors cursor-pointer"
-              >
-                <option value="">General Work / No Specific Project</option>
-                {projects.map((p) => (
-                  <option key={p._id} value={p._id} className="bg-[#0e1017] text-white">
-                    {p.projectName || p.title} {p.projectCode ? `(${p.projectCode})` : ''}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedProject(String(val))}
+                options={projectOptions}
+                placeholder="General Work / No Specific Project"
+              />
             </div>
           </div>
 

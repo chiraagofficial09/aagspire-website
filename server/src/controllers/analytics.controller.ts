@@ -9,6 +9,7 @@ import { Attendance } from '../models/Attendance.js';
 import { Receipt } from '../models/Receipt.js';
 import { ClientPayment } from '../models/ClientPayment.js';
 import { round2, fromDecimal } from '../utils/decimalHelper.js';
+import { getMonthDateRange } from '../utils/dateHelper.js';
 
 export async function getAdminAnalytics(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -89,17 +90,9 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const targetMonth = monthParam === 'all' ? 'all' : (monthParam || currentMonthKey);
 
-    let startDate: Date | undefined;
-    let endDate: Date | undefined;
-    if (targetMonth && targetMonth !== 'all') {
-      const [yearStr, monthStr] = targetMonth.split('-');
-      const year = parseInt(yearStr, 10);
-      const month = parseInt(monthStr, 10);
-      if (!isNaN(year) && !isNaN(month)) {
-        startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
-        endDate = new Date(year, month, 0, 23, 59, 59, 999);
-      }
-    }
+    const monthRange = getMonthDateRange(targetMonth);
+    const startDate = monthRange?.startOfMonth;
+    const endDate = monthRange?.endOfMonth;
 
     // 1. Personal Earnings Breakdown (month-filtered)
     const earnings = await calculateEmployeeEarnings(employeeId, targetMonth);
@@ -118,13 +111,11 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       .populate('assignedEmployees', 'fullName employeeCode designation')
       .sort({ createdAt: -1 });
 
-    // Filter projects if specific month is requested
+    // Filter projects if specific month is requested (Option B: strict project date)
     const filteredProjectsDocs = assignedProjectsDocs.filter((p) => {
       if (!startDate || !endDate) return true;
-      const inEarnings = earnings.projects?.some((ep) => ep.projectId?.toString() === p._id.toString());
-      if (inEarnings) return true;
-      const pDate = new Date(p.startDate || p.createdAt);
-      return pDate >= startDate && pDate <= endDate;
+      const projDate = p.startDate ? new Date(p.startDate) : new Date(p.createdAt);
+      return projDate >= startDate && projDate <= endDate;
     });
 
     const enrichedAssignedProjects = filteredProjectsDocs.map((p) => {
@@ -208,7 +199,10 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
     // 3. Approved Hours & Logged Hours from WorkLog (filtered by month)
     const workLogQuery: any = { employeeId };
     if (startDate && endDate) {
-      workLogQuery.workDate = { $gte: startDate, $lte: endDate };
+      workLogQuery.$or = [
+        { workDate: { $gte: startDate, $lte: endDate } },
+        { createdAt: { $gte: startDate, $lte: endDate } },
+      ];
     }
     const approvedLogs = await WorkLog.find({ ...workLogQuery, status: 'approved' });
     const approvedMinutes = approvedLogs.reduce((sum, log) => sum + (log.totalMinutes || 0), 0);

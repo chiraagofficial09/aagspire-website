@@ -21,34 +21,14 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
-import { formatINR } from '../../utils/formatters';
+import { formatINR, parseAmount } from '../../utils/formatters';
 import { ClientReceiptModal } from '../../components/work/ClientReceiptModal';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
 
-const getProjectNetValue = (p: any): number => {
-  if (!p) return 0;
-  if (p.projectValue !== undefined && p.projectValue !== null) {
-    return typeof p.projectValue === 'object' && p.projectValue.$numberDecimal
-      ? Number(p.projectValue.$numberDecimal)
-      : Number(p.projectValue);
-  }
-  if (p.totalAmount !== undefined && p.totalAmount !== null) {
-    return Number(p.totalAmount);
-  }
-  return 0;
-};
-
-const getPaymentAmount = (pm: any): number => {
-  if (!pm) return 0;
-  if (pm.amount !== undefined && pm.amount !== null) {
-    return typeof pm.amount === 'object' && pm.amount.$numberDecimal
-      ? Number(pm.amount.$numberDecimal)
-      : Number(pm.amount);
-  }
-  return 0;
-};
+const getProjectNetValue = (p: any): number => parseAmount(p?.projectValue ?? p?.totalAmount ?? p);
+const getPaymentAmount = (pm: any): number => parseAmount(pm?.amount ?? pm);
 
 export const AdminClientDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();

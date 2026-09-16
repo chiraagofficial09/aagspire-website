@@ -41,33 +41,7 @@ import {
 } from 'recharts';
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/work/StatusBadge';
-
-// Safely parse any number, string, or Mongoose Decimal128 object { $numberDecimal: "..." }
-const parseAmount = (val: any): number => {
-  if (val === null || val === undefined) return 0;
-  if (typeof val === 'number') return isNaN(val) ? 0 : val;
-  if (typeof val === 'string') {
-    const num = parseFloat(val);
-    return isNaN(num) ? 0 : num;
-  }
-  if (typeof val === 'object') {
-    if (val.$numberDecimal !== undefined) {
-      const num = parseFloat(val.$numberDecimal);
-      return isNaN(num) ? 0 : num;
-    }
-    if (val.value !== undefined) return parseAmount(val.value);
-    if (val.amount !== undefined) return parseAmount(val.amount);
-    if (val.totalAmount !== undefined) return parseAmount(val.totalAmount);
-    if (val.projectValue !== undefined) return parseAmount(val.projectValue);
-  }
-  return 0;
-};
-
-// Format Indian Rupee currency: e.g. ₹ 12,50,000
-const formatINR = (val: any): string => {
-  const num = parseAmount(val);
-  return `₹${num.toLocaleString('en-IN')}`;
-};
+import { parseAmount, formatINR } from '../../utils/formatters';
 
 // Format split percentage: whole numbers as 40%, fractional as 23.45%
 const formatSplitPercent = (val: number | string | undefined): string => {

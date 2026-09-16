@@ -6,7 +6,9 @@ import { Employee } from '../models/Employee.js';
 import { ClientPayment } from '../models/ClientPayment.js';
 import { Settlement } from '../models/Settlement.js';
 import { SettlementItem } from '../models/SettlementItem.js';
+import { WorkLog } from '../models/WorkLog.js';
 import { toDecimal, fromDecimal, round2 } from '../utils/decimalHelper.js';
+import { getMonthDateRange } from '../utils/dateHelper.js';
 
 export interface ProjectEarningDetail {
   id?: string;
@@ -84,17 +86,9 @@ export async function calculateEmployeeEarnings(
 ): Promise<EmployeeEarningsSummary> {
   const rawId = new Types.ObjectId(employeeId.toString());
 
-  let startDate: Date | undefined;
-  let endDate: Date | undefined;
-  if (targetMonth && targetMonth !== 'all') {
-    const [yearStr, monthStr] = targetMonth.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10);
-    if (!isNaN(year) && !isNaN(month)) {
-      startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
-      endDate = new Date(year, month, 0, 23, 59, 59, 999);
-    }
-  }
+  const monthRange = getMonthDateRange(targetMonth);
+  const startDate = monthRange?.startOfMonth;
+  const endDate = monthRange?.endOfMonth;
 
   // Resolve both Employee._id and associated User._id to guarantee complete coverage
   const employeeDoc = (await Employee.findById(rawId)) || (await Employee.findOne({ userId: rawId }));
@@ -161,33 +155,10 @@ export async function calculateEmployeeEarnings(
 
     const projId = project._id;
 
-    // Filter project by month if specified
+    // Filter project by month if specified (Option B: strict project date)
     if (startDate && endDate) {
-      const pDate = new Date(project.startDate || project.createdAt);
-      const isProjectInMonth = pDate >= startDate && pDate <= endDate;
-
-      const paymentsInMonth = await ClientPayment.countDocuments({
-        projectId: projId,
-        paymentDate: { $gte: startDate, $lte: endDate },
-      });
-
-      const paidItemsInMonth = await SettlementItem.find({
-        employeeId: { $in: allEmpIds },
-        projectId: projId,
-      });
-      let hasSettlementInMonth = false;
-      for (const item of paidItemsInMonth) {
-        const s = await Settlement.findById(item.settlementId);
-        if (s && s.status === 'paid') {
-          const sDate = new Date(s.paymentDate || s.createdAt);
-          if (sDate >= startDate && sDate <= endDate) {
-            hasSettlementInMonth = true;
-            break;
-          }
-        }
-      }
-
-      if (!isProjectInMonth && paymentsInMonth === 0 && !hasSettlementInMonth) {
+      const projDate = project.startDate ? new Date(project.startDate) : new Date(project.createdAt);
+      if (projDate < startDate || projDate > endDate) {
         continue;
       }
     }

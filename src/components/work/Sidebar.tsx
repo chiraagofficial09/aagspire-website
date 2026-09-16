@@ -11,11 +11,8 @@ import {
   CreditCard, 
   Percent,
   ReceiptText,
-  BarChart3,
   Settings,
   Clock,
-  FileText,
-  UserCircle,
   LogOut,
   X,
   Menu,
@@ -124,7 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
             <NavItem item={{ label: 'My Projects', path: '/employee/projects', icon: Folder }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Work Logs', path: '/employee/work', icon: Clock }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Attendance', path: '/employee/attendance', icon: Calendar }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Reports', path: '/employee/reports', icon: BarChart3 }} onNavigate={() => setMobileOpen(false)} />
+            <NavItem item={{ label: 'Receipts', path: '/employee/receipts', icon: ReceiptText }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Profile', path: '/employee/profile', icon: User }} onNavigate={() => setMobileOpen(false)} />
           </>
         )}

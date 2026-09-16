@@ -18,6 +18,7 @@ import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
 import { CommissionBar } from '../../components/work/CommissionBar';
 import { formatINR } from '../../utils/formatters';
+import { CustomSelect, SelectOption } from '../../components/work/CustomSelect';
 
 export const AdminCommissions: React.FC = () => {
   const toast = useToast();
@@ -161,6 +162,14 @@ export const AdminCommissions: React.FC = () => {
     }
   };
 
+  const projectOptions: SelectOption<string>[] = [
+    { value: 'sandbox', label: 'Deal Simulator (Custom Sandbox)' },
+    ...projects.map((p) => ({
+      value: String(p._id || p.id),
+      label: `${p.projectName || p.title} (₹${Number(p.projectValue || p.totalAmount || 0).toLocaleString('en-IN')})`,
+    })),
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -189,18 +198,14 @@ export const AdminCommissions: React.FC = () => {
                 Target Project
               </span>
               <div className="flex items-center gap-2 mt-0.5">
-                <select
-                  value={selectedProjectId}
-                  onChange={(e) => handleSelectChange(e.target.value)}
-                  className="bg-[#12131a] border border-white/10 rounded-xl px-3 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-[#FF5A1F] cursor-pointer"
-                >
-                  <option value="sandbox"> deal simulator (Custom Sandbox)</option>
-                  {projects.map((p) => (
-                    <option key={p._id || p.id} value={p._id || p.id}>
-                      {p.projectName || p.title} (₹{Number(p.projectValue || p.totalAmount || 0).toLocaleString('en-IN')})
-                    </option>
-                  ))}
-                </select>
+                <div className="w-64 sm:w-80">
+                  <CustomSelect
+                    value={selectedProjectId}
+                    onChange={(val) => handleSelectChange(val)}
+                    options={projectOptions}
+                    placeholder="Select Target Project"
+                  />
+                </div>
 
                 {currentProject && (
                   <Link
