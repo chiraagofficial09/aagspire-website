@@ -61,8 +61,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-fade-in">
-      <div className="relative w-full max-w-2xl bg-[#0d1017] border border-white/10 rounded-2xl shadow-2xl p-6 md:p-8 space-y-6 text-white my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-fade-in">
+      <div className="relative w-full max-w-2xl bg-[#0d1017] border border-white/10 rounded-2xl shadow-2xl p-4 sm:p-8 space-y-6 text-white my-auto max-h-[92vh] overflow-y-auto">
         {/* Header Actions */}
         <div className="flex items-center justify-between border-b border-white/10 pb-4 print:hidden">
           <div className="flex items-center gap-2">

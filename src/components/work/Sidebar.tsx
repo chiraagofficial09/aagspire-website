@@ -174,10 +174,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="relative w-64 max-w-[85vw] h-full z-10">
+          <div className="relative w-72 max-w-[85vw] h-full z-10 shadow-2xl animate-in slide-in-from-left duration-200">
             {navContent}
           </div>
         </div>

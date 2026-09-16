@@ -20,7 +20,7 @@ export const AdminLayout: React.FC = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-6 md:p-10">
           <div className="max-w-[1400px] mx-auto">
             <Outlet />
           </div>

@@ -435,28 +435,37 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     >
       <div className="premium-modal animate-modal-scale relative w-full max-w-4xl bg-[#0c0d12] border border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh] text-white text-xs">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-[#090a0f] shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#FF5A1F]/15 text-[#FF5A1F] border border-[#FF5A1F]/25 flex items-center justify-center shrink-0">
-              <Receipt className="w-4 h-4" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-white/[0.08] bg-[#090a0f] shrink-0">
+          <div className="flex items-center justify-between w-full sm:w-auto gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#FF5A1F]/15 text-[#FF5A1F] border border-[#FF5A1F]/25 flex items-center justify-center shrink-0">
+                <Receipt className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                  Combine Projects & Generate Client Invoice
+                </h2>
+                <p className="text-[11px] text-white/50 flex items-center gap-1.5 flex-wrap">
+                  <span>{client.companyName || client.name}</span>
+                  <span>&bull;</span>
+                  <span>
+                    {selectedProjects.length} of {displayedProjects.length} deliverables selected
+                  </span>
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                Combine Projects & Generate Client Invoice
-              </h2>
-              <p className="text-[11px] text-white/50 flex items-center gap-1.5 flex-wrap">
-                <span>{client.companyName || client.name}</span>
-                <span>&bull;</span>
-                <span>
-                  {selectedProjects.length} of {displayedProjects.length} deliverables selected
-                </span>
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="sm:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
             {/* View Switcher Tabs */}
-            <div className="flex items-center p-1 rounded-xl bg-white/5 border border-white/10 text-xs">
+            <div className="flex items-center p-1 rounded-xl bg-white/5 border border-white/10 text-xs w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setActiveTab('select')}
@@ -482,7 +491,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+              className="hidden sm:flex p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>

@@ -184,7 +184,7 @@ export const AdminClients: React.FC = () => {
         </div>
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[#FF5A1F] hover:bg-[#e04810] text-white shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#FF5A1F] hover:bg-[#e04810] text-white shadow-sm transition-all cursor-pointer w-full sm:w-auto shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>New Client</span>
@@ -204,7 +204,7 @@ export const AdminClients: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center">
+        <div className="flex items-center w-full sm:w-auto">
           <MonthSelectDropdown
             value={selectedMonth}
             onChange={(val) => setSelectedMonth(val)}
@@ -236,8 +236,8 @@ export const AdminClients: React.FC = () => {
 
       {/* Table */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left text-xs min-w-[620px]">
             <thead>
               <tr className="border-b border-white/[0.06]">
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CLIENT</th>
@@ -337,7 +337,10 @@ export const AdminClients: React.FC = () => {
                                   setActiveMenuId(null);
                                 } else {
                                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                  setMenuPos({ top: rect.bottom + 4, left: rect.right - 128 });
+                                  setMenuPos({
+                                    top: rect.bottom + 4,
+                                    left: Math.max(8, Math.min(window.innerWidth - 136, rect.right - 128)),
+                                  });
                                   setActiveMenuId(client._id);
                                 }
                               }}
@@ -402,8 +405,8 @@ export const AdminClients: React.FC = () => {
 
       {/* Modal with all features preserved */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-md bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-6 md:p-8 space-y-5 text-white text-xs my-8 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-md bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-5 sm:p-8 space-y-5 text-white text-xs my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
               <div>
                 <h3 className="font-bold text-base tracking-tight text-white">

@@ -770,8 +770,8 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* 5-Tier Allocation Donut */}
-            <div className="h-44 w-full relative flex items-center justify-between mt-3">
-              <div className="w-1/2 h-full relative flex items-center justify-center">
+            <div className="min-h-44 w-full relative flex flex-col sm:flex-row items-center justify-between mt-3 gap-4">
+              <div className="w-full sm:w-1/2 h-44 relative flex items-center justify-center shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -813,7 +813,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
 
               {/* Simple Minimalist Legend */}
-              <div className="w-1/2 space-y-2.5 pl-3">
+              <div className="w-full sm:w-1/2 space-y-2.5 pl-0 sm:pl-3">
                 {commissionData.map((item: any) => (
                   <div
                     key={item.name}
@@ -862,30 +862,30 @@ export const AdminDashboard: React.FC = () => {
             </Link>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left text-xs min-w-[460px]">
               <thead className="border-b border-white/10 text-white/40 font-mono text-[11px] uppercase tracking-wider">
                 <tr>
-                  <th className="pb-2.5 font-semibold">Project Name</th>
-                  <th className="pb-2.5 font-semibold">Client</th>
-                  <th className="pb-2.5 font-semibold">Value</th>
-                  <th className="pb-2.5 font-semibold text-right">Status</th>
+                  <th className="pb-2.5 pr-3 font-semibold">Project Name</th>
+                  <th className="pb-2.5 px-3 font-semibold">Client</th>
+                  <th className="pb-2.5 px-3 font-semibold">Value</th>
+                  <th className="pb-2.5 pl-3 font-semibold text-right">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {recentProjects.length > 0 ? (
                   recentProjects.map((prj: any) => (
                     <tr key={prj.id} className="transition-colors hover:bg-white/[0.02]">
-                      <td className="py-3 font-semibold truncate max-w-[130px]">
+                      <td className="py-3 pr-3 font-semibold truncate max-w-[130px]">
                         <span className={headingColor}>{prj.name}</span>
                       </td>
-                      <td className={`py-3 truncate max-w-[110px] ${subtextColor}`}>
+                      <td className={`py-3 px-3 truncate max-w-[110px] ${subtextColor}`}>
                         {prj.client}
                       </td>
-                      <td className={`py-3 font-semibold font-mono ${headingColor}`}>
+                      <td className={`py-3 px-3 font-semibold font-mono ${headingColor}`}>
                         {formatINR(prj.value)}
                       </td>
-                      <td className="py-3 text-right">
+                      <td className="py-3 pl-3 text-right">
                         <StatusBadge status={prj.status} type="project" />
                       </td>
                     </tr>

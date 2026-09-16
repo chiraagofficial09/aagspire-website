@@ -22,7 +22,7 @@ export const EmployeeLayout: React.FC = () => {
           </header>
         )}
 
-        <main className="flex-1 p-6 md:p-8 lg:p-10 overflow-y-auto custom-scrollbar">
+        <main className="flex-1 p-3.5 sm:p-6 md:p-8 lg:p-10 overflow-y-auto custom-scrollbar">
           <div className="max-w-[1400px] mx-auto">
             <Outlet />
           </div>

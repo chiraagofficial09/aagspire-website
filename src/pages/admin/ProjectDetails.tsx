@@ -237,7 +237,7 @@ export const AdminProjectDetails: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-white/10 flex items-center gap-6 text-xs font-mono overflow-x-auto">
+      <div className="border-b border-white/10 flex items-center gap-6 text-xs font-mono overflow-x-auto no-scrollbar whitespace-nowrap">
         {[
           { key: 'overview', label: 'Overview' },
           { key: 'team', label: `Creative Team (${team.length})` },
@@ -246,7 +246,7 @@ export const AdminProjectDetails: React.FC = () => {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
-            className={`pb-3 border-b-2 transition-colors whitespace-nowrap cursor-pointer ${
+            className={`pb-3 border-b-2 transition-colors whitespace-nowrap cursor-pointer shrink-0 ${
               activeTab === tab.key
                 ? 'border-ember text-white font-bold'
                 : 'border-transparent text-white/50 hover:text-white'
@@ -349,7 +349,7 @@ export const AdminProjectDetails: React.FC = () => {
           </div>
 
           <div className="premium-table-wrap">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[560px]">
               <thead className="bg-white/[0.02] border-b border-white/10 text-white/40 font-mono uppercase text-[10px]">
                 <tr>
                   <th className="py-3 px-4">Staff Member</th>
@@ -501,8 +501,8 @@ export const AdminProjectDetails: React.FC = () => {
 
       {/* Assign Team Modal */}
       {isTeamModalOpen && (
-        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="premium-modal animate-modal-scale relative w-full max-w-md p-6 space-y-4 text-white text-xs shadow-2xl">
+        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="premium-modal animate-modal-scale relative w-full max-w-md p-5 sm:p-6 space-y-4 text-white text-xs my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <h3 className="font-bold text-sm">Assign Staff to Project</h3>
               <button onClick={() => setIsTeamModalOpen(false)}>

@@ -327,7 +327,7 @@ export const AdminEmployeeDetails: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-white/10 flex items-center gap-6 text-xs font-mono">
+      <div className="border-b border-white/10 flex items-center gap-6 text-xs font-mono overflow-x-auto no-scrollbar whitespace-nowrap">
         {[
           { key: 'projects', label: `Projects (${projects.length})` },
           { key: 'workLogs', label: `Work Logs (${workLogs.length})` },
@@ -337,7 +337,7 @@ export const AdminEmployeeDetails: React.FC = () => {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key as any)}
-            className={`pb-3 border-b-2 transition-colors cursor-pointer ${
+            className={`pb-3 border-b-2 transition-colors cursor-pointer shrink-0 ${
               activeTab === tab.key
                 ? 'border-ember text-white font-bold'
                 : 'border-transparent text-white/50 hover:text-white'
@@ -351,7 +351,7 @@ export const AdminEmployeeDetails: React.FC = () => {
       {/* Tab: Projects */}
       {activeTab === 'projects' && (
         <div className="premium-table-wrap">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[520px]">
             <thead className="bg-white/[0.02] border-b border-white/10 text-white/40 font-mono text-[10px] uppercase">
               <tr>
                 <th className="py-3 px-4">Project</th>
@@ -403,7 +403,7 @@ export const AdminEmployeeDetails: React.FC = () => {
       {/* Tab: Work Logs */}
       {activeTab === 'workLogs' && (
         <div className="premium-table-wrap">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[550px]">
             <thead className="bg-white/[0.02] border-b border-white/10 text-white/40 font-mono text-[10px] uppercase">
               <tr>
                 <th className="py-3 px-4">Date</th>
@@ -455,7 +455,7 @@ export const AdminEmployeeDetails: React.FC = () => {
       {/* Tab: Payout History */}
       {activeTab === 'payouts' && (
         <div className="premium-table-wrap">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[650px]">
             <thead className="bg-white/[0.02] border-b border-white/10 text-white/40 font-mono text-[10px] uppercase">
               <tr>
                 <th className="py-3 px-4">Date</th>
@@ -545,8 +545,8 @@ export const AdminEmployeeDetails: React.FC = () => {
 
       {/* Edit Employee Modal */}
       {isEditModalOpen && (
-        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="premium-modal animate-modal-scale relative w-full max-w-xl p-6 space-y-4 text-white my-8 shadow-2xl">
+        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="premium-modal animate-modal-scale relative w-full max-w-xl p-5 sm:p-6 space-y-4 text-white my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
                 <h3 className="font-bold text-sm">Edit Employee Profile</h3>
@@ -557,7 +557,7 @@ export const AdminEmployeeDetails: React.FC = () => {
             </div>
 
             <form onSubmit={handleUpdate} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-white/60 block mb-1">Full Name *</label>
                   <input
@@ -579,7 +579,7 @@ export const AdminEmployeeDetails: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-white/60 block mb-1">Designation</label>
                   <input
@@ -605,7 +605,7 @@ export const AdminEmployeeDetails: React.FC = () => {
                 <span className="text-[10px] font-mono text-ember uppercase tracking-wider block">
                   Banking & Payout Credentials
                 </span>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <input
                     type="text"
                     placeholder="Bank Account Number"
@@ -680,8 +680,8 @@ export const AdminEmployeeDetails: React.FC = () => {
 
       {/* Pay Employee Modal */}
       {isPayModalOpen && (
-        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="premium-modal animate-modal-scale relative w-full max-w-md p-6 space-y-4 text-white text-xs shadow-2xl">
+        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="premium-modal animate-modal-scale relative w-full max-w-md p-5 sm:p-6 space-y-4 text-white text-xs my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <div>
                 <h3 className="font-bold text-sm">Pay Employee</h3>

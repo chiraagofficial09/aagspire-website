@@ -201,7 +201,7 @@ export const AdminPayments: React.FC = () => {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[#FF5A1F] hover:bg-[#e04810] text-white shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#FF5A1F] hover:bg-[#e04810] text-white shadow-sm transition-all cursor-pointer w-full sm:w-auto shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Record Payment</span>
@@ -209,7 +209,7 @@ export const AdminPayments: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -221,7 +221,7 @@ export const AdminPayments: React.FC = () => {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <MonthSelectDropdown
             value={selectedMonth}
             onChange={(val) => setSelectedMonth(val)}
@@ -229,7 +229,7 @@ export const AdminPayments: React.FC = () => {
             allMonthsLabel="All Months"
             className="w-full sm:w-44"
           />
-          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#0d0e14] border border-white/[0.08] self-start sm:self-auto">
+          <div className="flex items-center justify-between sm:justify-start gap-2 px-3.5 py-2.5 rounded-xl bg-[#0d0e14] border border-white/[0.08]">
             <span className="text-xs text-zinc-500 uppercase tracking-wider">Total:</span>
             <span className="text-xs font-semibold text-white font-mono">
               {formatINR(totalCollected)}
@@ -259,8 +259,8 @@ export const AdminPayments: React.FC = () => {
 
       {/* Table */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left text-xs min-w-[640px]">
             <thead>
               <tr className="border-b border-white/[0.06]">
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CLIENT</th>
@@ -344,8 +344,8 @@ export const AdminPayments: React.FC = () => {
 
       {/* Modal with direct client payment */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-          <div className="relative w-full max-w-md bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-6 md:p-8 space-y-5 text-white text-xs my-8 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-md bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-5 sm:p-8 space-y-5 text-white text-xs my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
               <h3 className="font-bold text-base tracking-tight text-white">Record Payment</h3>
               <button

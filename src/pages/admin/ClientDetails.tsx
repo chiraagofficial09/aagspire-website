@@ -776,8 +776,8 @@ export const AdminClientDetails: React.FC = () => {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left text-xs min-w-[500px]">
             <thead className="border-b border-white/[0.06] text-white/40 font-mono text-[10px] uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-3 font-medium">PROJECT NAME</th>
@@ -867,8 +867,8 @@ export const AdminClientDetails: React.FC = () => {
           )}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left text-xs min-w-[620px]">
             <thead className="border-b border-white/[0.06] text-white/40 font-mono text-[10px] uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-3 font-medium">DATE</th>
@@ -985,8 +985,8 @@ export const AdminClientDetails: React.FC = () => {
 
       {/* Edit Client Modal */}
       {isEditModalOpen && (
-        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="premium-modal animate-modal-scale relative w-full max-w-md p-6 space-y-4 text-white shadow-2xl">
+        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="premium-modal animate-modal-scale relative w-full max-w-md p-5 sm:p-6 space-y-4 text-white my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
                 <h3 className="font-bold text-sm">Edit Client Details</h3>
@@ -1083,8 +1083,8 @@ export const AdminClientDetails: React.FC = () => {
 
       {/* Record Client Payment Modal */}
       {isPayModalOpen && (
-        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="premium-modal animate-modal-scale relative w-full max-w-md p-6 space-y-4 text-white text-xs shadow-2xl">
+        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="premium-modal animate-modal-scale relative w-full max-w-md p-5 sm:p-6 space-y-4 text-white text-xs my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex justify-between items-center border-b border-white/10 pb-3">
               <div>
                 <h3 className="font-bold text-sm">Record Client Payment</h3>

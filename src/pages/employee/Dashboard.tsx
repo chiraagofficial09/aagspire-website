@@ -271,16 +271,18 @@ export const EmployeeDashboard: React.FC = () => {
             </Link>
           </div>
 
-          {/* Table Header */}
-          <div className="grid grid-cols-12 px-3 pb-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-            <div className="col-span-5">PROJECT NAME</div>
-            <div className="col-span-3 text-center">EMPLOYEE SHARE</div>
-            <div className="col-span-3 text-center">STATUS</div>
-            <div className="col-span-1 text-right">ACTION</div>
-          </div>
+          <div className="overflow-x-auto custom-scrollbar">
+            <div className="min-w-[480px]">
+              {/* Table Header */}
+              <div className="grid grid-cols-12 px-3 pb-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+                <div className="col-span-5">PROJECT NAME</div>
+                <div className="col-span-3 text-center">EMPLOYEE SHARE</div>
+                <div className="col-span-3 text-center">STATUS</div>
+                <div className="col-span-1 text-right">ACTION</div>
+              </div>
 
-          {/* Projects Rows */}
-          <div className="space-y-2.5">
+              {/* Projects Rows */}
+              <div className="space-y-2.5">
             {projects.length > 0 ? (
               projects.slice(0, 5).map((item: any) => {
                 const prj = item.projectId || item;
@@ -340,6 +342,8 @@ export const EmployeeDashboard: React.FC = () => {
                   : 'No projects assigned yet.'}
               </div>
             )}
+              </div>
+            </div>
           </div>
         </div>
 

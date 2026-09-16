@@ -199,7 +199,7 @@ export const AdminProjects: React.FC = () => {
         </div>
         <button
           onClick={openCreateModal}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[#FF5A1F] hover:bg-[#e04810] text-white shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#FF5A1F] hover:bg-[#e04810] text-white shadow-sm transition-all cursor-pointer w-full sm:w-auto shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>New Project</span>
@@ -207,7 +207,7 @@ export const AdminProjects: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar - matching reference screenshot */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -218,7 +218,7 @@ export const AdminProjects: React.FC = () => {
             className="w-full pl-10 pr-4 py-2 bg-[#0d0e14] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/20 transition-colors"
           />
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <MonthSelectDropdown
             value={selectedMonth}
             onChange={(val) => setSelectedMonth(val)}
@@ -263,8 +263,8 @@ export const AdminProjects: React.FC = () => {
 
       {/* Projects Table - matching reference screenshot */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-left text-xs min-w-[660px]">
             <thead>
               <tr className="border-b border-white/[0.06]">
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PROJECT</th>
@@ -347,7 +347,10 @@ export const AdminProjects: React.FC = () => {
                                   setActiveMenuId(null);
                                 } else {
                                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                                  setMenuPos({ top: rect.bottom + 4, left: rect.right - 128 });
+                                  setMenuPos({
+                                    top: rect.bottom + 4,
+                                    left: Math.max(8, Math.min(window.innerWidth - 136, rect.right - 128)),
+                                  });
                                   setActiveMenuId(prj._id);
                                 }
                               }}
