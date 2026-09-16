@@ -27,7 +27,7 @@ export async function getAdminAnalytics(req: AuthenticatedRequest, res: Response
       targetMonth = currentMonthKey; // Default to current month
     }
 
-    const [metrics, recentProjects, pendingWorkLogs, recentPayments] = await Promise.all([
+    const [metrics, rawRecentProjects, pendingWorkLogs, rawRecentPayments] = await Promise.all([
       getAdminDashboardMetrics(monthsNum, targetMonth),
       Project.find()
         .populate('clientId', 'name companyName')
@@ -47,6 +47,17 @@ export async function getAdminAnalytics(req: AuthenticatedRequest, res: Response
         .limit(5)
         .lean(),
     ]);
+
+    const recentProjects = (rawRecentProjects || []).map((p: any) => ({
+      ...p,
+      projectValue: fromDecimal(p.projectValue),
+      discountAmount: fromDecimal(p.discountAmount),
+    }));
+
+    const recentPayments = (rawRecentPayments || []).map((p: any) => ({
+      ...p,
+      amount: fromDecimal(p.amount),
+    }));
 
     const fullData = {
       ...metrics,

@@ -112,10 +112,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
             <NavItem item={{ label: 'Commission', path: '/admin/commissions', icon: Percent }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Receipts', path: '/admin/receipts', icon: ReceiptText }} onNavigate={() => setMobileOpen(false)} />
 
-            {/* INSIGHTS */}
-            <SectionLabel text="INSIGHTS" />
-            <NavItem item={{ label: 'Analytics', path: '/admin/analytics', icon: BarChart3 }} onNavigate={() => setMobileOpen(false)} />
-
             {/* SYSTEM */}
             <div className="pt-2">
               <NavItem item={{ label: 'Settings', path: '/admin/settings', icon: Settings }} onNavigate={() => setMobileOpen(false)} />

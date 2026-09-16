@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { api } from '../../services/api';
@@ -6,17 +6,55 @@ import { formatINR } from '../../utils/formatters';
 import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { EmptyState } from '../../components/work/EmptyState';
+import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
 
 export const EmployeeProjects: React.FC = () => {
   const toast = useToast();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const now = useMemo(() => new Date(), []);
+  const currentMonthKey = useMemo(
+    () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    [now]
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const fetchProjects = async () => {
+  const availableMonths: MonthOption[] = useMemo(() => {
+    const monthsSet = new Set<string>();
+    for (let i = 0; i <= 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    return Array.from(monthsSet)
+      .sort((a, b) => b.localeCompare(a))
+      .map((key) => {
+        const [y, m] = key.split('-').map(Number);
+        const d = new Date(y, m - 1, 1);
+        return {
+          key,
+          label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
+        };
+      });
+  }, [now]);
+
+  const selectedMonthLabel = useMemo(() => {
+    if (selectedMonth === 'all') return 'All Months';
+    const [yr, mo] = selectedMonth.split('-').map(Number);
+    const d = new Date(yr, mo - 1, 1);
+    return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  }, [selectedMonth]);
+
+  const fetchProjects = async (monthVal = selectedMonth) => {
     try {
       setLoading(true);
-      const res = await api.get('/employee/projects');
+      const params = new URLSearchParams();
+      if (monthVal && monthVal !== 'all') {
+        params.append('month', monthVal);
+      }
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await api.get(`/employee/projects${qs}`);
       setProjects(res.data.data || []);
     } catch (err) {
       console.error('Error fetching employee projects', err);
@@ -26,8 +64,8 @@ export const EmployeeProjects: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    fetchProjects(selectedMonth);
+  }, [selectedMonth]);
 
   const handleStatusChange = async (projectId: string, newStatus: string) => {
     // Optimistic UI update
@@ -76,11 +114,12 @@ export const EmployeeProjects: React.FC = () => {
   const filtered = projects.filter((item) => {
     const term = search.toLowerCase();
     const prj = item.projectId || item;
-    return (
+    const matchesSearch =
       (prj.title || prj.projectName)?.toLowerCase().includes(term) ||
       prj.projectCode?.toLowerCase().includes(term) ||
-      (prj.clientId?.name || prj.clientId?.companyName)?.toLowerCase().includes(term)
-    );
+      (prj.clientId?.name || prj.clientId?.companyName)?.toLowerCase().includes(term);
+    const matchesStatus = statusFilter === 'all' || prj.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
   // Delivered projects are placed at the end of the list;
@@ -111,7 +150,7 @@ export const EmployeeProjects: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="pt-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -122,7 +161,48 @@ export const EmployeeProjects: React.FC = () => {
             className="w-full pl-10 pr-4 py-2 bg-[#0d0e14] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/20 transition-colors"
           />
         </div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <MonthSelectDropdown
+            value={selectedMonth}
+            onChange={(val) => setSelectedMonth(val)}
+            availableMonths={availableMonths}
+            allMonthsLabel="All Months"
+            className="w-full sm:w-44"
+          />
+          <CustomSelect
+            value={statusFilter}
+            onChange={setStatusFilter}
+            className="w-full sm:w-44"
+            options={[
+              { value: 'all', label: 'All statuses' },
+              { value: 'confirmed', label: 'Confirmed' },
+              { value: 'in_progress', label: 'In progress' },
+              { value: 'review', label: 'In review' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'delivered', label: 'Delivered' },
+            ]}
+          />
+        </div>
       </div>
+
+      {/* Active Month Filter Notification Banner */}
+      {selectedMonth !== 'all' && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
+            <span className="text-zinc-300">
+              Showing projects for <span className="font-semibold text-white">{selectedMonthLabel}</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedMonth('all')}
+            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
+          >
+            Show All Months
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
@@ -193,8 +273,12 @@ export const EmployeeProjects: React.FC = () => {
                   <td colSpan={5} className="py-8">
                     <EmptyState
                       type="projects"
-                      title="No assigned projects"
-                      description="You will see projects listed here once you are assigned to production deliverables."
+                      title={selectedMonth !== 'all' ? `No assigned projects in ${selectedMonthLabel}` : "No assigned projects"}
+                      description={
+                        selectedMonth !== 'all'
+                          ? "Try selecting another month or 'All Months' to view projects."
+                          : "You will see projects listed here once you are assigned to production deliverables."
+                      }
                     />
                   </td>
                 </tr>

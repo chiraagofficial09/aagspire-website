@@ -8,19 +8,20 @@ import {
   Tag,
   Target,
   Scissors,
-  Users,
-  Briefcase,
   ClipboardList,
   CheckCircle2,
   XCircle,
   ArrowUpRight,
   Sparkles,
   AlertCircle,
+  Info,
   Sliders,
   ArrowRight,
   PieChart as PieIcon,
   Calendar,
-  ChevronDown,
+  Clock,
+  Wallet,
+  TrendingUp,
 } from 'lucide-react';
 import { MonthSelectDropdown } from '../../components/work/MonthSelectDropdown';
 import {
@@ -36,14 +37,42 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  Legend,
 } from 'recharts';
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/work/StatusBadge';
 
+// Safely parse any number, string, or Mongoose Decimal128 object { $numberDecimal: "..." }
+const parseAmount = (val: any): number => {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (typeof val === 'string') {
+    const num = parseFloat(val);
+    return isNaN(num) ? 0 : num;
+  }
+  if (typeof val === 'object') {
+    if (val.$numberDecimal !== undefined) {
+      const num = parseFloat(val.$numberDecimal);
+      return isNaN(num) ? 0 : num;
+    }
+    if (val.value !== undefined) return parseAmount(val.value);
+    if (val.amount !== undefined) return parseAmount(val.amount);
+    if (val.totalAmount !== undefined) return parseAmount(val.totalAmount);
+    if (val.projectValue !== undefined) return parseAmount(val.projectValue);
+  }
+  return 0;
+};
+
 // Format Indian Rupee currency: e.g. ₹ 12,50,000
-const formatINR = (val: number | string | undefined): string => {
+const formatINR = (val: any): string => {
+  const num = parseAmount(val);
+  return `₹${num.toLocaleString('en-IN')}`;
+};
+
+// Format split percentage: whole numbers as 40%, fractional as 23.45%
+const formatSplitPercent = (val: number | string | undefined): string => {
   const num = Number(val) || 0;
-  return `₹ ${num.toLocaleString('en-IN')}`;
+  return num % 1 === 0 ? `${num}%` : `${num.toFixed(2)}%`;
 };
 
 // Lakhs short formatter for axes: e.g. 5L, 10L, 20L
@@ -59,7 +88,6 @@ export const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
 
-  // Fixed minimal obsidian dark theme
   const isLight = false;
 
   // State for data
@@ -123,61 +151,134 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Dynamic greeting based on time of day
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
 
-  // 100% Real Live KPIs from Database
+  // 100% Real Live KPIs from Database & Shared Financial Engine
   const kpis = data?.kpis || {};
-  const totalProjectValue = Number(kpis.totalProjectValue || 0);
-  const clientPaymentsReceived = Number(kpis.totalReceived || 0);
-  const outstandingPayments = Number(kpis.outstandingAmount || 0);
-  const employeeCommission = Number(kpis.totalEmployeeAllocation || 0);
-  const officeExpense = Number(kpis.totalOfficeAllocation || 0);
-  const adminShare = Number(kpis.totalAdminShare || 0);
-  const settlementReserve = Number(kpis.totalSettlementReserve || 0);
-  const activeProjectsCount = Number(kpis.totalProjectsCount || 0);
+  const finMetrics = data?.financialMetrics || {};
+  const empFinance = data?.employeeFinance || {};
+  const settlementFinance = data?.settlementReserve || {};
 
-  // Real Database Monthly Trend Data (Last 6 Months)
+  // 6 Primary Financial Metrics
+  const newProjectValue = Number(kpis.newProjectValue ?? finMetrics.newProjectValue ?? kpis.totalProjectValue ?? 0);
+  const cashCollected = Number(kpis.cashCollected ?? finMetrics.cashCollected ?? kpis.totalReceived ?? 0);
+  const currentMonthCollection = Number(kpis.currentMonthCollection ?? finMetrics.currentMonthCollection ?? 0);
+  const previousOutstandingCollected = Number(kpis.previousOutstandingCollected ?? finMetrics.previousOutstandingCollected ?? 0);
+  const openingReceivable = Number(kpis.openingReceivable ?? finMetrics.openingReceivable ?? 0);
+  const closingReceivable = Number(kpis.closingReceivable ?? finMetrics.closingReceivable ?? kpis.outstandingAmount ?? 0);
+
+  // Supporting Cash Accounting
+  const appliedCollections = Number(kpis.appliedCollections ?? finMetrics.appliedCollections ?? 0);
+  const unappliedCash = Number(kpis.unappliedCash ?? finMetrics.unappliedCash ?? 0);
+  const excessCash = Number(kpis.excessCash ?? finMetrics.excessCash ?? 0);
+  const collectionRate = Number(kpis.collectionRate ?? finMetrics.collectionRate ?? 0);
+
+  // Informational banner condition
+  const hasPreviousCollections = Boolean(kpis.hasPreviousCollections || previousOutstandingCollected > 0 || cashCollected > newProjectValue);
+  const previousCollectionsMessage =
+    kpis.previousCollectionsMessage ||
+    finMetrics.previousCollectionsMessage ||
+    (hasPreviousCollections
+      ? `₹${previousOutstandingCollected.toLocaleString('en-IN')} of this month's collections came from projects booked in previous months.`
+      : '');
+
+  // Employee Finance Breakdown
+  const expectedCommission = Number(empFinance.expectedCommission ?? kpis.expectedCommission ?? kpis.totalEmployeeAllocation ?? 0);
+  const earnedCommission = Number(empFinance.earnedCommission ?? kpis.earnedCommission ?? 0);
+  const employeePaid = Number(empFinance.employeePaid ?? kpis.employeePaid ?? 0);
+  const employeePayable = Number(empFinance.employeePayable ?? kpis.employeePayable ?? Math.max(0, earnedCommission - employeePaid));
+  const employeeAdvance = Number(empFinance.employeeAdvance ?? kpis.employeeAdvance ?? Math.max(0, employeePaid - earnedCommission));
+
+  // Settlement Reserve (Project Reserve Fund - strictly NOT employee payout)
+  const settlementReserveExpected = Number(settlementFinance.settlementReserveExpected ?? kpis.settlementReserveExpected ?? kpis.totalSettlementReserve ?? 0);
+  const settlementReserveAccrued = Number(settlementFinance.settlementReserveAccrued ?? kpis.settlementReserveAccrued ?? 0);
+  const settlementReserveRate = Number(settlementFinance.settlementReserveRate ?? kpis.settlementReserveRate ?? 5);
+
+  const activeProjectsCount = Number(kpis.activeProjectsCount ?? kpis.totalProjectsCount ?? 0);
+
+  // Real Database Monthly Trend Data (Shared source of truth)
   const rawTrends = data?.monthlyTrends || data?.monthlyChart || [];
   const chartData = rawTrends.length > 0
     ? rawTrends.map((t: any) => ({
         month: t.month,
-        revenue: Number(t.revenue || 0),
-        received: Number(t.collections || t.collected || 0),
-        outstanding: Math.max(0, Number(t.revenue || 0) - Number(t.collections || t.collected || 0)),
+        key: t.key,
+        bookings: Number(t.bookings ?? t.revenue ?? 0),
+        collections: Number(t.collections ?? t.collected ?? 0),
+        currentMonthCollection: Number(t.currentMonthCollection ?? 0),
+        previousOutstandingCollected: Number(t.previousOutstandingCollected ?? 0),
+        openingReceivable: Number(t.openingReceivable ?? 0),
+        closingReceivable: Number(t.closingReceivable ?? 0),
+        appliedCollections: Number(t.appliedCollections ?? 0),
+        unappliedCash: Number(t.unappliedCash ?? 0),
       }))
     : dynamicMonths.slice(0, 6).reverse().map((m) => ({
         month: m.split(' ')[0],
-        revenue: 0,
-        received: 0,
-        outstanding: 0,
+        bookings: 0,
+        collections: 0,
+        currentMonthCollection: 0,
+        previousOutstandingCollected: 0,
+        openingReceivable: 0,
+        closingReceivable: 0,
+        appliedCollections: 0,
+        unappliedCash: 0,
       }));
 
-  const hasAnyRevenue = chartData.some((d: any) => d.revenue > 0 || d.received > 0);
-  const maxBarRevenue = Math.max(...chartData.map((d: any) => Math.max(d.revenue, d.received, 100000)));
+  const hasAnyRevenue = chartData.some((d: any) => d.bookings > 0 || d.collections > 0);
+  const maxBarRevenue = Math.max(...chartData.map((d: any) => Math.max(d.bookings, d.collections, d.closingReceivable, 100000)));
 
-  // Real Commission Distribution from Database
+  // Real Commission Distribution from Database (White & Orange minimal palette)
+  const splitColors: Record<string, string> = {
+    employee: '#FF5A1F',
+    admin: '#FFFFFF',
+    office: '#94A3B8',
+    broker: '#FB923C',
+    settlement: '#64748B',
+  };
+
   const rawDistribution = data?.distribution || [];
   const hasCommissionData = rawDistribution.some((d: any) => d.value > 0);
-  const commissionData = hasCommissionData
+  const commissionData = (hasCommissionData
     ? rawDistribution
     : [
-        { name: 'Employee Pool', value: 0, color: '#FF5A1F' },
-        { name: 'Admin Share', value: 0, color: '#FFFFFF' },
-        { name: 'Office Expense', value: 0, color: '#D4D4D8' },
-        { name: 'Broker Fee', value: 0, color: '#A1A1AA' },
-        { name: 'Reserve Fund', value: 0, color: '#71717A' },
-      ];
+        { name: 'Employee Pool', key: 'employee', value: 0, color: '#FF5A1F' },
+        { name: 'Admin Share', key: 'admin', value: 0, color: '#FFFFFF' },
+        { name: 'Office Expense', key: 'office', value: 0, color: '#94A3B8' },
+        { name: 'Broker Fee', key: 'broker', value: 0, color: '#FB923C' },
+        { name: 'Reserve Fund', key: 'settlement', value: 0, color: '#64748B' },
+      ]
+  ).map((item: any) => ({
+    ...item,
+    color: splitColors[item.key] || item.color || '#FF5A1F',
+  }));
 
   const totalCommPercent = commissionData.reduce((sum: number, c: any) => sum + (c.value || 0), 0);
+
+  // 5-Tier Project Commission Allocations (Employee, Admin, Office, Broker, Reserve Fund)
+  const employeeShareData = commissionData.find((c: any) => c.key === 'employee' || /employee/i.test(c.name)) || { name: 'Employee Share', value: 0, amount: 0 };
+  const adminShareData = commissionData.find((c: any) => c.key === 'admin' || /admin/i.test(c.name)) || { name: 'Admin Share', value: 0, amount: 0 };
+  const officeExpenseData = commissionData.find((c: any) => c.key === 'office' || /office/i.test(c.name)) || { name: 'Office Expense', value: 0, amount: 0 };
+  const brokerShareData = commissionData.find((c: any) => c.key === 'broker' || /broker/i.test(c.name)) || { name: 'Broker Share', value: 0, amount: 0 };
+  const reserveFundData = commissionData.find((c: any) => c.key === 'settlement' || /reserve|settlement/i.test(c.name)) || { name: 'Reserve Fund', value: settlementReserveRate || 0, amount: 0 };
+
+  const employeeShareAmount = Number(employeeShareData.amount ?? kpis.totalEmployeeAllocation ?? 0);
+  const adminShareAmount = Number(adminShareData.amount ?? kpis.totalAdminShare ?? 0);
+  const officeExpenseAmount = Number(officeExpenseData.amount ?? kpis.totalOfficeAllocation ?? 0);
+  const brokerShareAmount = Number(brokerShareData.amount ?? kpis.totalBrokerAllocation ?? 0);
+  const reserveFundAmount = Number(reserveFundData.amount ?? settlementReserveExpected ?? kpis.totalSettlementReserve ?? 0);
+
+  const employeeSharePercent = employeeShareData.value != null ? Number(employeeShareData.value) : (kpis.employeePercent ?? 40);
+  const adminSharePercent = adminShareData.value != null ? Number(adminShareData.value) : (kpis.adminPercent ?? 35);
+  const officeExpensePercent = officeExpenseData.value != null ? Number(officeExpenseData.value) : (kpis.officePercent ?? 10);
+  const brokerSharePercent = brokerShareData.value != null ? Number(brokerShareData.value) : (kpis.brokerPercent ?? 10);
+  const reserveFundPercent = reserveFundData.value != null ? Number(reserveFundData.value) : (settlementReserveRate || kpis.settlementPercent || 5);
 
   // Real Recent Projects from Database
   const recentProjects = (data?.recentProjects || []).map((p: any) => ({
     id: p._id,
     name: p.projectName || p.title || 'Untitled Project',
     client: p.clientId?.companyName || p.clientId?.name || 'Direct Client',
-    value: Number(p.projectValue || p.totalAmount || 0),
+    value: parseAmount(p.projectValue ?? p.totalAmount ?? p.value),
     status: p.status || 'in_progress',
   }));
 
@@ -194,19 +295,17 @@ export const AdminDashboard: React.FC = () => {
     id: p._id,
     name: p.clientId?.companyName || p.clientId?.name || 'Client',
     project: p.projectId?.projectName || p.notes || 'Project Payment',
-    amount: Number(p.amount || 0),
+    amount: parseAmount(p.amount),
     date: p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-IN') : 'Recent',
     initials: (p.clientId?.companyName || p.clientId?.name || 'CL').slice(0, 2).toUpperCase(),
   }));
 
-  // Colors and theme helpers
   const cardBg = isLight
     ? 'bg-white border-slate-200/90 shadow-[0_4px_20px_rgba(0,0,0,0.03)]'
     : 'bg-gradient-to-b from-[#0e1017] to-[#08090d] border-white/[0.08] shadow-[0_4px_24px_rgba(0,0,0,0.5)]';
-  
+
   const headingColor = isLight ? 'text-slate-900' : 'text-white';
   const subtextColor = isLight ? 'text-slate-500' : 'text-white/50';
-
 
   const availableMonths = (data?.availableMonths && data.availableMonths.length > 0)
     ? data.availableMonths
@@ -227,7 +326,6 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      
       {/* Error Alert if any */}
       {error && (
         <div className="p-4 mb-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center gap-3 text-xs">
@@ -244,13 +342,12 @@ export const AdminDashboard: React.FC = () => {
             <span className="inline-block animate-bounce">👋</span>
           </h1>
           <p className={`text-sm mt-1 font-medium ${subtextColor}`}>
-            Here's what's happening at Aagspire today.
+            Projects, payments and pending amounts at a glance.
           </p>
         </div>
 
-        {/* Right Header Toolbar: Month Filter, Notifications & Admin Profile */}
+        {/* Right Header Toolbar: Month Filter & Admin Profile */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Custom Month Filter Dropdown (Styled like CTA 'Vision' Selector) */}
           <MonthSelectDropdown
             value={selectedMonth}
             onChange={setSelectedMonth}
@@ -258,10 +355,16 @@ export const AdminDashboard: React.FC = () => {
             allMonthsLabel="All Months"
           />
 
-          {/* Admin User Chip */}
           <div className="flex items-center gap-2.5 pl-2 pr-3.5 py-1.5 rounded-xl border border-white/[0.08] bg-[#0c0d12]">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-ember to-ember-deep flex items-center justify-center font-bold text-xs text-white shadow-sm">
-              {user?.name ? user.name[0].toUpperCase() : 'A'}
+            <div className="w-7 h-7 rounded-lg bg-[#FF5A1F]/15 border border-[#FF5A1F]/30 flex items-center justify-center p-1 shadow-sm shrink-0">
+              <img
+                src="/favicon.svg"
+                alt="Aagspire"
+                className="w-4 h-4 object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/fire-logo.svg';
+                }}
+              />
             </div>
             <div className="text-left leading-tight hidden sm:block">
               <div className="text-xs font-bold text-white">
@@ -275,216 +378,316 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. 8 KPI METRIC CARDS (2 rows of 4) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-        
-        {/* Card 1: Total Project Value */}
-        <div className={`p-5 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div className="mt-4">
-            <div className={`text-2xl font-extrabold tracking-tight ${headingColor}`}>
-              {formatINR(totalProjectValue)}
-            </div>
-            <div className={`text-xs font-medium mt-1 ${subtextColor}`}>
-              Total Project Value
-            </div>
-          </div>
-        </div>
 
-        {/* Card 2: Client Payments Received */}
-        <div className={`p-5 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
-            <FileCheck className="w-5 h-5" />
+      {/* Notice if Unapplied Cash or Excess Cash exists */}
+      {(unappliedCash > 0 || excessCash > 0) && (
+        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+            <span>
+              {unappliedCash > 0 && `Unapplied Cash: ${formatINR(unappliedCash)} received without valid project link.`}
+              {excessCash > 0 && ` Excess Cash: ${formatINR(excessCash)} exceeding project contracted values.`}
+              {' '}These amounts do not reduce project receivables until properly reviewed and allocated.
+            </span>
           </div>
-          <div className="mt-4">
-            <div className={`text-2xl font-extrabold tracking-tight ${headingColor}`}>
-              {formatINR(clientPaymentsReceived)}
-            </div>
-            <div className={`text-xs font-medium mt-1 ${subtextColor}`}>
-              Client Payments Received
-            </div>
-          </div>
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-200 border border-amber-500/30 shrink-0">
+            Needs Review
+          </span>
         </div>
+      )}
 
-        {/* Card 3: Outstanding Payments */}
-        <div className={`p-5 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
-            <Tag className="w-5 h-5" />
-          </div>
-          <div className="mt-4">
-            <div className={`text-2xl font-extrabold tracking-tight ${headingColor}`}>
-              {formatINR(outstandingPayments)}
+      {/* 2. PRIMARY FINANCIAL EQUATION OVERVIEW */}
+      <div className="space-y-4">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 lg:gap-3.5">
+          {/* Card 1: New Projects */}
+          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-medium text-white/50">New Projects</span>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
+                <Layers className="w-4 h-4" />
+              </div>
             </div>
-            <div className={`text-xs font-medium mt-1 ${subtextColor}`}>
-              Outstanding Payments
+            <div className="mt-3">
+              <div className={`text-xl sm:text-2xl font-extrabold tracking-tight ${headingColor}`}>
+                {formatINR(newProjectValue)}
+              </div>
+              <div className="text-[11px] font-mono text-zinc-400 mt-1">
+                Added this month
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Card 4: Employee Commission */}
-        <div className={`p-5 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-ember/10 text-ember border border-ember/20">
-            <Target className="w-5 h-5" />
-          </div>
-          <div className="mt-4">
-            <div className={`text-2xl font-extrabold tracking-tight ${headingColor}`}>
-              {formatINR(employeeCommission)}
-            </div>
-            <div className={`text-xs font-medium mt-1 ${subtextColor}`}>
-              Employee Commission
+          {/* Operator: + */}
+          <div className="flex items-center justify-center py-1 lg:py-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-sm shrink-0 select-none shadow-sm">
+              +
             </div>
           </div>
-        </div>
 
-        {/* Card 5: Office Expense */}
-        <div className={`p-5 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
-            <Scissors className="w-5 h-5" />
-          </div>
-          <div className="mt-4">
-            <div className={`text-2xl font-extrabold tracking-tight ${headingColor}`}>
-              {formatINR(officeExpense)}
+          {/* Card 2: Previous Month Due */}
+          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-medium text-white/50">Previous Month Due</span>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
+                <Clock className="w-4 h-4" />
+              </div>
             </div>
-            <div className={`text-xs font-medium mt-1 ${subtextColor}`}>
-              Office Expense
+            <div className="mt-3">
+              <div className={`text-xl sm:text-2xl font-extrabold tracking-tight ${headingColor}`}>
+                {formatINR(openingReceivable)}
+              </div>
+              <div className="text-[11px] font-mono text-zinc-400 mt-1">
+                Pending from previous months
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Card 6: Admin Share */}
-        <div className={`p-5 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
-            <Users className="w-5 h-5" />
-          </div>
-          <div className="mt-4">
-            <div className={`text-2xl font-extrabold tracking-tight ${headingColor}`}>
-              {formatINR(adminShare)}
-            </div>
-            <div className={`text-xs font-medium mt-1 ${subtextColor}`}>
-              Admin Share
+          {/* Operator: − */}
+          <div className="flex items-center justify-center py-1 lg:py-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-sm shrink-0 select-none shadow-sm">
+              −
             </div>
           </div>
-        </div>
 
-        {/* Card 7: Settlement Reserve */}
-        <div className={`p-5 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
-            <Briefcase className="w-5 h-5" />
-          </div>
-          <div className="mt-4">
-            <div className={`text-2xl font-extrabold tracking-tight ${headingColor}`}>
-              {formatINR(settlementReserve)}
+          {/* Card 3: Money Received This Month */}
+          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-medium text-white/50">Money Received This Month</span>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
+                <Wallet className="w-4 h-4" />
+              </div>
             </div>
-            <div className={`text-xs font-medium mt-1 ${subtextColor}`}>
-              Settlement Reserve
+            <div className="mt-3">
+              <div className={`text-xl sm:text-2xl font-extrabold tracking-tight ${headingColor}`}>
+                {formatINR(cashCollected)}
+              </div>
+              <div className="text-[11px] font-mono text-zinc-400 mt-1">
+                Received this month
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Card 8: Active Projects */}
-        <div className={`p-5 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-ember/10 text-ember border border-ember/20">
-            <ClipboardList className="w-5 h-5" />
-          </div>
-          <div className="mt-4">
-            <div className={`text-2xl font-extrabold tracking-tight ${headingColor}`}>
-              {activeProjectsCount}
+          {/* Operator: = */}
+          <div className="flex items-center justify-center py-1 lg:py-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-sm shrink-0 select-none shadow-sm">
+              =
             </div>
-            <div className={`text-xs font-medium mt-1 ${subtextColor}`}>
-              Active Projects
+          </div>
+
+          {/* Card 4: Remaining Due */}
+          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] sm:text-xs font-medium text-white/50">Remaining Due</span>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-ember/10 text-ember border border-ember/20">
+                <Tag className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-ember">
+                {formatINR(closingReceivable)}
+              </div>
+              <div className="text-[11px] font-mono text-zinc-400 mt-1">
+                Still pending
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 3. MIDDLE SECTION: DUAL CHARTS (Website Ember Colors) */}
+      {/* 2.5 ALLOCATION SHARE CARDS: 5-TIER PROJECT-VALUE-WEIGHTED COMMISSION SPLIT */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 mt-4 sm:mt-5">
+        {/* Card 1: EMPLOYEE SHARE */}
+        <div className={`rounded-2xl ${isLight ? 'bg-white border border-[#FF5A1F]/40 shadow-[0_4px_25px_rgba(255,90,31,0.08)]' : 'bg-[#0e1017] border border-[#FF5A1F]/40 shadow-[0_0_25px_rgba(255,90,31,0.06)]'} p-4 sm:p-5 relative overflow-hidden flex flex-col justify-between`}>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
+              EMPLOYEE SHARE
+            </span>
+            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+              {formatSplitPercent(employeeSharePercent)}
+            </span>
+          </div>
+          <div className="mt-3">
+            <div>
+              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
+                {formatINR(employeeShareAmount)}
+              </span>
+            </div>
+            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
+              Team commission pool
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: ADMIN SHARE */}
+        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
+              ADMIN SHARE
+            </span>
+            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+              {formatSplitPercent(adminSharePercent)}
+            </span>
+          </div>
+          <div className="mt-3">
+            <div>
+              <span className={`text-xl sm:text-2xl font-extrabold ${headingColor} tracking-tight font-sans`}>
+                {formatINR(adminShareAmount)}
+              </span>
+            </div>
+            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
+              Company admin allocation
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: OFFICE EXPENSE */}
+        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
+              OFFICE EXPENSE
+            </span>
+            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+              {formatSplitPercent(officeExpensePercent)}
+            </span>
+          </div>
+          <div className="mt-3">
+            <div>
+              <span className={`text-xl sm:text-2xl font-extrabold ${headingColor} tracking-tight font-sans`}>
+                {formatINR(officeExpenseAmount)}
+              </span>
+            </div>
+            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
+              Operating & overhead cost
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: BROKER SHARE */}
+        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
+              BROKER SHARE
+            </span>
+            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+              {formatSplitPercent(brokerSharePercent)}
+            </span>
+          </div>
+          <div className="mt-3">
+            <div>
+              <span className={`text-xl sm:text-2xl font-extrabold ${headingColor} tracking-tight font-sans`}>
+                {formatINR(brokerShareAmount)}
+              </span>
+            </div>
+            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
+              Referral & broker fee
+            </span>
+          </div>
+        </div>
+
+        {/* Card 5: RESERVE FUND */}
+        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
+              RESERVE FUND
+            </span>
+            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+              {formatSplitPercent(reserveFundPercent)}
+            </span>
+          </div>
+          <div className="mt-3">
+            <div>
+              <span className={`text-xl sm:text-2xl font-extrabold ${headingColor} tracking-tight font-sans`}>
+                {formatINR(reserveFundAmount)}
+              </span>
+            </div>
+            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
+              Project settlement reserve
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. CHARTS ROW 1: Bookings vs Cash Collection & Receivable Reconciliation */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        
-        {/* Chart 1: Monthly Project Revenue (Bar Chart in Aagspire Ember Gradient) */}
+        {/* Chart 1: Bookings vs Cash Collection */}
         <div className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 ${cardBg}`}>
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
-                Monthly Project Revenue
+                Bookings vs Cash Collection
               </h2>
-              {!hasAnyRevenue && (
-                <p className="text-[11px] font-mono text-slate-400 dark:text-white/40">
-                  No contracted projects recorded yet
-                </p>
-              )}
+              <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                New business booked vs client money received (includes debt recovery)
+              </p>
             </div>
-            <span className="text-xs font-mono text-ember font-semibold flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" /> Aagspire Analytics
-            </span>
+            <div className="flex items-center gap-3 text-xs font-semibold">
+              <span className="flex items-center gap-1.5 text-ember">
+                <span className="w-2.5 h-2.5 rounded-full bg-ember" /> Bookings
+              </span>
+              <span className="flex items-center gap-1.5 text-emerald-400">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Cash Collected
+              </span>
+            </div>
           </div>
 
           <div className="h-64 sm:h-72 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="emberBarGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#FF5A1F" />
-                    <stop offset="100%" stopColor="#FF7A45" stopOpacity={0.85} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke={isLight ? '#f1f5f9' : '#ffffff10'}
-                />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
                 <XAxis
                   dataKey="month"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: isLight ? '#64748b' : '#94a3b8', fontSize: 12, fontWeight: 500 }}
+                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }}
                   dy={6}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: isLight ? '#64748b' : '#94a3b8', fontSize: 11 }}
+                  tick={{ fill: '#94a3b8', fontSize: 11 }}
                   tickFormatter={formatLakhs}
                   domain={[0, Math.ceil(maxBarRevenue * 1.2)]}
                 />
                 <Tooltip
-                  cursor={{ fill: isLight ? 'rgba(255,90,31,0.06)' : 'rgba(255,255,255,0.04)' }}
+                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                   contentStyle={{
-                    backgroundColor: isLight ? '#ffffff' : '#181818',
-                    borderColor: isLight ? '#e2e8f0' : '#ffffff20',
+                    backgroundColor: '#181818',
+                    borderColor: '#ffffff20',
                     borderRadius: '0.75rem',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                    color: isLight ? '#0f172a' : '#ffffff',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    color: '#ffffff',
                     fontSize: '12px',
                     fontWeight: 600,
                   }}
-                  formatter={(val: any) => [formatINR(val), 'Project Revenue']}
+                  formatter={(val: any, name: any) => [
+                    formatINR(val),
+                    name === 'bookings' ? 'New Bookings' : 'Cash Collected',
+                  ]}
                 />
-                <Bar
-                  dataKey="revenue"
-                  fill="url(#emberBarGradient)"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={38}
-                />
+                <Bar dataKey="bookings" fill="#FF5A1F" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="collections" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Chart 2: Payments Received vs Outstanding (Area / Line Chart) */}
+        {/* Chart 2: Receivable Reconciliation */}
         <div className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 ${cardBg}`}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-            <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
-              Payments Received vs Outstanding
-            </h2>
-            {/* Custom Legend */}
-            <div className="flex items-center gap-4 text-xs font-semibold">
-              <span className="flex items-center gap-1.5 text-ember">
-                <span className="w-2.5 h-2.5 rounded-full bg-ember" /> Received
-              </span>
+            <div>
+              <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
+                Receivable Reconciliation
+              </h2>
+              <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                Closing = Opening + Bookings - Applied Collections
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-semibold">
               <span className="flex items-center gap-1.5 text-zinc-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-zinc-400" /> Outstanding
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-400" /> Opening
+              </span>
+              <span className="flex items-center gap-1.5 text-ember">
+                <span className="w-2.5 h-2.5 rounded-full bg-ember" /> Closing
               </span>
             </div>
           </div>
@@ -493,70 +696,64 @@ export const AdminDashboard: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                 <defs>
-                  {/* Received Area Gradient: Aagspire Ember Orange */}
-                  <linearGradient id="colorReceived" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF5A1F" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#FF5A1F" stopOpacity={0.01} />
+                  <linearGradient id="colorClosingRec" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FF5A1F" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#FF5A1F" stopOpacity={0.02} />
                   </linearGradient>
-                  {/* Outstanding Area Gradient: Monochrome Muted Zinc */}
-                  <linearGradient id="colorOutstanding" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="colorOpeningRec" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#A1A1AA" stopOpacity={0.25} />
                     <stop offset="95%" stopColor="#A1A1AA" stopOpacity={0.01} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke={isLight ? '#f1f5f9' : '#ffffff10'}
-                />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
                 <XAxis
                   dataKey="month"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: isLight ? '#64748b' : '#94a3b8', fontSize: 12, fontWeight: 500 }}
+                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }}
                   dy={6}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: isLight ? '#64748b' : '#94a3b8', fontSize: 11 }}
+                  tick={{ fill: '#94a3b8', fontSize: 11 }}
                   tickFormatter={formatLakhs}
                   domain={[0, Math.ceil(maxBarRevenue * 1.2)]}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: isLight ? '#ffffff' : '#181818',
-                    borderColor: isLight ? '#e2e8f0' : '#ffffff20',
+                    backgroundColor: '#181818',
+                    borderColor: '#ffffff20',
                     borderRadius: '0.75rem',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                    color: isLight ? '#0f172a' : '#ffffff',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    color: '#ffffff',
                     fontSize: '12px',
                     fontWeight: 600,
                   }}
                   formatter={(val: any, name: any) => [
                     formatINR(val),
-                    name === 'received' ? 'Payments Received' : 'Outstanding Dues',
+                    name === 'closingReceivable' ? 'Closing Receivable' : 'Opening Receivable',
                   ]}
                 />
                 <Area
                   type="monotone"
-                  dataKey="received"
-                  stroke="#FF5A1F"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#colorReceived)"
-                  name="received"
-                  activeDot={{ r: 5, stroke: '#FF5A1F', strokeWidth: 2, fill: '#fff' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="outstanding"
+                  dataKey="openingReceivable"
                   stroke="#A1A1AA"
                   strokeWidth={2}
                   fillOpacity={1}
-                  fill="url(#colorOutstanding)"
-                  name="outstanding"
+                  fill="url(#colorOpeningRec)"
+                  name="openingReceivable"
                   activeDot={{ r: 4, stroke: '#A1A1AA', strokeWidth: 2, fill: '#fff' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="closingReceivable"
+                  stroke="#FF5A1F"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#colorClosingRec)"
+                  name="closingReceivable"
+                  activeDot={{ r: 5, stroke: '#FF5A1F', strokeWidth: 2, fill: '#fff' }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -564,30 +761,25 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. BOTTOM SECTION: 3 COLUMNS */}
+      {/* 4. BOTTOM SECTION: 3 COLUMNS (Settlement Reserve / Commission Split, Recent Projects, Pending Approvals) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
-        
-        {/* Column 1 (4 cols): Commission Distribution Donut */}
+        {/* Column 1 (4 cols): Settlement Reserve & 5-Tier Project Allocation */}
         <div className={`lg:col-span-4 p-5 sm:p-6 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-ember/10 border border-ember/20 flex items-center justify-center text-ember shrink-0">
-                  <PieIcon className="w-4 h-4" />
-                </div>
-                <div>
-                  <h2 className={`text-sm font-bold tracking-tight ${headingColor}`}>
-                    Commission Distribution
-                  </h2>
-                  <p className={`text-[11px] font-mono ${subtextColor}`}>5-Tier Multi-Tier Splits</p>
-                </div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className={`text-sm font-bold tracking-tight ${headingColor}`}>
+                  Commission Split
+                </h2>
+                <p className="text-[10px] font-mono text-zinc-400">5-Tier Project Allocation</p>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold tracking-wider bg-white/10 text-white border border-white/20">
-                100% Balanced
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#FF5A1F]/15 text-[#FF5A1F] border border-[#FF5A1F]/30">
+                {totalCommPercent > 0 ? formatSplitPercent(totalCommPercent) : '100%'} Split
               </span>
             </div>
 
-            <div className="h-60 w-full relative flex items-center justify-between">
+            {/* 5-Tier Allocation Donut */}
+            <div className="h-44 w-full relative flex items-center justify-between mt-3">
               <div className="w-1/2 h-full relative flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -595,13 +787,12 @@ export const AdminDashboard: React.FC = () => {
                       data={commissionData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={54}
-                      outerRadius={78}
-                      paddingAngle={hasCommissionData ? 4 : 0}
-                      cornerRadius={4}
+                      innerRadius={46}
+                      outerRadius={62}
+                      paddingAngle={hasCommissionData ? 2 : 0}
+                      cornerRadius={2}
                       dataKey="value"
-                      stroke={isLight ? '#ffffff' : '#0e1017'}
-                      strokeWidth={2}
+                      stroke="none"
                     >
                       {commissionData.map((entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
@@ -609,47 +800,45 @@ export const AdminDashboard: React.FC = () => {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: isLight ? '#ffffff' : '#0e1017',
-                        borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)',
+                        backgroundColor: '#0e1017',
+                        borderColor: 'rgba(255,255,255,0.1)',
                         borderRadius: '0.75rem',
                         fontSize: '12px',
                         boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
                       }}
-                      formatter={(v: any) => [`${v}%`, 'Share']}
+                      formatter={(v: any) => [formatSplitPercent(v), 'Split']}
                     />
                   </PieChart>
                 </ResponsiveContainer>
 
-                {/* Centered Donut Label */}
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                  <div className={`text-xl font-extrabold tracking-tight font-mono ${headingColor}`}>
-                    {totalCommPercent > 0 ? `${Math.round(totalCommPercent)}%` : '0%'}
+                  <div className={`text-base font-bold font-mono tracking-tight ${headingColor}`}>
+                    {totalCommPercent > 0 ? formatSplitPercent(totalCommPercent) : '0%'}
                   </div>
-                  <div className="text-[9px] font-mono uppercase tracking-wider text-ember font-bold">
-                    {hasCommissionData ? 'Total Pool' : 'No Data'}
+                  <div className="text-[9px] uppercase tracking-wider text-zinc-400 font-medium">
+                    Split
                   </div>
                 </div>
               </div>
 
-              {/* Legend alongside donut */}
-              <div className="w-1/2 space-y-2 pl-2">
+              {/* Simple Minimalist Legend */}
+              <div className="w-1/2 space-y-2.5 pl-3">
                 {commissionData.map((item: any) => (
                   <div
                     key={item.name}
-                    className={`flex items-center justify-between gap-2 p-1.5 rounded-lg border transition-all ${
-                      isLight ? 'bg-slate-50/60 border-slate-100 hover:border-slate-200' : 'bg-white/[0.02] border-white/5 hover:border-white/10'
-                    }`}
+                    className="flex items-center justify-between text-xs py-0.5"
                   >
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      <span className="w-2 h-2 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: item.color }} />
-                      <span className={`text-[11px] font-medium truncate ${subtextColor}`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0 shadow-sm"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className={`text-xs font-medium truncate ${subtextColor}`}>
                         {item.name}
                       </span>
-                    </span>
-                    <span className={`text-[11px] font-bold font-mono px-1.5 py-0.5 rounded ${
-                      isLight ? 'bg-white text-slate-900 border border-slate-200' : 'bg-white/5 text-white border border-white/10'
-                    }`}>
-                      {item.value}%
+                    </div>
+                    <span className="font-mono font-bold text-xs text-white shrink-0 ml-2">
+                      {formatSplitPercent(item.value)}
                     </span>
                   </div>
                 ))}
@@ -657,16 +846,16 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 dark:border-white/10 mt-3">
+          <div className="pt-3 border-t border-white/10 mt-2">
             <Link
               to="/admin/commissions"
-              className="group flex items-center justify-between px-3.5 py-2 rounded-xl bg-white/[0.02] hover:bg-ember/10 border border-slate-200 dark:border-white/10 hover:border-ember/30 text-xs font-semibold text-slate-700 dark:text-white/80 hover:text-ember transition-all"
+              className="group flex items-center justify-between px-3.5 py-1.5 rounded-xl bg-white/[0.02] hover:bg-ember/10 border border-white/10 hover:border-ember/30 text-xs font-semibold text-white/80 hover:text-ember transition-all"
             >
               <span className="flex items-center gap-2">
                 <Sliders className="w-3.5 h-3.5 text-ember" />
-                <span>Configure 5-Tier Presets</span>
+                <span>Configure 5-Tier Allocation</span>
               </span>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-400 dark:text-white/40 group-hover:text-ember group-hover:translate-x-0.5 transition-transform" />
+              <ArrowRight className="w-3.5 h-3.5 text-white/40 group-hover:text-ember group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
         </div>
@@ -684,9 +873,7 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className={`border-b text-[11px] font-semibold uppercase tracking-wider ${
-                isLight ? 'border-slate-100 text-slate-400' : 'border-white/10 text-white/40 font-mono'
-              }`}>
+              <thead className="border-b border-white/10 text-white/40 font-mono text-[11px] uppercase tracking-wider">
                 <tr>
                   <th className="pb-2.5 font-semibold">Project Name</th>
                   <th className="pb-2.5 font-semibold">Client</th>
@@ -694,10 +881,10 @@ export const AdminDashboard: React.FC = () => {
                   <th className="pb-2.5 font-semibold text-right">Status</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isLight ? 'divide-slate-100' : 'divide-white/5'}`}>
+              <tbody className="divide-y divide-white/5">
                 {recentProjects.length > 0 ? (
                   recentProjects.map((prj: any) => (
-                    <tr key={prj.id} className={`transition-colors ${isLight ? 'hover:bg-slate-50/70' : 'hover:bg-white/[0.02]'}`}>
+                    <tr key={prj.id} className="transition-colors hover:bg-white/[0.02]">
                       <td className="py-3 font-semibold truncate max-w-[130px]">
                         <span className={headingColor}>{prj.name}</span>
                       </td>
@@ -714,7 +901,7 @@ export const AdminDashboard: React.FC = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="py-8 text-center text-xs font-mono text-slate-400 dark:text-white/40">
+                    <td colSpan={4} className="py-8 text-center text-xs font-mono text-white/40">
                       No projects recorded in database yet.{' '}
                       <Link to="/admin/projects" className="text-ember hover:underline">
                         Create Project &rarr;
@@ -743,16 +930,12 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Switchable Tabs: Work Logs vs Payments */}
-            <div className={`grid grid-cols-2 p-1 rounded-xl mb-3 border ${
-              isLight ? 'bg-slate-100/70 border-slate-200/60' : 'bg-white/5 border-white/10'
-            }`}>
+            <div className="grid grid-cols-2 p-1 rounded-xl mb-3 border bg-white/5 border-white/10">
               <button
                 onClick={() => setPendingTab('workLogs')}
                 className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   pendingTab === 'workLogs'
-                    ? isLight
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'bg-ember text-white shadow-[0_0_12px_rgba(255,90,31,0.4)]'
+                    ? 'bg-ember text-white shadow-[0_0_12px_rgba(255,90,31,0.4)]'
                     : subtextColor
                 }`}
               >
@@ -762,9 +945,7 @@ export const AdminDashboard: React.FC = () => {
                 onClick={() => setPendingTab('payments')}
                 className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   pendingTab === 'payments'
-                    ? isLight
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'bg-ember text-white shadow-[0_0_12px_rgba(255,90,31,0.4)]'
+                    ? 'bg-ember text-white shadow-[0_0_12px_rgba(255,90,31,0.4)]'
                     : subtextColor
                 }`}
               >
@@ -779,14 +960,10 @@ export const AdminDashboard: React.FC = () => {
                   pendingWorkLogs.map((item: any) => (
                     <div
                       key={item.id}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all ${
-                        isLight
-                          ? 'bg-slate-50/50 border-slate-100 hover:border-slate-200'
-                          : 'bg-white/[0.02] border-white/5 hover:border-white/10'
-                      }`}
+                      className="p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all bg-white/[0.02] border-white/5 hover:border-white/10"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center font-bold text-xs shrink-0 text-slate-700 dark:text-white">
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs shrink-0 text-white">
                           {item.initials}
                         </div>
                         <div className="min-w-0">
@@ -818,7 +995,7 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="py-8 text-center text-xs font-mono text-slate-400 dark:text-white/40">
+                  <div className="py-8 text-center text-xs font-mono text-white/40">
                     No submitted timesheets awaiting approval.
                   </div>
                 )
@@ -827,11 +1004,7 @@ export const AdminDashboard: React.FC = () => {
                   recentPayments.map((p: any) => (
                     <div
                       key={p.id}
-                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all ${
-                        isLight
-                          ? 'bg-slate-50/50 border-slate-100 hover:border-slate-200'
-                          : 'bg-white/[0.02] border-white/5 hover:border-white/10'
-                      }`}
+                      className="p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all bg-white/[0.02] border-white/5 hover:border-white/10"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-8 h-8 rounded-full bg-ember/15 text-ember flex items-center justify-center font-bold text-xs shrink-0">
@@ -860,7 +1033,7 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   ))
                 ) : (
-                  <div className="py-8 text-center text-xs font-mono text-slate-400 dark:text-white/40">
+                  <div className="py-8 text-center text-xs font-mono text-white/40">
                     No client payments recorded yet.
                   </div>
                 )
@@ -868,14 +1041,13 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-3 border-t text-[11px] font-mono text-center border-slate-100 dark:border-white/10 mt-3">
+          <div className="pt-3 border-t text-[11px] font-mono text-center border-white/10 mt-3">
             <span className={subtextColor}>
               {pendingWorkLogs.length} pending work logs &bull; {recentPayments.length} recorded payments
             </span>
           </div>
         </div>
       </div>
-
     </div>
   );
 };

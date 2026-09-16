@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus,
   Search,
@@ -12,6 +12,7 @@ import { formatINR } from '../../utils/formatters';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { EmptyState } from '../../components/work/EmptyState';
+import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
 
 export const AdminPayments: React.FC = () => {
   const toast = useToast();
@@ -19,6 +20,12 @@ export const AdminPayments: React.FC = () => {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const now = useMemo(() => new Date(), []);
+  const currentMonthKey = useMemo(
+    () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    [now]
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,11 +39,41 @@ export const AdminPayments: React.FC = () => {
     paymentDate: new Date().toISOString().slice(0, 10),
   });
 
-  const fetchAll = async () => {
+  const availableMonths: MonthOption[] = useMemo(() => {
+    const monthsSet = new Set<string>();
+    for (let i = 0; i <= 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    return Array.from(monthsSet)
+      .sort((a, b) => b.localeCompare(a))
+      .map((key) => {
+        const [y, m] = key.split('-').map(Number);
+        const d = new Date(y, m - 1, 1);
+        return {
+          key,
+          label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
+        };
+      });
+  }, [now]);
+
+  const selectedMonthLabel = useMemo(() => {
+    if (selectedMonth === 'all') return 'All Months';
+    const [yr, mo] = selectedMonth.split('-').map(Number);
+    const d = new Date(yr, mo - 1, 1);
+    return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  }, [selectedMonth]);
+
+  const fetchAll = async (monthVal = selectedMonth) => {
     try {
       setLoading(true);
+      const params = new URLSearchParams();
+      if (monthVal && monthVal !== 'all') {
+        params.append('month', monthVal);
+      }
+      const qs = params.toString() ? `?${params.toString()}` : '';
       const [payRes, cliRes] = await Promise.all([
-        api.get('/admin/payments'),
+        api.get(`/admin/payments${qs}`),
         api.get('/admin/clients'),
       ]);
       setPayments(payRes.data.data || payRes.data.payments || []);
@@ -49,8 +86,8 @@ export const AdminPayments: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAll();
-  }, []);
+    fetchAll(selectedMonth);
+  }, [selectedMonth]);
 
   const selClient = clients.find((c) => String(c._id) === String(formData.clientId));
   const contractVal = selClient
@@ -184,13 +221,41 @@ export const AdminPayments: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0d0e14] border border-white/[0.08] self-start sm:self-auto">
-          <span className="text-xs text-zinc-500 uppercase tracking-wider">Total:</span>
-          <span className="text-xs font-semibold text-white font-mono">
-            {formatINR(totalCollected)}
-          </span>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <MonthSelectDropdown
+            value={selectedMonth}
+            onChange={(val) => setSelectedMonth(val)}
+            availableMonths={availableMonths}
+            allMonthsLabel="All Months"
+            className="w-full sm:w-44"
+          />
+          <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#0d0e14] border border-white/[0.08] self-start sm:self-auto">
+            <span className="text-xs text-zinc-500 uppercase tracking-wider">Total:</span>
+            <span className="text-xs font-semibold text-white font-mono">
+              {formatINR(totalCollected)}
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Active Month Filter Notification Banner */}
+      {selectedMonth !== 'all' && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
+            <span className="text-zinc-300">
+              Showing payments for <span className="font-semibold text-white">{selectedMonthLabel}</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedMonth('all')}
+            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
+          >
+            Show All Months
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
@@ -256,6 +321,12 @@ export const AdminPayments: React.FC = () => {
                   <td colSpan={7} className="py-8">
                     <EmptyState
                       type="payments"
+                      title={selectedMonth !== 'all' ? `No payments recorded for ${selectedMonthLabel}` : undefined}
+                      description={
+                        selectedMonth !== 'all'
+                          ? "Try selecting another month or 'All Months' to view transaction records."
+                          : undefined
+                      }
                       actionLabel="Record Payment"
                       onAction={() => setIsModalOpen(true)}
                     />

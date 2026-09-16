@@ -20,7 +20,7 @@ import { calculateProjectEarningsForEmployee, calculateEmployeeEarnings } from '
 
 export async function listProjects(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { status, clientId, search } = req.query;
+    const { status, clientId, search, month } = req.query;
     const filter: any = {};
 
     // Strict Scope: If employee, only view projects assigned to them
@@ -45,9 +45,34 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
       filter.clientId = clientId;
     }
 
+    if (month && month !== 'all') {
+      const [yr, mo] = (month as string).split('-').map(Number);
+      if (yr && mo) {
+        const startOfMonth = new Date(yr, mo - 1, 1, 0, 0, 0, 0);
+        const endOfMonth = new Date(yr, mo, 0, 23, 59, 59, 999);
+        const dateMatch = {
+          $or: [
+            { startDate: { $gte: startOfMonth, $lte: endOfMonth } },
+            { createdAt: { $gte: startOfMonth, $lte: endOfMonth } },
+          ],
+        };
+
+        if (filter.$and) {
+          filter.$and.push(dateMatch);
+        } else if (filter.$or) {
+          filter.$and = [{ $or: filter.$or }, dateMatch];
+          delete filter.$or;
+        } else {
+          filter.$or = dateMatch.$or;
+        }
+      }
+    }
+
     if (search) {
       const regex = new RegExp(search as string, 'i');
-      if (filter.$or) {
+      if (filter.$and) {
+        filter.$and.push({ $or: [{ projectName: regex }, { projectCode: regex }] });
+      } else if (filter.$or) {
         filter.$and = [
           { $or: filter.$or },
           { $or: [{ projectName: regex }, { projectCode: regex }] },
@@ -66,13 +91,42 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
 
     const projectIds = projects.map((p) => p._id);
 
-    // 1. Batch fetch all payments for these projects in ONE single query
-    const allPayments = await ClientPayment.find({ projectId: { $in: projectIds } }).lean();
+    // 1. Batch fetch all payments and commissions for these projects in ONE single query
+    const [allPayments, allCommissions] = await Promise.all([
+      ClientPayment.find({ projectId: { $in: projectIds } }).lean(),
+      ProjectCommission.find({ projectId: { $in: projectIds } }).lean(),
+    ]);
+
     const paymentsByProject: Record<string, number> = {};
     for (const p of allPayments) {
       const pid = p.projectId?.toString();
       if (pid) {
         paymentsByProject[pid] = (paymentsByProject[pid] || 0) + fromDecimal(p.amount);
+      }
+    }
+
+    const commissionsByProject: Record<string, any> = {};
+    for (const c of allCommissions) {
+      const pid = c.projectId?.toString();
+      if (pid) {
+        commissionsByProject[pid] = {
+          ...c,
+          brokerPercent: c.brokerPercent,
+          brokerPercentage: c.brokerPercent,
+          employeePercent: c.employeePercent,
+          employeePercentage: c.employeePercent,
+          officePercent: c.officePercent,
+          officeExpensePercentage: c.officePercent,
+          adminPercent: c.adminPercent,
+          adminSharePercentage: c.adminPercent,
+          settlementPercent: c.settlementPercent,
+          settlementReservePercentage: c.settlementPercent,
+          brokerAmount: fromDecimal(c.brokerAmount),
+          employeeAmount: fromDecimal(c.employeeAmount),
+          officeAmount: fromDecimal(c.officeAmount),
+          adminAmount: fromDecimal(c.adminAmount),
+          settlementAmount: fromDecimal(c.settlementAmount),
+        };
       }
     }
 
@@ -136,12 +190,15 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
         }
       }
 
+      const comm = commissionsByProject[projIdStr] || null;
+
       const projObj = typeof (proj as any).toObject === 'function' ? (proj as any).toObject() : proj;
       return {
         ...projObj,
         id: projIdStr,
         title: proj.projectName,
         projectName: proj.projectName,
+        commission: isEmployee ? null : comm,
         sharePercent: userShare,
         sharePercentage: userShare,
         employeeCommission,
@@ -242,12 +299,12 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
     });
 
     // 2. Compute Commission Distribution on Net Project Value
-    const split = commissionSplit || {
-      brokerPercent: 10,
-      employeePercent: 40,
-      officePercent: 10,
-      adminPercent: 35,
-      settlementPercent: 5,
+    const split = {
+      brokerPercent: Number(commissionSplit?.brokerPercent ?? commissionSplit?.brokerPercentage ?? 10),
+      employeePercent: Number(commissionSplit?.employeePercent ?? commissionSplit?.employeePercentage ?? 40),
+      officePercent: Number(commissionSplit?.officePercent ?? commissionSplit?.officeExpensePercentage ?? 10),
+      adminPercent: Number(commissionSplit?.adminPercent ?? commissionSplit?.adminSharePercentage ?? 35),
+      settlementPercent: Number(commissionSplit?.settlementPercent ?? commissionSplit?.settlementReservePercentage ?? 5),
     };
 
     const commissionAmounts = calculateCommissionAmounts(numValue, split, discountPercent);
@@ -547,7 +604,43 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
       : round2((currentGross * currentDiscPercent) / 100);
     project.discountAmount = toDecimal(calcDiscAmount);
 
-    if (projectFinancialsChanged || discAmountToUpdate !== undefined) {
+    // Support updating commission split if passed
+    const commissionSplitRaw = req.body.commissionSplit;
+    if (commissionSplitRaw) {
+      const split = {
+        brokerPercent: Number(commissionSplitRaw.brokerPercent ?? commissionSplitRaw.brokerPercentage ?? 10),
+        employeePercent: Number(commissionSplitRaw.employeePercent ?? commissionSplitRaw.employeePercentage ?? 40),
+        officePercent: Number(commissionSplitRaw.officePercent ?? commissionSplitRaw.officeExpensePercentage ?? 10),
+        adminPercent: Number(commissionSplitRaw.adminPercent ?? commissionSplitRaw.adminSharePercentage ?? 35),
+        settlementPercent: Number(commissionSplitRaw.settlementPercent ?? commissionSplitRaw.settlementReservePercentage ?? 5),
+      };
+
+      const updatedAmounts = calculateCommissionAmounts(currentGross, split, currentDiscPercent);
+      let commission = await ProjectCommission.findOne({ projectId: project._id });
+      if (commission) {
+        Object.assign(commission, updatedAmounts);
+        await commission.save();
+      } else {
+        await ProjectCommission.create({
+          projectId: project._id,
+          ...updatedAmounts,
+          createdBy: req.user!._id,
+        });
+      }
+
+      // Re-scale employee pool allocations
+      const allocations = await ProjectEmployee.find({ projectId: project._id });
+      const employeeTotal = fromDecimal(updatedAmounts.employeeAmount);
+      for (const alloc of allocations) {
+        const share = alloc.sharePercent ?? alloc.sharePercentage ?? 100;
+        alloc.sharePercent = share;
+        alloc.sharePercentage = share;
+        alloc.allocatedCommission = toDecimal(
+          round2((employeeTotal * share) / 100)
+        );
+        await alloc.save();
+      }
+    } else if (projectFinancialsChanged || discAmountToUpdate !== undefined) {
       const commission = await ProjectCommission.findOne({ projectId: project._id });
       if (commission) {
         const updatedAmounts = calculateCommissionAmounts(currentGross, {

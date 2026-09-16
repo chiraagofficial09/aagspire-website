@@ -9,6 +9,7 @@ import { createNotification } from '../services/notification.service.js';
 import { fromDecimal, round2 } from '../utils/decimalHelper.js';
 import { generateClientStatementPdfStream } from '../services/clientStatementPdf.service.js';
 import { InvoiceCounter } from '../models/InvoiceCounter.js';
+import { calculateFinancialMetrics } from '../services/dashboardFinance.js';
 
 export async function listClients(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -198,25 +199,19 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    const rawProjects = await Project.find({ clientId: client._id }).sort({ createdAt: -1 });
-    const rawPayments = await ClientPayment.find({ clientId: client._id })
-      .populate('projectId', 'projectName projectCode')
-      .sort({ paymentDate: -1 });
+    const targetMonth = (req.query.month as string) || undefined;
 
-    const totalBusinessValue = round2(
-      rawProjects.reduce((sum, p) => {
-        const grossVal = fromDecimal(p.projectValue);
-        const discountPercent = Number(p.discountPercent) || 0;
-        const discountAmount = p.discountAmount
-          ? fromDecimal(p.discountAmount)
-          : round2((grossVal * discountPercent) / 100);
-        return sum + Math.max(0, round2(grossVal - discountAmount));
-      }, 0)
-    );
-    const totalPaymentsReceived = round2(
-      rawPayments.reduce((sum, pm) => sum + fromDecimal(pm.amount), 0)
-    );
-    const pendingPayment = Math.max(0, round2(totalBusinessValue - totalPaymentsReceived));
+    const [financialMetrics, rawProjects, rawPayments] = await Promise.all([
+      calculateFinancialMetrics({ clientId: client._id, targetMonth }),
+      Project.find({ clientId: client._id }).sort({ createdAt: -1 }),
+      ClientPayment.find({ clientId: client._id })
+        .populate('projectId', 'projectName projectCode')
+        .sort({ paymentDate: -1 }),
+    ]);
+
+    const totalBusinessValue = financialMetrics.totalAllTimeProjectValue;
+    const totalPaymentsReceived = financialMetrics.totalAllTimeCashCollected;
+    const pendingPayment = financialMetrics.totalAllTimeReceivable;
 
     const projects = await Promise.all(
       rawProjects.map(async (p) => {
@@ -256,6 +251,7 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
       totalPaymentsReceived,
       pendingPayment,
       outstanding: pendingPayment,
+      financialSummary: financialMetrics,
       financials: {
         totalContractValue: totalBusinessValue,
         totalBusinessValue,
@@ -266,18 +262,34 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
         totalProjects: projects.length,
         activeProjects: projects.filter((p) => ['in_progress', 'review'].includes(p.status)).length,
         completedProjects: projects.filter((p) => ['completed', 'delivered'].includes(p.status)).length,
+        // Month-filtered primary cards metrics
+        newProjectValue: financialMetrics.newProjectValue,
+        cashCollected: financialMetrics.cashCollected,
+        currentMonthCollection: financialMetrics.currentMonthCollection,
+        previousOutstandingCollected: financialMetrics.previousOutstandingCollected,
+        openingReceivable: financialMetrics.openingReceivable,
+        closingReceivable: financialMetrics.closingReceivable,
+        appliedCollections: financialMetrics.appliedCollections,
+        unappliedCash: financialMetrics.unappliedCash,
+        excessCash: financialMetrics.excessCash,
+        collectionRate: financialMetrics.collectionRate,
+        hasPreviousCollections: financialMetrics.hasPreviousCollections,
+        previousCollectionsMessage: financialMetrics.previousCollectionsMessage,
       },
       projects,
       payments,
+      selectedMonth: targetMonth || 'all',
     };
 
     res.json({
       success: true,
       data: payload,
       client,
+      financialSummary: financialMetrics,
       financials: payload.financials,
       projects,
       payments,
+      selectedMonth: targetMonth || 'all',
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

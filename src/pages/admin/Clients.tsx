@@ -19,7 +19,12 @@ export const AdminClients: React.FC = () => {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const now = useMemo(() => new Date(), []);
+  const currentMonthKey = useMemo(
+    () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    [now]
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -36,7 +41,6 @@ export const AdminClients: React.FC = () => {
     taxId: '',
   });
 
-  const now = useMemo(() => new Date(), []);
   const availableMonths: MonthOption[] = useMemo(() => {
     const monthsSet = new Set<string>();
     for (let i = 0; i <= 6; i++) {
@@ -200,8 +204,7 @@ export const AdminClients: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-400 hidden sm:inline">Billing Month:</span>
+        <div className="flex items-center">
           <MonthSelectDropdown
             value={selectedMonth}
             onChange={(val) => setSelectedMonth(val)}

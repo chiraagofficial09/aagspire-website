@@ -9,6 +9,15 @@ import {
   Download,
   ReceiptText,
   MoreHorizontal,
+  Info,
+  AlertCircle,
+  Layers,
+  FileCheck,
+  Calendar,
+  Clock,
+  Wallet,
+  Tag,
+  Target,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
@@ -99,10 +108,12 @@ export const AdminClientDetails: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchClient = async () => {
+  const fetchClient = async (monthOverride?: string) => {
     try {
       setLoading(true);
-      const res = await api.get(`/admin/clients/${id}`);
+      const m = monthOverride !== undefined ? monthOverride : selectedMonth;
+      const query = m && m !== 'all' ? `?month=${encodeURIComponent(m)}` : (m === 'all' ? '?month=all' : '');
+      const res = await api.get(`/admin/clients/${id}${query}`);
       const c = res.data.data || res.data.client || res.data;
       setClient(c);
       if (c) {
@@ -124,7 +135,7 @@ export const AdminClientDetails: React.FC = () => {
 
   useEffect(() => {
     if (id) fetchClient();
-  }, [id]);
+  }, [id, selectedMonth]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,32 +294,71 @@ export const AdminClientDetails: React.FC = () => {
     });
   }, [allPayments, isAllMonths, endOfMonth]);
 
-  // Month-wise display metrics
-  const displayedContractVal = useMemo(() => {
-    if (isAllMonths) return allTimeContractVal;
-    return filteredProjects.reduce((sum: number, p: any) => sum + getProjectNetValue(p), 0);
-  }, [isAllMonths, allTimeContractVal, filteredProjects]);
+  // Month-wise display metrics using backend source of truth
+  const finSummary = client?.financialSummary || client?.financials || {};
+  const newProjectValue = Number(
+    finSummary.newProjectValue !== undefined
+      ? finSummary.newProjectValue
+      : (isAllMonths ? allTimeContractVal : filteredProjects.reduce((sum: number, p: any) => sum + getProjectNetValue(p), 0))
+  );
+  const cashCollected = Number(
+    finSummary.cashCollected !== undefined
+      ? finSummary.cashCollected
+      : (isAllMonths ? allTimePaidVal : filteredPayments.reduce((sum: number, pm: any) => sum + getPaymentAmount(pm), 0))
+  );
+  const currentMonthCollection = Number(finSummary.currentMonthCollection || 0);
+  const previousOutstandingCollected = Number(finSummary.previousOutstandingCollected || 0);
 
-  const displayedReceivedVal = useMemo(() => {
-    if (isAllMonths) return allTimePaidVal;
-    return filteredPayments.reduce((sum: number, pm: any) => sum + getPaymentAmount(pm), 0);
-  }, [isAllMonths, allTimePaidVal, filteredPayments]);
+  // Fallback cumulative opening receivable from all previous months if backend summary is still resolving
+  const fallbackOpeningReceivable = useMemo(() => {
+    if (isAllMonths || !startOfMonth) return 0;
+    const totalValBefore = allProjects
+      .filter((p: any) => {
+        const d = new Date(p.startDate || p.createdAt || 0);
+        return !isNaN(d.getTime()) && d < startOfMonth;
+      })
+      .reduce((sum: number, p: any) => sum + getProjectNetValue(p), 0);
 
-  const displayedCumulativePaid = useMemo(() => {
-    if (isAllMonths) return allTimePaidVal;
-    return paymentsUpToMonth.reduce((sum: number, pm: any) => sum + getPaymentAmount(pm), 0);
-  }, [isAllMonths, allTimePaidVal, paymentsUpToMonth]);
+    const totalPaidBefore = allPayments
+      .filter((pm: any) => {
+        const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
+        return !isNaN(pmDate.getTime()) && pmDate < startOfMonth;
+      })
+      .reduce((s: number, pm: any) => s + getPaymentAmount(pm), 0);
 
-  const displayedOutstandingVal = useMemo(() => {
-    if (isAllMonths) return allTimeRemainingDue;
-    return Math.max(0, displayedContractVal - displayedCumulativePaid);
-  }, [isAllMonths, allTimeRemainingDue, displayedContractVal, displayedCumulativePaid]);
+    return Math.max(0, totalValBefore - totalPaidBefore);
+  }, [allProjects, allPayments, isAllMonths, startOfMonth]);
 
-  const displayedPercentPaid = useMemo(() => {
-    if (displayedContractVal <= 0) return 0;
-    const paidPortion = isAllMonths ? allTimePaidVal : displayedCumulativePaid;
-    return Math.min(100, Math.round((paidPortion / displayedContractVal) * 100));
-  }, [displayedContractVal, isAllMonths, allTimePaidVal, displayedCumulativePaid]);
+  const openingReceivable = Number(
+    finSummary.openingReceivable !== undefined
+      ? finSummary.openingReceivable
+      : fallbackOpeningReceivable
+  );
+  const closingReceivable = Number(
+    finSummary.closingReceivable !== undefined
+      ? finSummary.closingReceivable
+      : (isAllMonths ? allTimeRemainingDue : Math.max(0, openingReceivable + newProjectValue - (currentMonthCollection + previousOutstandingCollected)))
+  );
+
+  const appliedCollections = Number(finSummary.appliedCollections ?? (currentMonthCollection + previousOutstandingCollected));
+  const unappliedCash = Number(finSummary.unappliedCash || 0);
+  const excessCash = Number(finSummary.excessCash || 0);
+
+  const collectionRate = Number(
+    finSummary.collectionRate !== undefined
+      ? finSummary.collectionRate
+      : (newProjectValue > 0 ? Math.round((currentMonthCollection / newProjectValue) * 100) : 0)
+  );
+
+  const hasPreviousCollections = Boolean(
+    finSummary.hasPreviousCollections || previousOutstandingCollected > 0 || cashCollected > newProjectValue
+  );
+  const previousCollectionsMessage =
+    finSummary.previousCollectionsMessage ||
+    (hasPreviousCollections
+      ? `₹${previousOutstandingCollected.toLocaleString('en-IN')} of ${selectedMonthLabel} collections came from projects booked in previous months.`
+      : '');
+
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -532,62 +582,178 @@ export const AdminClientDetails: React.FC = () => {
         </div>
       )}
 
-      {/* Financial Overview Card */}
+      {/* INFORMATIONAL MESSAGE BANNER: When older collections exist in the selected month */}
+      {!isAllMonths && hasPreviousCollections && previousCollectionsMessage && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-ember/15 via-[#FF5A1F]/5 to-transparent border border-ember/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-ember/20 flex items-center justify-center text-ember shrink-0">
+              <Info className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="font-bold text-white">
+                {previousCollectionsMessage}
+              </p>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                Collections from older projects count towards cash received and reduce their project outstanding, without inflating new project booking value.
+              </p>
+            </div>
+          </div>
+          {newProjectValue > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 shrink-0 self-start sm:self-auto">
+              <span className="text-[10px] font-mono uppercase text-zinc-400">Current-Month Collection Rate:</span>
+              <span className="text-xs font-mono font-bold text-ember">{collectionRate}%</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Notice if Unapplied Cash or Excess Cash exists */}
+      {(unappliedCash > 0 || excessCash > 0) && (
+        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+            <span>
+              {unappliedCash > 0 && `Unapplied Cash: ${formatINR(unappliedCash)} received without valid project link.`}
+              {excessCash > 0 && ` Excess Cash: ${formatINR(excessCash)} exceeding contracted values.`}
+              {' '}These amounts do not reduce project receivables until properly allocated.
+            </span>
+          </div>
+          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-200 border border-amber-500/30 shrink-0">
+            Needs Review
+          </span>
+        </div>
+      )}
+
+      {/* Financial Overview Card with 4 CONNECTED EQUATION CARDS */}
       <div className="rounded-2xl bg-[#0c0d12] border border-white/[0.06] p-6 sm:p-7 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="space-y-1.5">
-            <span className="text-xs text-white/50 block font-normal">
-              {isAllMonths ? 'Total contract' : `Contract value (${selectedMonthLabel})`}
-            </span>
-            <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              {formatINR(displayedContractVal)}
-            </p>
-            {!isAllMonths && (
-              <span className="text-[11px] text-zinc-500 block">
-                {filteredProjects.length} {filteredProjects.length === 1 ? 'deal active' : 'deals active'}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 lg:gap-3.5">
+          {/* Card 1: New Projects / Total Contract Value */}
+          <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-white/50">
+                {isAllMonths ? 'Total Contract Value' : 'New Projects'}
               </span>
-            )}
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
+                <Layers className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-xl font-bold text-white tracking-tight">
+                {formatINR(newProjectValue)}
+              </p>
+              <span className="text-[10px] font-mono text-zinc-400 block mt-1">
+                {isAllMonths ? 'All contracted projects' : 'Added this month'}
+              </span>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <span className="text-xs text-white/50 block font-normal">
-              {isAllMonths ? 'Received' : `Received in ${selectedMonthLabel}`}
-            </span>
-            <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              {formatINR(displayedReceivedVal)}
-            </p>
-            {!isAllMonths && (
-              <span className="text-[11px] text-zinc-500 block">
-                {displayedCumulativePaid !== displayedReceivedVal
-                  ? `${formatINR(displayedCumulativePaid)} cumulative to date`
-                  : `${filteredPayments.length} ${filteredPayments.length === 1 ? 'payment' : 'payments'}`}
-              </span>
-            )}
+
+          {/* Operator: + */}
+          <div className="flex items-center justify-center py-1 lg:py-0">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-xs shrink-0 select-none shadow-sm">
+              +
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <span className="text-xs text-white/50 block font-normal">
-              {isAllMonths ? 'Outstanding' : 'Outstanding balance'}
-            </span>
-            <p className="text-2xl sm:text-3xl font-bold text-[#FF5A1F] tracking-tight">
-              {formatINR(displayedOutstandingVal)}
-            </p>
-            {!isAllMonths && (
-              <span className="text-[11px] text-zinc-500 block">
-                As of end of {selectedMonthLabel}
+
+          {/* Card 2: Previous Month Due */}
+          <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-white/50">Previous Month Due</span>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 text-white/70 border border-white/10">
+                <Clock className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-xl font-bold text-white tracking-tight">
+                {formatINR(openingReceivable)}
+              </p>
+              <span className="text-[10px] font-mono text-zinc-400 block mt-1">
+                {isAllMonths ? 'All-time view (₹0)' : 'Pending from previous months'}
               </span>
-            )}
+            </div>
+          </div>
+
+          {/* Operator: − */}
+          <div className="flex items-center justify-center py-1 lg:py-0">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-xs shrink-0 select-none shadow-sm">
+              −
+            </div>
+          </div>
+
+          {/* Card 3: Money Received This Month / Total Received */}
+          <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-white/50">
+                {isAllMonths ? 'Total Received' : 'Money Received This Month'}
+              </span>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 text-white/70 border border-white/10">
+                <Wallet className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-xl font-bold text-white tracking-tight">
+                {formatINR(cashCollected)}
+              </p>
+              <span className="text-[10px] font-mono text-zinc-400 block mt-1">
+                {isAllMonths ? 'All client payments' : 'Received this month'}
+              </span>
+              {(currentMonthCollection > 0 || previousOutstandingCollected > 0) && !isAllMonths && (
+                <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-1.5 border-t border-white/5 text-[10px] text-zinc-400 font-mono">
+                  <span>This month: <strong className="text-white">{formatINR(currentMonthCollection)}</strong></span>
+                  <span>•</span>
+                  <span>Old projects: <strong className="text-white">{formatINR(previousOutstandingCollected)}</strong></span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Operator: = */}
+          <div className="flex items-center justify-center py-1 lg:py-0">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-xs shrink-0 select-none shadow-sm">
+              =
+            </div>
+          </div>
+
+          {/* Card 4: Remaining Due */}
+          <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-white/50">Remaining Due</span>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-ember/10 text-ember border border-ember/20">
+                <Tag className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-xl font-bold text-[#FF5A1F] tracking-tight">
+                {formatINR(closingReceivable)}
+              </p>
+              <span className="text-[10px] font-mono text-zinc-400 block mt-1">
+                {isAllMonths ? 'Total unpaid balance' : 'Still pending'}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="space-y-2 pt-2">
+        {/* Collection Rate & Progress Bar */}
+        <div className="space-y-2 pt-2 border-t border-white/5">
           <div className="w-full bg-[#181920] h-2.5 rounded-full overflow-hidden">
             <div
               className="bg-[#FF5A1F] h-full rounded-full transition-all duration-500"
-              style={{ width: `${displayedPercentPaid}%` }}
+              style={{
+                width: isAllMonths
+                  ? `${allTimeContractVal > 0 ? Math.min(100, Math.round((allTimePaidVal / allTimeContractVal) * 100)) : 0}%`
+                  : `${Math.min(100, collectionRate)}%`,
+              }}
             />
           </div>
           <div className="flex items-center justify-between text-xs text-white/50 font-normal">
-            <span>{displayedPercentPaid}% payment received</span>
+            <span>
+              {isAllMonths ? (
+                `${allTimeContractVal > 0 ? Math.min(100, Math.round((allTimePaidVal / allTimeContractVal) * 100)) : 0}% overall payment received`
+              ) : newProjectValue > 0 ? (
+                `${collectionRate}% Current-Month Project Collection Rate (${formatINR(currentMonthCollection)} / ${formatINR(newProjectValue)})`
+              ) : (
+                'No new projects booked in this month'
+              )}
+            </span>
             {!isAllMonths && (
               <div className="flex items-center gap-2">
                 <span className="text-zinc-400">
@@ -701,11 +867,11 @@ export const AdminClientDetails: React.FC = () => {
             <p className="text-xs text-white/50 font-normal mt-0.5">
               {isAllMonths ? (
                 <>
-                  {filteredPayments.length} {filteredPayments.length === 1 ? 'payment' : 'payments'} &bull; Total received {formatINR(displayedReceivedVal)}
+                  {filteredPayments.length} {filteredPayments.length === 1 ? 'payment' : 'payments'} &bull; Total received {formatINR(cashCollected)}
                 </>
               ) : (
                 <>
-                  {filteredPayments.length} {filteredPayments.length === 1 ? 'payment' : 'payments'} in {selectedMonthLabel} &bull; Received {formatINR(displayedReceivedVal)}
+                  {filteredPayments.length} {filteredPayments.length === 1 ? 'payment' : 'payments'} in {selectedMonthLabel} &bull; Received {formatINR(cashCollected)}
                 </>
               )}
             </p>

@@ -48,7 +48,6 @@ const AdminAttendance = lazy(() => import('./pages/admin/Attendance').then((m) =
 const AdminPayments = lazy(() => import('./pages/admin/Payments').then((m) => ({ default: m.AdminPayments })));
 const AdminCommissions = lazy(() => import('./pages/admin/Commissions').then((m) => ({ default: m.AdminCommissions })));
 const AdminReceipts = lazy(() => import('./pages/admin/Receipts').then((m) => ({ default: m.AdminReceipts })));
-const AdminAnalytics = lazy(() => import('./pages/admin/Analytics').then((m) => ({ default: m.AdminAnalytics })));
 const AdminSettings = lazy(() => import('./pages/admin/Settings').then((m) => ({ default: m.AdminSettings })));
 
 // Lazy Loaded Employee Pages
@@ -192,7 +191,7 @@ export default function App() {
                     <Route path="commissions" element={<AdminCommissions />} />
                     <Route path="settlements" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="receipts" element={<AdminReceipts />} />
-                    <Route path="analytics" element={<AdminAnalytics />} />
+                    <Route path="analytics" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="reports" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="settings" element={<AdminSettings />} />
                   </Route>

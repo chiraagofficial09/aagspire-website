@@ -3,157 +3,155 @@ import { ProjectCommission } from '../models/ProjectCommission.js';
 import { ClientPayment } from '../models/ClientPayment.js';
 import { WorkLog } from '../models/WorkLog.js';
 import { Settlement } from '../models/Settlement.js';
-import { Attendance } from '../models/Attendance.js';
 import { fromDecimal, round2 } from '../utils/decimalHelper.js';
+import {
+  calculateFinancialMetrics,
+  calculateMonthlyTrends,
+  calculateEmployeeFinanceMetrics,
+  calculateSettlementReserveMetrics,
+  getMonthDateRange,
+  getNetProjectValue,
+} from './dashboardFinance.js';
+import {
+  buildProjectCommissionInputs,
+  calculateWeightedCommissionSplits,
+} from './projectCommissionCalculator.js';
 
 export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMonth?: string) {
-  const [allProjects, allPayments, allCommissions] = await Promise.all([
+  const count = Math.min(36, Math.max(3, Number(monthsCount) || 6));
+  const now = new Date();
+
+  // 1. Calculate Core Financial Metrics using Shared Source of Truth
+  const [
+    finMetrics,
+    empFinance,
+    settlementFinance,
+    monthlyTrends,
+    allProjects,
+    allPayments,
+    allCommissions,
+    pendingWorkLogsCount,
+    pendingSettlementsCount,
+  ] = await Promise.all([
+    calculateFinancialMetrics({ targetMonth }),
+    calculateEmployeeFinanceMetrics(targetMonth),
+    calculateSettlementReserveMetrics(targetMonth),
+    calculateMonthlyTrends(count),
     Project.find().lean(),
     ClientPayment.find().lean(),
     ProjectCommission.find().lean(),
+    WorkLog.countDocuments({ status: 'submitted' }),
+    Settlement.countDocuments({ status: 'draft' }),
   ]);
 
-  // Determine if specific targetMonth is selected (e.g. '2026-09')
-  let kpiProjects = allProjects;
-  let kpiPayments = allPayments;
-  let kpiCommissions = allCommissions;
+  const { startDate, endDate, isAllMonths } = getMonthDateRange(targetMonth);
 
-  if (targetMonth && targetMonth !== 'all') {
-    const [yearStr, monthStr] = targetMonth.split('-');
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10);
-    if (!isNaN(year) && !isNaN(month)) {
-      const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
-      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-
-      kpiProjects = allProjects.filter((p) => {
-        const d = new Date(p.startDate || p.createdAt);
-        return d >= startDate && d <= endDate;
-      });
-
-      kpiPayments = allPayments.filter((pm) => {
-        const d = new Date(pm.paymentDate || pm.createdAt);
-        return d >= startDate && d <= endDate;
-      });
-
-      const kpiProjectIds = new Set(kpiProjects.map((p) => p._id.toString()));
-      kpiCommissions = allCommissions.filter((c) => {
-        if (c.projectId && kpiProjectIds.has(c.projectId.toString())) return true;
-        const d = new Date(c.createdAt);
-        return d >= startDate && d <= endDate;
-      });
-    }
-  }
-
-  // 1. Projects & Values (Filtered with discount awareness)
-  const totalProjectValue = round2(
-    kpiProjects.reduce((sum, p) => {
-      const grossVal = fromDecimal(p.projectValue);
-      const discountPercent = Number(p.discountPercent) || 0;
-      const discountAmount = p.discountAmount
-        ? fromDecimal(p.discountAmount)
-        : round2((grossVal * discountPercent) / 100);
-      const netVal = Math.max(0, round2(grossVal - discountAmount));
-      return sum + netVal;
-    }, 0)
-  );
-
-  // 2. Client Payments Received (Filtered)
-  const totalReceived = round2(
-    kpiPayments.reduce((sum, p) => sum + fromDecimal(p.amount), 0)
-  );
-  const outstandingAmount = Math.max(0, round2(totalProjectValue - totalReceived));
-
-  // 3. Commission Allocations (Filtered)
-  let totalBrokerAllocation = 0;
-  let totalEmployeeAllocation = 0;
-  let totalOfficeAllocation = 0;
-  let totalAdminShare = 0;
-  let totalSettlementReserve = 0;
-
-  for (const c of kpiCommissions) {
-    totalBrokerAllocation += fromDecimal(c.brokerAmount || 0);
-    totalEmployeeAllocation += fromDecimal(c.employeeAmount);
-    totalOfficeAllocation += fromDecimal(c.officeAmount);
-    totalAdminShare += fromDecimal(c.adminAmount);
-    totalSettlementReserve += fromDecimal(c.settlementAmount);
-  }
-
-  totalBrokerAllocation = round2(totalBrokerAllocation);
-  totalEmployeeAllocation = round2(totalEmployeeAllocation);
-  totalOfficeAllocation = round2(totalOfficeAllocation);
-  totalAdminShare = round2(totalAdminShare);
-  totalSettlementReserve = round2(totalSettlementReserve);
-
-  // 4. Monthly Trend Breakdown for Chart (Requested Timeframe)
-  const now = new Date();
-  const count = Math.min(36, Math.max(3, Number(monthsCount) || 6));
-  const monthMap: Record<string, {
-    month: string;
-    key: string;
-    revenue: number;
-    collections: number;
-    collected: number;
-    adminShare: number;
-    employeeCommission: number;
-    profit: number;
-  }> = {};
-
-  for (let i = count - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const displayMonth = d.toLocaleString('en-US', { month: 'short' });
-    monthMap[key] = {
-      month: displayMonth,
-      key,
-      revenue: 0,
-      collections: 0,
-      collected: 0,
-      adminShare: 0,
-      employeeCommission: 0,
-      profit: 0,
-    };
-  }
-
-  // Populate from all projects and payments for smooth trends
-  for (const p of allProjects) {
-    const d = new Date(p.startDate || p.createdAt);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    if (monthMap[key]) {
-      const grossVal = fromDecimal(p.projectValue);
-      const discountPercent = Number(p.discountPercent) || 0;
-      const discountAmount = p.discountAmount
-        ? fromDecimal(p.discountAmount)
-        : round2((grossVal * discountPercent) / 100);
-      const netVal = Math.max(0, round2(grossVal - discountAmount));
-      monthMap[key].revenue = round2(monthMap[key].revenue + netVal);
-    }
-  }
-
-  for (const pm of allPayments) {
-    const d = new Date(pm.paymentDate || pm.createdAt);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    if (monthMap[key]) {
-      const amt = fromDecimal(pm.amount);
-      monthMap[key].collections = round2(monthMap[key].collections + amt);
-      monthMap[key].collected = round2(monthMap[key].collected + amt);
-    }
-  }
-
+  // 2. Commission Allocation for distribution donut & allocation cards (Strictly Month-Wise by Project Booking Month)
+  const commissionMap = new Map<string, any>();
   for (const c of allCommissions) {
-    const d = new Date(c.createdAt);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    if (monthMap[key]) {
-      const adm = fromDecimal(c.adminAmount);
-      monthMap[key].adminShare = round2(monthMap[key].adminShare + adm);
-      monthMap[key].employeeCommission = round2(monthMap[key].employeeCommission + fromDecimal(c.employeeAmount));
-      monthMap[key].profit = round2(monthMap[key].profit + adm);
+    if (c.projectId) {
+      commissionMap.set(c.projectId.toString(), c);
     }
   }
 
-  const monthlyTrends = Object.values(monthMap);
+  // Filter projects by selected month (booking month, creation month, or active period)
+  const currentMonthProjects = allProjects.filter((p) => {
+    if (isAllMonths || !startDate || !endDate) return true;
+    const createdDate = p.createdAt ? new Date(p.createdAt) : null;
+    const sDate = p.startDate ? new Date(p.startDate) : null;
+    const dDate = p.deadline ? new Date(p.deadline) : null;
+    const delDate = p.deliveredAt ? new Date(p.deliveredAt) : null;
 
-  // 5. Available Months List for Dropdown
+    const isCreatedInMonth = Boolean(createdDate && createdDate >= startDate && createdDate <= endDate);
+    const isStartedInMonth = Boolean(sDate && sDate >= startDate && sDate <= endDate);
+    const isActiveInMonth = Boolean(
+      sDate &&
+      sDate <= endDate &&
+      (!dDate || dDate >= startDate) &&
+      (!delDate || delDate >= startDate) &&
+      p.status !== 'cancelled'
+    );
+
+    return isCreatedInMonth || isStartedInMonth || isActiveInMonth;
+  });
+
+  // Calculate project-value-weighted average splits and project-by-project money totals
+  const projectsToCalculate =
+    currentMonthProjects.length > 0
+      ? currentMonthProjects
+      : allProjects.filter((p) => p.status !== 'cancelled');
+  const projectInputs = buildProjectCommissionInputs(projectsToCalculate, commissionMap);
+  const weightedSplits = calculateWeightedCommissionSplits(projectInputs);
+
+  const totalBrokerAllocation = weightedSplits.broker.amount;
+  const totalEmployeeAllocation = weightedSplits.employee.amount;
+  const totalOfficeAllocation = weightedSplits.office.amount;
+  const totalAdminShare = weightedSplits.admin.amount;
+  const totalSettlementReserve = weightedSplits.settlement.amount;
+
+  const brokerPercent = weightedSplits.broker.percent;
+  const employeePercent = weightedSplits.employee.percent;
+  const officePercent = weightedSplits.office.percent;
+  const adminPercent = weightedSplits.admin.percent;
+  const settlementPercent = weightedSplits.settlement.percent;
+
+  // Reconcile settlementReserveRate with weighted settlement percentage
+  settlementFinance.settlementReserveRate = settlementPercent;
+
+  const distribution = [
+    {
+      name: 'Employee Pool',
+      key: 'employee',
+      value: employeePercent,
+      amount: totalEmployeeAllocation,
+      color: '#FF5A1F',
+    },
+    {
+      name: 'Admin Share',
+      key: 'admin',
+      value: adminPercent,
+      amount: totalAdminShare,
+      color: '#FFFFFF',
+    },
+    {
+      name: 'Office Expense',
+      key: 'office',
+      value: officePercent,
+      amount: totalOfficeAllocation,
+      color: '#D4D4D8',
+    },
+    {
+      name: 'Broker Fee',
+      key: 'broker',
+      value: brokerPercent,
+      amount: totalBrokerAllocation,
+      color: '#FB923C',
+    },
+    {
+      name: 'Reserve Fund',
+      key: 'settlement',
+      value: settlementPercent,
+      amount: totalSettlementReserve,
+      color: '#64748B',
+    },
+  ];
+
+  // 3. Project Status Distribution
+  const statusDistribution: Record<string, number> = {
+    confirmed: 0,
+    in_progress: 0,
+    review: 0,
+    completed: 0,
+    delivered: 0,
+  };
+
+  for (const p of currentMonthProjects) {
+    if (statusDistribution[p.status] !== undefined) {
+      statusDistribution[p.status]++;
+    }
+  }
+
+  // 4. Available Months List
   const availableMonthsMap: Record<string, string> = {};
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -181,53 +179,73 @@ export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMo
     .map(([key, label]) => ({ key, label }))
     .sort((a, b) => b.key.localeCompare(a.key));
 
-  // 6. Dynamic Commission Distribution
-  const totalComm = totalBrokerAllocation + totalEmployeeAllocation + totalOfficeAllocation + totalAdminShare + totalSettlementReserve;
-  const distribution = totalComm > 0 ? [
-    { name: 'Broker Fee', value: round2((totalBrokerAllocation / totalComm) * 100), amount: totalBrokerAllocation, color: '#A855F7' },
-    { name: 'Employee Pool', value: round2((totalEmployeeAllocation / totalComm) * 100), amount: totalEmployeeAllocation, color: '#FF5A1F' },
-    { name: 'Office Expense', value: round2((totalOfficeAllocation / totalComm) * 100), amount: totalOfficeAllocation, color: '#3B82F6' },
-    { name: 'Admin Share', value: round2((totalAdminShare / totalComm) * 100), amount: totalAdminShare, color: '#10B981' },
-    { name: 'Reserve Fund', value: round2((totalSettlementReserve / totalComm) * 100), amount: totalSettlementReserve, color: '#F59E0B' },
-  ] : [
-    { name: 'Broker Fee', value: 0, amount: 0, color: '#A855F7' },
-    { name: 'Employee Pool', value: 0, amount: 0, color: '#FF5A1F' },
-    { name: 'Office Expense', value: 0, amount: 0, color: '#3B82F6' },
-    { name: 'Admin Share', value: 0, amount: 0, color: '#10B981' },
-    { name: 'Reserve Fund', value: 0, amount: 0, color: '#F59E0B' },
-  ];
-
-  // 7. Project Status Distribution
-  const statusDistribution: Record<string, number> = {
-    confirmed: 0,
-    in_progress: 0,
-    review: 0,
-    completed: 0,
-    delivered: 0,
-  };
-  for (const p of kpiProjects) {
-    if (statusDistribution[p.status] !== undefined) {
-      statusDistribution[p.status]++;
-    }
-  }
-
-  // 8. Action Items
-  const pendingWorkLogsCount = await WorkLog.countDocuments({ status: 'submitted' });
-  const pendingSettlementsCount = await Settlement.countDocuments({ status: 'draft' });
-
   return {
     kpis: {
-      totalProjectValue,
-      totalReceived,
-      outstandingAmount,
+      // 6 Primary Financial Cards
+      newProjectValue: finMetrics.newProjectValue,
+      cashCollected: finMetrics.cashCollected,
+      currentMonthCollection: finMetrics.currentMonthCollection,
+      previousOutstandingCollected: finMetrics.previousOutstandingCollected,
+      openingReceivable: finMetrics.openingReceivable,
+      closingReceivable: finMetrics.closingReceivable,
+
+      // Cash Reconciliation
+      appliedCollections: finMetrics.appliedCollections,
+      unappliedCash: finMetrics.unappliedCash,
+      excessCash: finMetrics.excessCash,
+      needsReview: finMetrics.needsReview,
+
+      // Rates & Info Message
+      collectionRate: finMetrics.collectionRate,
+      hasPreviousCollections: finMetrics.hasPreviousCollections,
+      previousCollectionsMessage: finMetrics.previousCollectionsMessage,
+
+      // Employee Finance
+      expectedCommission: empFinance.expectedCommission,
+      earnedCommission: empFinance.earnedCommission,
+      employeePaid: empFinance.employeePaid,
+      employeePayable: empFinance.employeePayable,
+      employeeAdvance: empFinance.employeeAdvance,
+
+      // Settlement Reserve
+      settlementReserveExpected: settlementFinance.settlementReserveExpected,
+      settlementReserveAccrued: settlementFinance.settlementReserveAccrued,
+      settlementReserveRate: settlementFinance.settlementReserveRate,
+
+      // Legacy & Direct Allocation Aliases
+      totalProjectValue: finMetrics.newProjectValue,
+      totalReceived: finMetrics.cashCollected,
+      outstandingAmount: finMetrics.closingReceivable,
       totalEmployeeAllocation,
-      totalOfficeAllocation,
       totalAdminShare,
+      totalOfficeAllocation,
+      totalBrokerAllocation,
       totalSettlementReserve,
-      totalProjectsCount: kpiProjects.length,
+
+      // Weighted Split Percentages
+      employeePercent,
+      adminPercent,
+      officePercent,
+      brokerPercent,
+      settlementPercent,
+
+      // Project Counts
+      totalProjectsCount: finMetrics.newProjectsCount,
       allTimeProjectsCount: allProjects.length,
       pendingWorkLogsCount,
       pendingSettlementsCount,
+    },
+    financialMetrics: finMetrics,
+    employeeFinance: empFinance,
+    settlementReserve: settlementFinance,
+    commissionSplit: {
+      totalNetProjectValue: weightedSplits.totalNetProjectValue,
+      totalCategoryAmount: weightedSplits.totalCategoryAmount,
+      employee: weightedSplits.employee,
+      admin: weightedSplits.admin,
+      office: weightedSplits.office,
+      broker: weightedSplits.broker,
+      settlement: weightedSplits.settlement,
     },
     monthlyTrends,
     monthlyTrend: monthlyTrends,

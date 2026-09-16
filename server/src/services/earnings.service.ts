@@ -47,6 +47,7 @@ export interface EmployeeEarningsSummary {
   totalEarnedCommission?: number;
   totalPaid: number;
   totalPayable: number;
+  totalAdvance: number;
   payableBalance?: number;
   totalPending: number;
   summary?: {
@@ -55,12 +56,14 @@ export interface EmployeeEarningsSummary {
     totalEarnedCommission: number;
     totalPaid: number;
     totalPayable: number;
+    totalAdvance: number;
     payableBalance: number;
     totalPending: number;
   };
   projects: ProjectEarningDetail[];
   projectBreakdown?: ProjectEarningDetail[];
 }
+
 
 export async function calculateProjectEarningsForEmployee(
   employeeId: string | Types.ObjectId,
@@ -307,6 +310,7 @@ export async function calculateEmployeeEarnings(
   totalExpected = round2(totalExpected);
   totalEarned = round2(totalEarned);
   const totalPayable = Math.max(0, round2(totalEarned - totalPaid));
+  const totalAdvance = Math.max(0, round2(totalPaid - totalEarned));
   const totalPending = Math.max(0, round2(totalExpected - totalPaid));
 
   // Reconcile project-level paid commission with total actual payouts disbursed to employee
@@ -348,6 +352,7 @@ export async function calculateEmployeeEarnings(
     totalEarnedCommission: totalEarned,
     totalPaid,
     totalPayable,
+    totalAdvance,
     payableBalance: totalPayable,
     totalPending,
   };
@@ -359,6 +364,7 @@ export async function calculateEmployeeEarnings(
     totalEarnedCommission: totalEarned,
     totalPaid,
     totalPayable,
+    totalAdvance,
     payableBalance: totalPayable,
     totalPending,
     summary,

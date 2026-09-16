@@ -9,10 +9,33 @@ import { createNotification } from '../services/notification.service.js';
 
 export async function listPayments(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { projectId, clientId } = req.query;
+    const { projectId, clientId, month } = req.query;
     const filter: any = {};
     if (projectId) filter.projectId = projectId;
     if (clientId) filter.clientId = clientId;
+
+    if (month && month !== 'all') {
+      const [yr, mo] = (month as string).split('-').map(Number);
+      if (yr && mo) {
+        const startOfMonth = new Date(yr, mo - 1, 1, 0, 0, 0, 0);
+        const endOfMonth = new Date(yr, mo, 0, 23, 59, 59, 999);
+        const dateMatch = {
+          $or: [
+            { paymentDate: { $gte: startOfMonth, $lte: endOfMonth } },
+            { createdAt: { $gte: startOfMonth, $lte: endOfMonth } },
+          ],
+        };
+
+        if (filter.$and) {
+          filter.$and.push(dateMatch);
+        } else if (filter.$or) {
+          filter.$and = [{ $or: filter.$or }, dateMatch];
+          delete filter.$or;
+        } else {
+          filter.$or = dateMatch.$or;
+        }
+      }
+    }
 
     const payments = await ClientPayment.find(filter)
       .populate('projectId', 'projectName projectCode projectValue')

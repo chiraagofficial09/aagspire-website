@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
@@ -6,6 +6,7 @@ import {
   Pencil,
   Trash2,
   MoreVertical,
+  Sliders,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/work/StatusBadge';
@@ -13,6 +14,7 @@ import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { ProjectModal } from '../../components/work/ProjectModal';
 import { EmptyState } from '../../components/work/EmptyState';
+import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
 
 export const AdminProjects: React.FC = () => {
   const toast = useToast();
@@ -22,17 +24,53 @@ export const AdminProjects: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const now = useMemo(() => new Date(), []);
+  const currentMonthKey = useMemo(
+    () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    [now]
+  );
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchAll = async () => {
+  const availableMonths: MonthOption[] = useMemo(() => {
+    const monthsSet = new Set<string>();
+    for (let i = 0; i <= 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    return Array.from(monthsSet)
+      .sort((a, b) => b.localeCompare(a))
+      .map((key) => {
+        const [y, m] = key.split('-').map(Number);
+        const d = new Date(y, m - 1, 1);
+        return {
+          key,
+          label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
+        };
+      });
+  }, [now]);
+
+  const selectedMonthLabel = useMemo(() => {
+    if (selectedMonth === 'all') return 'All Months';
+    const [yr, mo] = selectedMonth.split('-').map(Number);
+    const d = new Date(yr, mo - 1, 1);
+    return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  }, [selectedMonth]);
+
+  const fetchAll = async (monthVal = selectedMonth) => {
     try {
       setLoading(true);
+      const params = new URLSearchParams();
+      if (monthVal && monthVal !== 'all') {
+        params.append('month', monthVal);
+      }
+      const qs = params.toString() ? `?${params.toString()}` : '';
       const [prjRes, cliRes, empRes] = await Promise.all([
-        api.get('/admin/projects'),
+        api.get(`/admin/projects${qs}`),
         api.get('/admin/clients'),
         api.get('/admin/employees'),
       ]);
@@ -47,8 +85,8 @@ export const AdminProjects: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAll();
-  }, []);
+    fetchAll(selectedMonth);
+  }, [selectedMonth]);
 
   // Close popup menu on outside click
   useEffect(() => {
@@ -180,20 +218,48 @@ export const AdminProjects: React.FC = () => {
             className="w-full pl-10 pr-4 py-2 bg-[#0d0e14] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-white/20 transition-colors"
           />
         </div>
-        <CustomSelect
-          value={statusFilter}
-          onChange={setStatusFilter}
-          className="w-full sm:w-44"
-          options={[
-            { value: 'all', label: 'All statuses' },
-            { value: 'in_progress', label: 'In progress' },
-            { value: 'signed', label: 'Signed' },
-            { value: 'review', label: 'In review' },
-            { value: 'completed', label: 'Completed' },
-            { value: 'delivered', label: 'Delivered' },
-          ]}
-        />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <MonthSelectDropdown
+            value={selectedMonth}
+            onChange={(val) => setSelectedMonth(val)}
+            availableMonths={availableMonths}
+            allMonthsLabel="All Months"
+            className="w-full sm:w-44"
+          />
+          <CustomSelect
+            value={statusFilter}
+            onChange={setStatusFilter}
+            className="w-full sm:w-44"
+            options={[
+              { value: 'all', label: 'All statuses' },
+              { value: 'in_progress', label: 'In progress' },
+              { value: 'signed', label: 'Signed' },
+              { value: 'review', label: 'In review' },
+              { value: 'completed', label: 'Completed' },
+              { value: 'delivered', label: 'Delivered' },
+            ]}
+          />
+        </div>
       </div>
+
+      {/* Active Month Filter Notification Banner */}
+      {selectedMonth !== 'all' && (
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
+            <span className="text-zinc-300">
+              Showing projects for <span className="font-semibold text-white">{selectedMonthLabel}</span>
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedMonth('all')}
+            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
+          >
+            Show All Months
+          </button>
+        </div>
+      )}
 
       {/* Projects Table - matching reference screenshot */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
@@ -300,8 +366,14 @@ export const AdminProjects: React.FC = () => {
                   <td colSpan={5} className="py-8">
                     <EmptyState
                       type="projects"
-                      actionLabel="Create First Project"
-                      onAction={openCreateModal}
+                      title={selectedMonth !== 'all' ? `No projects in ${selectedMonthLabel}` : undefined}
+                      description={
+                        selectedMonth !== 'all'
+                          ? "Try selecting another month or 'All Months' to view projects."
+                          : undefined
+                      }
+                      actionLabel={selectedMonth === 'all' ? 'Create First Project' : undefined}
+                      onAction={selectedMonth === 'all' ? openCreateModal : undefined}
                     />
                   </td>
                 </tr>
@@ -326,8 +398,15 @@ export const AdminProjects: React.FC = () => {
               className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer"
             >
               <Pencil className="w-3 h-3 text-zinc-400" />
-              <span>Edit</span>
+              <span>Edit Project</span>
             </button>
+            <Link
+              to={`/admin/commissions`}
+              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-[#FF5A1F] hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer"
+            >
+              <Sliders className="w-3 h-3 text-[#FF5A1F]" />
+              <span>Commission Split</span>
+            </Link>
             <button
               onClick={() => handleDelete(activePrj._id, activePrj.projectName || activePrj.title)}
               className="w-full text-left px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer"
