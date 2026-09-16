@@ -123,40 +123,53 @@ export function calculateWeightedCommissionSplits(
   );
 
   // Compute project-value-weighted percentages
-  const brokerPercent =
+  let brokerPercent =
     totalNetProjectValue > 0
       ? round2((totalBrokerAmount / totalNetProjectValue) * 100)
       : projectInputs.length > 0
       ? 0
       : DEFAULT_COMMISSION_SPLIT.brokerPercent;
 
-  const employeePercent =
+  let employeePercent =
     totalNetProjectValue > 0
       ? round2((totalEmployeeAmount / totalNetProjectValue) * 100)
       : projectInputs.length > 0
       ? 0
       : DEFAULT_COMMISSION_SPLIT.employeePercent;
 
-  const officePercent =
+  let officePercent =
     totalNetProjectValue > 0
       ? round2((totalOfficeAmount / totalNetProjectValue) * 100)
       : projectInputs.length > 0
       ? 0
       : DEFAULT_COMMISSION_SPLIT.officePercent;
 
-  const adminPercent =
+  let adminPercent =
     totalNetProjectValue > 0
       ? round2((totalAdminAmount / totalNetProjectValue) * 100)
       : projectInputs.length > 0
       ? 0
       : DEFAULT_COMMISSION_SPLIT.adminPercent;
 
-  const settlementPercent =
+  let settlementPercent =
     totalNetProjectValue > 0
       ? round2((totalSettlementAmount / totalNetProjectValue) * 100)
       : projectInputs.length > 0
       ? 0
       : DEFAULT_COMMISSION_SPLIT.settlementPercent;
+
+  // Reconcile rounding differences so 5-tier percentages strictly sum to 100% when allocations cover 100% of project value
+  if (totalNetProjectValue > 0 && Math.abs(totalCategoryAmount - totalNetProjectValue) < 1) {
+    const currentSum = round2(brokerPercent + employeePercent + officePercent + adminPercent + settlementPercent);
+    const diff = round2(100 - currentSum);
+    if (Math.abs(diff) <= 0.05 && diff !== 0) {
+      if (employeePercent >= adminPercent) {
+        employeePercent = round2(employeePercent + diff);
+      } else {
+        adminPercent = round2(adminPercent + diff);
+      }
+    }
+  }
 
   const categories: CategorySummaryItem[] = [
     {

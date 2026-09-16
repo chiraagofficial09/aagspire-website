@@ -212,7 +212,7 @@ export const AdminDashboard: React.FC = () => {
 
   const rawDistribution = data?.distribution || [];
   const hasCommissionData = rawDistribution.some((d: any) => d.value > 0);
-  const commissionData = (hasCommissionData
+  const baseCommissionData = (hasCommissionData
     ? rawDistribution
     : [
         { name: 'Employee Pool', key: 'employee', value: 0, color: '#FF5A1F' },
@@ -225,6 +225,23 @@ export const AdminDashboard: React.FC = () => {
     ...item,
     color: splitColors[item.key] || item.color || '#FF5A1F',
   }));
+
+  // Reconcile individual slice values so they sum cleanly to 100%
+  const rawCommSum = baseCommissionData.reduce((sum: number, c: any) => sum + (Number(c.value) || 0), 0);
+  const commissionData = [...baseCommissionData];
+  if (Math.abs(rawCommSum - 100) < 0.05 && rawCommSum !== 100 && commissionData.length > 0) {
+    const diff = Math.round((100 - rawCommSum) * 100) / 100;
+    let maxIdx = 0;
+    for (let i = 1; i < commissionData.length; i++) {
+      if ((commissionData[i].value || 0) > (commissionData[maxIdx].value || 0)) {
+        maxIdx = i;
+      }
+    }
+    commissionData[maxIdx] = {
+      ...commissionData[maxIdx],
+      value: Math.round(((commissionData[maxIdx].value || 0) + diff) * 100) / 100,
+    };
+  }
 
   const totalCommPercent = commissionData.reduce((sum: number, c: any) => sum + (c.value || 0), 0);
 
@@ -748,7 +765,7 @@ export const AdminDashboard: React.FC = () => {
                 <p className="text-[10px] font-mono text-zinc-400">5-Tier Project Allocation</p>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[#FF5A1F]/15 text-[#FF5A1F] border border-[#FF5A1F]/30">
-                {totalCommPercent > 0 ? formatSplitPercent(totalCommPercent) : '100%'} Split
+                {totalCommPercent > 0 ? (Math.abs(totalCommPercent - 100) < 0.05 ? '100%' : formatSplitPercent(totalCommPercent)) : '100%'} Split
               </span>
             </div>
 
@@ -787,7 +804,7 @@ export const AdminDashboard: React.FC = () => {
 
                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
                   <div className={`text-base font-bold font-mono tracking-tight ${headingColor}`}>
-                    {totalCommPercent > 0 ? formatSplitPercent(totalCommPercent) : '0%'}
+                    {totalCommPercent > 0 ? (Math.abs(totalCommPercent - 100) < 0.05 ? '100%' : formatSplitPercent(totalCommPercent)) : '0%'}
                   </div>
                   <div className="text-[9px] uppercase tracking-wider text-zinc-400 font-medium">
                     Split
