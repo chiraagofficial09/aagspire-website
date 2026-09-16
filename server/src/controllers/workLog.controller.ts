@@ -6,10 +6,11 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
 import { createNotification } from '../services/notification.service.js';
 import { round2 } from '../utils/decimalHelper.js';
+import { getMonthDateRange } from '../utils/dateHelper.js';
 
 export async function listWorkLogs(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
-    const { employeeId, projectId, status } = req.query;
+    const { employeeId, projectId, status, month } = req.query;
     const filter: any = {};
 
     // Role Security: Employee can only see their own logs
@@ -26,6 +27,11 @@ export async function listWorkLogs(req: AuthenticatedRequest, res: Response): Pr
 
     if (projectId) filter.projectId = projectId;
     if (status && status !== 'all') filter.status = status;
+
+    const monthRange = getMonthDateRange(month as string | undefined);
+    if (monthRange) {
+      filter.workDate = { $gte: monthRange.startOfMonth, $lte: monthRange.endOfMonth };
+    }
 
     const workLogs = await WorkLog.find(filter)
       .populate('employeeId', 'fullName employeeCode designation')

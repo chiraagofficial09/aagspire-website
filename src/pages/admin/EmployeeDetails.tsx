@@ -23,6 +23,7 @@ import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
+import { MonthSelectDropdown } from '../../components/work/MonthSelectDropdown';
 
 export const AdminEmployeeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,6 +38,17 @@ export const AdminEmployeeDetails: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'projects' | 'workLogs' | 'payouts' | 'bank'>('projects');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Month-wise filtering
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const dynamicMonths = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    return { key, label };
+  });
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
 
   // Pay Employee Modal State
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
@@ -62,14 +74,15 @@ export const AdminEmployeeDetails: React.FC = () => {
     },
   });
 
-  const fetchAll = async () => {
+  const fetchAll = async (monthVal = selectedMonth) => {
     try {
       setLoading(true);
+      const query = monthVal ? `?month=${encodeURIComponent(monthVal)}` : '';
       const [empRes, earnRes, logsRes, payoutsRes] = await Promise.all([
-        api.get(`/admin/employees/${id}`),
-        api.get(`/admin/employees/${id}/earnings`),
-        api.get(`/admin/work-logs?employeeId=${id}`).catch(() => ({ data: { data: [] } })),
-        api.get(`/admin/employees/${id}/payouts`).catch(() => ({ data: { data: [] } })),
+        api.get(`/admin/employees/${id}${query}`),
+        api.get(`/admin/employees/${id}/earnings${query}`),
+        api.get(`/admin/work-logs?employeeId=${id}${query ? `&month=${encodeURIComponent(monthVal)}` : ''}`).catch(() => ({ data: { data: [] } })),
+        api.get(`/admin/employees/${id}/payouts${query}`).catch(() => ({ data: { data: [] } })),
       ]);
       const emp = empRes.data.data || empRes.data.employee;
       const earnData = earnRes.data.data || earnRes.data;
@@ -118,8 +131,8 @@ export const AdminEmployeeDetails: React.FC = () => {
   };
 
   useEffect(() => {
-    if (id) fetchAll();
-  }, [id]);
+    if (id) fetchAll(selectedMonth);
+  }, [id, selectedMonth]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -249,7 +262,12 @@ export const AdminEmployeeDetails: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <MonthSelectDropdown
+            value={selectedMonth}
+            onChange={setSelectedMonth}
+            availableMonths={dynamicMonths}
+          />
           <button
             onClick={() => {
               setPayAmount('');
@@ -287,11 +305,7 @@ export const AdminEmployeeDetails: React.FC = () => {
         <StatCard
           title="TOTAL"
           value={formatINR(totalCommission)}
-          change={
-            earnedCommission > 0 && earnedCommission !== totalCommission
-              ? `Earned: ${formatINR(earnedCommission)}`
-              : 'Contracted pool share'
-          }
+          change="Contracted pool share"
           changeType="positive"
           icon={Coins}
           variant="ember"
@@ -306,11 +320,7 @@ export const AdminEmployeeDetails: React.FC = () => {
         <StatCard
           title="PENDING"
           value={formatINR(remainingBalance)}
-          change={
-            payableNow > 0
-              ? `Ready to settle: ${formatINR(payableNow)}`
-              : 'Pending balance'
-          }
+          change="Pending balance"
           changeType="warning"
           icon={Clock}
         />
@@ -347,7 +357,6 @@ export const AdminEmployeeDetails: React.FC = () => {
                 <th className="py-3 px-4">Project</th>
                 <th className="py-3 px-4">Role</th>
                 <th className="py-3 px-4">Pool Share %</th>
-                <th className="py-3 px-4">Earned</th>
                 <th className="py-3 px-4">Status</th>
               </tr>
             </thead>
@@ -358,7 +367,6 @@ export const AdminEmployeeDetails: React.FC = () => {
                   const prjName = p.projectName || p.title || 'Project';
                   const role = p.roleInProject || p.role || 'Team Member';
                   const share = p.sharePercent ?? p.sharePercentage ?? p.employeeSharePercent ?? 100;
-                  const earned = p.earnedAmount ?? p.earnedCommission ?? p.totalCommission ?? 0;
                   const status = p.status || 'in_progress';
 
                   return (
@@ -374,9 +382,6 @@ export const AdminEmployeeDetails: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-white/70">{role}</td>
                       <td className="py-3 px-4 font-mono text-ember font-bold">{share}%</td>
-                      <td className="py-3 px-4 font-mono font-bold text-white">
-                        ₹{Number(earned).toLocaleString('en-IN')}
-                      </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={status} type="project" />
                       </td>
@@ -385,7 +390,7 @@ export const AdminEmployeeDetails: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-8 text-center text-white/40 font-mono">
+                  <td colSpan={4} className="py-8 text-center text-white/40 font-mono">
                     No assigned projects on record.
                   </td>
                 </tr>

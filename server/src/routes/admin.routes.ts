@@ -87,7 +87,8 @@ router.get('/employees/:id/payouts', listEmployeePayouts);
 router.delete('/employees/:id/payouts/:payoutId', deleteEmployeePayout);
 router.get('/employees/:id/earnings', async (req, res) => {
   try {
-    const earnings = await calculateEmployeeEarnings(new Types.ObjectId(req.params.id));
+    const month = req.query.month as string | undefined;
+    const earnings = await calculateEmployeeEarnings(new Types.ObjectId(req.params.id), month);
     res.json({ success: true, data: earnings });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });

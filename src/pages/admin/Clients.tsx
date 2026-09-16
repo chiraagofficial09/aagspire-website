@@ -284,9 +284,24 @@ export const AdminClients: React.FC = () => {
                       </td>
                       <td className="py-4 px-6">
                         <div>
-                          <div className="text-sm text-zinc-300 font-medium">{client.contactPerson || '-'}</div>
-                          {client.phone && (
-                            <div className="text-[11px] text-zinc-500 font-mono mt-0.5">{client.phone}</div>
+                          {client.contactPerson ? (
+                            <>
+                              <div className="text-sm text-zinc-300 font-medium">{client.contactPerson}</div>
+                              {client.phone && (
+                                <div className="text-[11px] text-zinc-500 font-mono mt-0.5">{client.phone}</div>
+                              )}
+                            </>
+                          ) : client.phone ? (
+                            <>
+                              <div className="text-sm text-zinc-300 font-medium font-mono">{client.phone}</div>
+                              {client.email && (
+                                <div className="text-[11px] text-zinc-500 mt-0.5 truncate max-w-[180px]">{client.email}</div>
+                              )}
+                            </>
+                          ) : client.email ? (
+                            <div className="text-sm text-zinc-300 truncate max-w-[180px]">{client.email}</div>
+                          ) : (
+                            <div className="text-sm text-zinc-500 font-mono">-</div>
                           )}
                         </div>
                       </td>

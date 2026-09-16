@@ -13,6 +13,7 @@ import { logAudit } from '../services/audit.service.js';
 import { createNotification } from '../services/notification.service.js';
 import { calculateEmployeeEarnings } from '../services/earnings.service.js';
 import { toDecimal, fromDecimal, round2 } from '../utils/decimalHelper.js';
+import { getMonthDateRange } from '../utils/dateHelper.js';
 
 export async function listEmployees(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -130,18 +131,25 @@ export async function createEmployee(req: AuthenticatedRequest, res: Response): 
 export async function getEmployeeById(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const month = req.query.month as string | undefined;
     const employee = await Employee.findById(id);
     if (!employee) {
       res.status(404).json({ success: false, message: 'Employee not found.' });
       return;
     }
 
-    // Get detailed financial earnings breakdown (includes all project allocations)
-    const earnings = await calculateEmployeeEarnings(employee._id);
+    // Get detailed financial earnings breakdown (includes all project allocations, month-filtered if specified)
+    const earnings = await calculateEmployeeEarnings(employee._id, month);
 
     // Get all work logs for this employee (checking both employee._id and employee.userId)
     const possibleEmpIds = [employee._id, employee.userId].filter(Boolean);
-    const workLogs = await WorkLog.find({ employeeId: { $in: possibleEmpIds } })
+    const workLogFilter: any = { employeeId: { $in: possibleEmpIds } };
+    const monthRange = getMonthDateRange(month);
+    if (monthRange) {
+      workLogFilter.workDate = { $gte: monthRange.startOfMonth, $lte: monthRange.endOfMonth };
+    }
+
+    const workLogs = await WorkLog.find(workLogFilter)
       .populate('projectId', 'projectName projectCode status')
       .sort({ workDate: -1, createdAt: -1 });
 
@@ -456,6 +464,7 @@ export async function payEmployeeDirect(req: AuthenticatedRequest, res: Response
 export async function listEmployeePayouts(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    const month = req.query.month as string | undefined;
     const employee = await Employee.findById(id);
     if (!employee) {
       res.status(404).json({ success: false, message: 'Employee not found.' });
@@ -463,10 +472,20 @@ export async function listEmployeePayouts(req: AuthenticatedRequest, res: Respon
     }
 
     const possibleIds = [employee._id, employee.userId].filter(Boolean);
-    const settlements = await Settlement.find({
+    const filter: any = {
       employeeId: { $in: possibleIds },
       status: 'paid',
-    }).sort({ paymentDate: -1, createdAt: -1 });
+    };
+
+    const monthRange = getMonthDateRange(month);
+    if (monthRange) {
+      filter.$or = [
+        { paymentDate: { $gte: monthRange.startOfMonth, $lte: monthRange.endOfMonth } },
+        { paymentDate: { $exists: false }, createdAt: { $gte: monthRange.startOfMonth, $lte: monthRange.endOfMonth } },
+      ];
+    }
+
+    const settlements = await Settlement.find(filter).sort({ paymentDate: -1, createdAt: -1 });
 
     const formatted = settlements.map((s) => ({
       _id: s._id,

@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
-import { formatINR } from '../../utils/formatters';
 import { EmptyState } from '../../components/work/EmptyState';
 import { StatusBadge } from '../../components/work/StatusBadge';
 
@@ -206,7 +205,6 @@ export const AdminEmployees: React.FC = () => {
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">EMPLOYEE</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">ROLE</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">EMAIL</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">EARNED</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">STATUS</th>
                 <th className="py-4 px-6 text-right"></th>
               </tr>
@@ -214,14 +212,13 @@ export const AdminEmployees: React.FC = () => {
             <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-500 font-mono">
+                  <td colSpan={5} className="py-12 text-center text-zinc-500 font-mono">
                     Loading employees...
                   </td>
                 </tr>
               ) : filtered.length > 0 ? (
                 filtered.map((emp) => {
                   const displayName = emp.fullName || emp.name;
-                  const earned = emp.earnings?.totalEarned || 0;
                   return (
                     <tr key={emp._id} className="hover:bg-white/[0.015] transition-colors">
                       <td className="py-4 px-6">
@@ -239,9 +236,6 @@ export const AdminEmployees: React.FC = () => {
                       </td>
                       <td className="py-4 px-6">
                         <span className="text-sm text-zinc-400">{emp.email}</span>
-                      </td>
-                      <td className="py-4 px-6">
-                        <span className="text-sm font-medium text-white">{formatINR(earned)}</span>
                       </td>
                       <td className="py-4 px-6">
                         <StatusBadge status={emp.status || 'active'} />
@@ -279,7 +273,7 @@ export const AdminEmployees: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-8">
+                  <td colSpan={5} className="py-8">
                     <EmptyState
                       type="employees"
                       actionLabel="Add Team Member"
