@@ -54,7 +54,15 @@ export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMo
     }
   }
 
-  // Filter projects by selected month (booking month, creation month, or active period)
+  // Filter projects strictly by booking/creation month (matches dashboardFinance newProjectValue logic)
+  // Only projects whose start date or creation date falls within the selected month
+  const bookedInMonthProjects = allProjects.filter((p) => {
+    if (isAllMonths || !startDate || !endDate) return true;
+    const pDate = new Date(p.startDate || p.createdAt || 0);
+    return pDate >= startDate && pDate <= endDate;
+  });
+
+  // Broader filter for status distribution (includes projects active in the month)
   const currentMonthProjects = allProjects.filter((p) => {
     if (isAllMonths || !startDate || !endDate) return true;
     const createdDate = p.createdAt ? new Date(p.createdAt) : null;
@@ -75,10 +83,10 @@ export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMo
     return isCreatedInMonth || isStartedInMonth || isActiveInMonth;
   });
 
-  // Calculate project-value-weighted average splits and project-by-project money totals
+  // Calculate project-value-weighted average splits using only projects booked in the selected month
   const projectsToCalculate =
-    currentMonthProjects.length > 0
-      ? currentMonthProjects
+    bookedInMonthProjects.length > 0
+      ? bookedInMonthProjects
       : allProjects.filter((p) => p.status !== 'cancelled');
   const projectInputs = buildProjectCommissionInputs(projectsToCalculate, commissionMap);
   const weightedSplits = calculateWeightedCommissionSplits(projectInputs);
