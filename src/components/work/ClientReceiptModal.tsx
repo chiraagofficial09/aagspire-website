@@ -206,19 +206,63 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     };
   }, [client?._id]);
 
+  // Distribute general client payments across localProjects if not already allocated
+  const enrichedProjects = useMemo(() => {
+    const hasAnyPaid = (localProjects || []).some((p) => parseAmount(p.paidAmount) > 0);
+    if (hasAnyPaid) return localProjects;
+
+    const payments = (client?.payments || []) as any[];
+    let unallocated = payments.reduce((sum, pm) => sum + parseAmount(pm.amount), 0);
+    if (unallocated <= 0) {
+      unallocated = parseAmount(
+        client?.financialSummary?.cashCollected ??
+        client?.financials?.cashCollected ??
+        client?.financials?.totalPaymentsReceived ??
+        client?.totalPaid
+      );
+    }
+
+    if (unallocated <= 0) return localProjects;
+
+    const sorted = [...(localProjects || [])].sort((a, b) => {
+      const da = new Date(a.createdAt || a.startDate || 0).getTime();
+      const db = new Date(b.createdAt || b.startDate || 0).getTime();
+      return da - db;
+    });
+
+    const allocMap = new Map<string, number>();
+    for (const p of sorted) {
+      if (unallocated <= 0) break;
+      const val = parseAmount(p.projectValue ?? p.totalAmount);
+      const take = Math.min(unallocated, val);
+      allocMap.set(p._id, take);
+      unallocated -= take;
+    }
+
+    return (localProjects || []).map((p) => {
+      const paid = allocMap.get(p._id) ?? parseAmount(p.paidAmount ?? p.paymentsReceived);
+      const val = parseAmount(p.projectValue ?? p.totalAmount);
+      return {
+        ...p,
+        paidAmount: paid,
+        balance: Math.max(0, val - paid),
+      };
+    });
+  }, [localProjects, client]);
+
   // Filter projects to only show this month's project which month is selected
   const displayedProjects = useMemo(() => {
-    if (!billingMonth || billingMonth === 'all') return localProjects;
+    if (!billingMonth || billingMonth === 'all') return enrichedProjects;
     const [y, m] = billingMonth.split('-').map(Number);
-    if (!y || !m) return localProjects;
+    if (!y || !m) return enrichedProjects;
     const startOfMonth = new Date(y, m - 1, 1, 0, 0, 0, 0);
     const endOfMonth = new Date(y, m, 0, 23, 59, 59, 999);
 
-    return localProjects.filter((p) => {
+    return enrichedProjects.filter((p) => {
       const pDate = new Date(p.startDate || p.createdAt || 0);
       return !isNaN(pDate.getTime()) && pDate >= startOfMonth && pDate <= endOfMonth;
     });
-  }, [localProjects, billingMonth]);
+  }, [enrichedProjects, billingMonth]);
 
   // Keep selected IDs synced with displayed projects when billing month changes
   useEffect(() => {
@@ -308,12 +352,30 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     (sum, p) => sum + parseAmount(p.projectValue ?? p.totalAmount),
     0
   );
-  const totalPaid = selectedProjects.reduce(
+  const taxAmount = (subtotal * (Number(taxPercent) || 0)) / 100;
+  const grandTotal = Math.max(0, subtotal + taxAmount - (Number(discountAmount) || 0));
+
+  const projectPaidSum = selectedProjects.reduce(
     (sum, p) => sum + parseAmount(p.paidAmount ?? p.paymentsReceived),
     0
   );
-  const taxAmount = (subtotal * (Number(taxPercent) || 0)) / 100;
-  const grandTotal = Math.max(0, subtotal + taxAmount - (Number(discountAmount) || 0));
+
+  const clientPaymentsTotal = useMemo(() => {
+    const pms = (client?.payments || []) as any[];
+    const directSum = pms.reduce((sum, pm) => sum + parseAmount(pm.amount), 0);
+    const summaryPaid = parseAmount(
+      client?.financialSummary?.cashCollected ??
+      client?.financials?.cashCollected ??
+      client?.financials?.totalPaymentsReceived ??
+      client?.totalPaid
+    );
+    return Math.max(directSum, summaryPaid);
+  }, [client]);
+
+  const totalPaid = Math.min(
+    grandTotal,
+    projectPaidSum > 0 ? projectPaidSum : clientPaymentsTotal
+  );
   const netBalanceDue = Math.max(0, grandTotal - totalPaid);
 
   const billingMonthOptions = useMemo(() => {
@@ -932,9 +994,9 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                       <tr>
                         <th className="py-2.5 px-3 w-10">NO.</th>
                         <th className="py-2.5 px-3">PROJECT / DELIVERABLE</th>
-                        <th className="py-2.5 pl-6 pr-3 sm:pl-8 sm:pr-3 w-28 sm:w-32 text-left">PRICE (₹)</th>
-                        <th className="py-2.5 pl-8 pr-3 sm:pl-10 sm:pr-3 w-28 sm:w-32 text-left">DISCOUNT (₹)</th>
-                        <th className="py-2.5 pl-12 pr-2 sm:pl-16 sm:pr-3 w-32 sm:w-36 text-left">TOTAL (₹)</th>
+                        <th className="py-2.5 pl-6 pr-3 sm:pl-8 sm:pr-3 w-28 sm:w-32 text-left whitespace-nowrap">PRICE (₹)</th>
+                        <th className="py-2.5 pl-8 pr-3 sm:pl-10 sm:pr-3 w-28 sm:w-32 text-left whitespace-nowrap">DISCOUNT (₹)</th>
+                        <th className="py-2.5 pl-12 pr-2 sm:pl-16 sm:pr-3 w-32 sm:w-36 text-left whitespace-nowrap">TOTAL (₹)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">

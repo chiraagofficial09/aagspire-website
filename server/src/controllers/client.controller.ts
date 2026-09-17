@@ -208,29 +208,71 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
     const totalPaymentsReceived = financialMetrics.totalAllTimeCashCollected;
     const pendingPayment = financialMetrics.totalAllTimeReceivable;
 
-    const projects = await Promise.all(
-      rawProjects.map(async (p) => {
-        const pPayments = await ClientPayment.find({ projectId: p._id });
-        const paid = round2(pPayments.reduce((sum, pm) => sum + fromDecimal(pm.amount), 0));
-        const grossVal = fromDecimal(p.projectValue);
-        const discountPercent = Number(p.discountPercent) || 0;
-        const discountAmount = p.discountAmount
-          ? fromDecimal(p.discountAmount)
-          : round2((grossVal * discountPercent) / 100);
-        const netVal = Math.max(0, round2(grossVal - discountAmount));
-        return {
-          ...p.toObject(),
-          title: p.projectName,
-          projectValue: netVal,
-          grossProjectValue: grossVal,
-          discountAmount,
-          discountPercent,
-          totalAmount: netVal,
-          paidAmount: paid,
-          balance: Math.max(0, round2(netVal - paid)),
-        };
-      })
+    // Pre-calculate payment allocation across client projects (supporting general client payments)
+    const sortedProjects = [...rawProjects].sort(
+      (a, b) => new Date(a.startDate || a.createdAt || 0).getTime() - new Date(b.startDate || b.createdAt || 0).getTime()
     );
+    const projectPaymentsMap = new Map<string, number>();
+    for (const p of sortedProjects) {
+      projectPaymentsMap.set(p._id.toString(), 0);
+    }
+
+    const sortedPayments = [...rawPayments].sort(
+      (a, b) => new Date(a.paymentDate || a.createdAt || 0).getTime() - new Date(b.paymentDate || b.createdAt || 0).getTime()
+    );
+
+    for (const pm of sortedPayments) {
+      const amt = fromDecimal(pm.amount);
+      const pId = pm.projectId ? (pm.projectId._id ? pm.projectId._id.toString() : pm.projectId.toString()) : null;
+      let rem = amt;
+
+      if (pId && projectPaymentsMap.has(pId)) {
+        const targetProj = sortedProjects.find((p) => p._id.toString() === pId);
+        const gross = targetProj ? fromDecimal(targetProj.projectValue) : 0;
+        const cur = projectPaymentsMap.get(pId) || 0;
+        const take = Math.min(rem, Math.max(0, round2(gross - cur)));
+        if (take > 0) {
+          projectPaymentsMap.set(pId, round2(cur + take));
+          rem = round2(rem - take);
+        }
+      }
+
+      if (rem > 0) {
+        for (const p of sortedProjects) {
+          if (rem <= 0) break;
+          const pid = p._id.toString();
+          const gross = fromDecimal(p.projectValue);
+          const cur = projectPaymentsMap.get(pid) || 0;
+          const take = Math.min(rem, Math.max(0, round2(gross - cur)));
+          if (take > 0) {
+            projectPaymentsMap.set(pid, round2(cur + take));
+            rem = round2(rem - take);
+          }
+        }
+      }
+    }
+
+    const projects = rawProjects.map((p) => {
+      const pid = p._id.toString();
+      const paid = projectPaymentsMap.get(pid) || 0;
+      const grossVal = fromDecimal(p.projectValue);
+      const discountPercent = Number(p.discountPercent) || 0;
+      const discountAmount = p.discountAmount
+        ? fromDecimal(p.discountAmount)
+        : round2((grossVal * discountPercent) / 100);
+      const netVal = Math.max(0, round2(grossVal - discountAmount));
+      return {
+        ...p.toObject(),
+        title: p.projectName,
+        projectValue: netVal,
+        grossProjectValue: grossVal,
+        discountAmount,
+        discountPercent,
+        totalAmount: netVal,
+        paidAmount: paid,
+        balance: Math.max(0, round2(netVal - paid)),
+      };
+    });
 
     const payments = rawPayments.map((pm) => ({
       ...pm.toObject(),
@@ -393,9 +435,12 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       rawProjects = rawProjects.filter((p) => selectedIds.includes(p._id.toString()));
     }
 
-    let rawPayments = selectedIds.length > 0
-      ? await ClientPayment.find({ projectId: { $in: rawProjects.map((p) => p._id) } }).sort({ paymentDate: -1 })
-      : await ClientPayment.find({ clientId: client._id }).sort({ paymentDate: -1 });
+    let rawPayments = await ClientPayment.find({
+      $or: [
+        { clientId: client._id },
+        { projectId: { $in: rawProjects.map((p) => p._id) } },
+      ],
+    }).sort({ paymentDate: 1, createdAt: 1 });
 
     const monthQuery = (req.query.month as string) || (req.body?.month as string) || '';
     let billingMonthLabel: string | undefined;
@@ -464,42 +509,69 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       }
     }
 
+    // Allocate client payments across projects
+    const projectPaymentsMap = new Map<string, number>();
+    for (const pm of rawPayments) {
+      if (pm.projectId) {
+        const pid = pm.projectId.toString();
+        projectPaymentsMap.set(pid, round2((projectPaymentsMap.get(pid) || 0) + fromDecimal(pm.amount)));
+      }
+    }
+
+    let generalPaymentsPool = round2(
+      rawPayments
+        .filter((pm) => !pm.projectId)
+        .reduce((sum, pm) => sum + fromDecimal(pm.amount), 0)
+    );
+
+    // Fetch all client projects sorted chronologically to allocate general client payments
+    const allClientProjects = await Project.find({ clientId: client._id }).sort({ createdAt: 1, startDate: 1 });
+    for (const p of allClientProjects) {
+      if (generalPaymentsPool <= 0) break;
+      const pid = p._id.toString();
+      const val = fromDecimal(p.projectValue);
+      const cur = projectPaymentsMap.get(pid) || 0;
+      const take = Math.min(generalPaymentsPool, Math.max(0, round2(val - cur)));
+      if (take > 0) {
+        projectPaymentsMap.set(pid, round2(cur + take));
+        generalPaymentsPool = round2(generalPaymentsPool - take);
+      }
+    }
+
+    const projects = rawProjects.map((p) => {
+      const pIdStr = String(p._id);
+      const paid = projectPaymentsMap.get(pIdStr) || 0;
+      const val = fromDecimal(p.projectValue);
+      const manualDiscount = customDiscounts[pIdStr] !== undefined
+        ? Number(customDiscounts[pIdStr]) || 0
+        : (p.discountAmount ? fromDecimal(p.discountAmount) : 0);
+      const grossPrice = round2(val + manualDiscount);
+      return {
+        projectCode: p.projectCode,
+        projectName: p.projectName,
+        status: p.status,
+        projectValue: val,
+        grossProjectValue: grossPrice,
+        discountPercent: Number(p.discountPercent) || 0,
+        discountAmount: manualDiscount,
+        paidAmount: paid,
+        balance: Math.max(0, round2(val - paid)),
+        startDate: p.startDate ? new Date(p.startDate).toLocaleDateString('en-IN') : undefined,
+        deadline: p.deadline ? new Date(p.deadline).toLocaleDateString('en-IN') : undefined,
+      };
+    });
+
     const subtotal = round2(
-      rawProjects.reduce((sum, p) => sum + fromDecimal(p.projectValue), 0)
+      projects.reduce((sum, p) => sum + p.projectValue, 0)
     );
     const taxAmount = round2((subtotal * taxPercent) / 100);
     const totalRevenue = round2(subtotal + taxAmount - discountAmount);
 
-    const totalPaid = round2(
-      rawPayments.reduce((sum, pm) => sum + fromDecimal(pm.amount), 0)
+    const totalPaid = Math.min(
+      totalRevenue,
+      round2(projects.reduce((sum, p) => sum + p.paidAmount, 0))
     );
     const pendingBalance = Math.max(0, round2(totalRevenue - totalPaid));
-
-    const projects = await Promise.all(
-      rawProjects.map(async (p) => {
-        const pPayments = await ClientPayment.find({ projectId: p._id });
-        const paid = round2(pPayments.reduce((sum, pm) => sum + fromDecimal(pm.amount), 0));
-        const val = fromDecimal(p.projectValue);
-        const pIdStr = String(p._id);
-        const manualDiscount = customDiscounts[pIdStr] !== undefined
-          ? Number(customDiscounts[pIdStr]) || 0
-          : (p.discountAmount ? fromDecimal(p.discountAmount) : 0);
-        const grossPrice = round2(val + manualDiscount);
-        return {
-          projectCode: p.projectCode,
-          projectName: p.projectName,
-          status: p.status,
-          projectValue: val,
-          grossProjectValue: grossPrice,
-          discountPercent: Number(p.discountPercent) || 0,
-          discountAmount: manualDiscount,
-          paidAmount: paid,
-          balance: val,
-          startDate: p.startDate ? new Date(p.startDate).toLocaleDateString('en-IN') : undefined,
-          deadline: p.deadline ? new Date(p.deadline).toLocaleDateString('en-IN') : undefined,
-        };
-      })
-    );
 
     const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec'];
     let targetDate = monthRange ? monthRange.startOfMonth : new Date();

@@ -125,29 +125,8 @@ export async function createPayment(req: AuthenticatedRequest, res: Response): P
       return;
     }
 
-    // 4. Determine attributed project (if specified or auto-attributing to oldest open deliverable)
-    let attributedProjectId = projectDoc ? projectDoc._id : undefined;
-    if (!attributedProjectId && clientProjects.length > 0) {
-      for (const cp of clientProjects) {
-        const cpPayments = await ClientPayment.find({ projectId: cp._id });
-        const cpPaid = round2(cpPayments.reduce((sum, p) => sum + fromDecimal(p.amount), 0));
-        const cpGross = fromDecimal(cp.projectValue);
-        const cpDiscountPercent = Number(cp.discountPercent) || 0;
-        const cpDiscount = cp.discountAmount
-          ? fromDecimal(cp.discountAmount)
-          : round2((cpGross * cpDiscountPercent) / 100);
-        const cpNet = Math.max(0, round2(cpGross - cpDiscount));
-        if (cpNet - cpPaid > 0) {
-          attributedProjectId = cp._id;
-          projectDoc = cp;
-          break;
-        }
-      }
-      if (!attributedProjectId && clientProjects.length > 0) {
-        attributedProjectId = clientProjects[0]._id;
-        projectDoc = clientProjects[0];
-      }
-    }
+    // 4. Determine attributed project (ONLY if explicitly specified by user; otherwise general client payment)
+    const attributedProjectId = projectDoc ? projectDoc._id : undefined;
 
     const payment = await ClientPayment.create({
       projectId: attributedProjectId,

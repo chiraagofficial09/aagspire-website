@@ -90,17 +90,55 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
 
     const projectIds = projects.map((p) => p._id);
 
+    const clientIds = projects
+      .map((p) => (p.clientId?._id || p.clientId)?.toString())
+      .filter(Boolean);
+
     // 1. Batch fetch all payments and commissions for these projects in ONE single query
     const [allPayments, allCommissions] = await Promise.all([
-      ClientPayment.find({ projectId: { $in: projectIds } }).lean(),
+      ClientPayment.find({
+        $or: [
+          { projectId: { $in: projectIds } },
+          { clientId: { $in: clientIds } },
+        ],
+      }).sort({ paymentDate: 1, createdAt: 1 }).lean(),
       ProjectCommission.find({ projectId: { $in: projectIds } }).lean(),
     ]);
 
     const paymentsByProject: Record<string, number> = {};
+    const unallocatedClientPayments: Record<string, number> = {};
+
     for (const p of allPayments) {
       const pid = p.projectId?.toString();
       if (pid) {
-        paymentsByProject[pid] = (paymentsByProject[pid] || 0) + fromDecimal(p.amount);
+        paymentsByProject[pid] = round2((paymentsByProject[pid] || 0) + fromDecimal(p.amount));
+      } else if (p.clientId) {
+        const cid = p.clientId.toString();
+        unallocatedClientPayments[cid] = round2((unallocatedClientPayments[cid] || 0) + fromDecimal(p.amount));
+      }
+    }
+
+    // Allocate general client payments chronologically across projects of each client
+    for (const cid of Object.keys(unallocatedClientPayments)) {
+      let pool = unallocatedClientPayments[cid];
+      if (pool <= 0) continue;
+      const clientProjs = projects
+        .filter((p) => (p.clientId?._id || p.clientId)?.toString() === cid)
+        .sort((a, b) => {
+          const da = new Date(a.createdAt || a.startDate || 0).getTime();
+          const db = new Date(b.createdAt || b.startDate || 0).getTime();
+          return da - db;
+        });
+      for (const cp of clientProjs) {
+        if (pool <= 0) break;
+        const pid = cp._id.toString();
+        const gross = fromDecimal(cp.projectValue);
+        const cur = paymentsByProject[pid] || 0;
+        const take = Math.min(pool, Math.max(0, round2(gross - cur)));
+        if (take > 0) {
+          paymentsByProject[pid] = round2(cur + take);
+          pool = round2(pool - take);
+        }
       }
     }
 
@@ -367,7 +405,7 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
                 role: 'employee',
                 type: 'project',
                 title: 'Assigned to New Project',
-                message: `You were assigned to project "${projectName}" (${projectCode}).`,
+                message: `You were assigned to project "${projectName}".`,
                 link: '/employee/projects',
                 metadata: { projectId: project._id },
               }).catch(() => {});
@@ -416,7 +454,12 @@ export async function getProjectById(req: AuthenticatedRequest, res: Response): 
       'employeeId',
       'fullName employeeCode designation email'
     );
-    const payments = await ClientPayment.find({ projectId: project._id }).sort({ paymentDate: -1 });
+    const payments = await ClientPayment.find({
+      $or: [
+        { projectId: project._id },
+        { clientId: project.clientId?._id || project.clientId },
+      ],
+    }).sort({ paymentDate: 1, createdAt: 1 });
     const workLogs = await WorkLog.find({ projectId: project._id })
       .populate('employeeId', 'fullName employeeCode')
       .sort({ workDate: -1 });
@@ -427,9 +470,36 @@ export async function getProjectById(req: AuthenticatedRequest, res: Response): 
       ? fromDecimal(project.discountAmount)
       : round2((grossVal * discountPercent) / 100);
     const netVal = Math.max(0, round2(grossVal - discountAmount));
-    const paymentsReceived = round2(
-      payments.reduce((sum, p) => sum + fromDecimal(p.amount), 0)
+
+    let projectPaid = round2(
+      payments
+        .filter((p) => p.projectId && p.projectId.toString() === project._id.toString())
+        .reduce((sum, p) => sum + fromDecimal(p.amount), 0)
     );
+
+    const generalPayments = payments.filter((p) => !p.projectId);
+    if (generalPayments.length > 0 && projectPaid < netVal) {
+      let generalPool = round2(
+        generalPayments.reduce((sum, p) => sum + fromDecimal(p.amount), 0)
+      );
+      const clientOtherProjs = await Project.find({
+        clientId: project.clientId?._id || project.clientId,
+      }).sort({ createdAt: 1, startDate: 1 });
+      for (const cp of clientOtherProjs) {
+        if (generalPool <= 0) break;
+        const cVal = fromDecimal(cp.projectValue);
+        if (cp._id.toString() === project._id.toString()) {
+          const needed = Math.max(0, round2(netVal - projectPaid));
+          const take = Math.min(generalPool, needed);
+          projectPaid = round2(projectPaid + take);
+          break;
+        } else {
+          generalPool = Math.max(0, round2(generalPool - cVal));
+        }
+      }
+    }
+
+    const paymentsReceived = projectPaid;
     const outstanding = Math.max(0, round2(netVal - paymentsReceived));
 
     const isEmployeeView = req.user?.role === 'employee';
@@ -726,7 +796,7 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
                   role: 'employee',
                   type: 'project',
                   title: 'Assigned to Project',
-                  message: `You were assigned to project "${project.projectName}" (${project.projectCode}).`,
+                  message: `You were assigned to project "${project.projectName}".`,
                   link: '/employee/projects',
                   metadata: { projectId: project._id },
                 }).catch(() => {});
@@ -802,7 +872,7 @@ export async function updateEmployeeAllocations(req: AuthenticatedRequest, res: 
                 role: 'employee',
                 type: 'project',
                 title: 'Assigned to Project',
-                message: `You were assigned to project "${project.projectName}" (${project.projectCode}).`,
+                message: `You were assigned to project "${project.projectName}".`,
                 link: '/employee/projects',
                 metadata: { projectId: project._id },
               }).catch(() => {});

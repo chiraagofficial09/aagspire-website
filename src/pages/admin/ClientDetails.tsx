@@ -60,7 +60,6 @@ export const AdminClientDetails: React.FC = () => {
 
   // Payment form state
   const [payAmount, setPayAmount] = useState('');
-  const [payProjectId, setPayProjectId] = useState('');
   const [payMethod, setPayMethod] = useState('bank_transfer');
   const [payRef, setPayRef] = useState('');
   const [payNotes, setPayNotes] = useState('');
@@ -361,7 +360,6 @@ export const AdminClientDetails: React.FC = () => {
       setSubmittingPayment(true);
       await api.post('/admin/payments', {
         clientId: id,
-        projectId: payProjectId || (filteredProjects.length === 1 ? filteredProjects[0]._id : (allProjects.length === 1 ? allProjects[0]._id : undefined)),
         amount: entered,
         paymentMethod: payMethod,
         transactionReference: payRef,
@@ -373,7 +371,6 @@ export const AdminClientDetails: React.FC = () => {
       setPayAmount('');
       setPayRef('');
       setPayNotes('');
-      setPayProjectId('');
       fetchClient();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to record payment');
@@ -468,7 +465,6 @@ export const AdminClientDetails: React.FC = () => {
               setPayNotes('');
               setPayDate(new Date().toISOString().slice(0, 10));
               setPayMethod('bank_transfer');
-              setPayProjectId(filteredProjects.length === 1 ? filteredProjects[0]._id : (allProjects.length === 1 ? allProjects[0]._id : ''));
               setIsPayModalOpen(true);
             }}
             className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-[#0c0d12] border border-white/[0.08] hover:bg-white/5 text-white text-xs font-medium transition-all cursor-pointer"
@@ -621,18 +617,10 @@ export const AdminClientDetails: React.FC = () => {
               <p className="text-xl font-bold text-white tracking-tight">
                 {formatINR(newProjectValue)}
               </p>
-              <span className="text-[10px] font-mono text-zinc-400 block mt-1">
-                {isAllMonths ? 'All contracted projects' : 'Added this month'}
-              </span>
             </div>
           </div>
 
-          {/* Operator: + */}
-          <div className="flex items-center justify-center py-1 lg:py-0">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-xs shrink-0 select-none shadow-sm">
-              +
-            </div>
-          </div>
+       
 
           {/* Card 2: Previous Month Due */}
           <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
@@ -646,18 +634,9 @@ export const AdminClientDetails: React.FC = () => {
               <p className="text-xl font-bold text-white tracking-tight">
                 {formatINR(openingReceivable)}
               </p>
-              <span className="text-[10px] font-mono text-zinc-400 block mt-1">
-                {isAllMonths ? 'All-time view (₹0)' : 'Pending from previous months'}
-              </span>
             </div>
           </div>
 
-          {/* Operator: − */}
-          <div className="flex items-center justify-center py-1 lg:py-0">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-xs shrink-0 select-none shadow-sm">
-              −
-            </div>
-          </div>
 
           {/* Card 3: Money Received This Month / Total Received */}
           <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
@@ -673,9 +652,7 @@ export const AdminClientDetails: React.FC = () => {
               <p className="text-xl font-bold text-white tracking-tight">
                 {formatINR(cashCollected)}
               </p>
-              <span className="text-[10px] font-mono text-zinc-400 block mt-1">
-                {isAllMonths ? 'All client payments' : 'Received this month'}
-              </span>
+             
               {(currentMonthCollection > 0 || previousOutstandingCollected > 0) && !isAllMonths && (
                 <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-1.5 border-t border-white/5 text-[10px] text-zinc-400 font-mono">
                   <span>This month: <strong className="text-white">{formatINR(currentMonthCollection)}</strong></span>
@@ -686,28 +663,18 @@ export const AdminClientDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Operator: = */}
-          <div className="flex items-center justify-center py-1 lg:py-0">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-xs shrink-0 select-none shadow-sm">
-              =
-            </div>
-          </div>
-
           {/* Card 4: Remaining Due */}
           <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-medium text-white/50">Remaining Due</span>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-ember/10 text-ember border border-ember/20">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 text-white/70 border border-white/10">
                 <Tag className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-xl font-bold text-[#FF5A1F] tracking-tight">
+              <p className="text-xl font-bold tracking-tight">
                 {formatINR(closingReceivable)}
               </p>
-              <span className="text-[10px] font-mono text-zinc-400 block mt-1">
-                {isAllMonths ? 'Total unpaid balance' : 'Still pending'}
-              </span>
             </div>
           </div>
         </div>
@@ -1156,23 +1123,6 @@ export const AdminClientDetails: React.FC = () => {
                   </p>
                 )}
               </div>
-
-              {allProjects.length > 0 && (
-                <div>
-                  <label className="text-white/60 block mb-1">Attributed Deliverable / Project (Optional)</label>
-                  <CustomSelect
-                    value={payProjectId}
-                    onChange={(val) => setPayProjectId(val)}
-                    options={[
-                      { value: '', label: 'General / Entire Client Account' },
-                      ...allProjects.map((p: any) => ({
-                        value: p._id,
-                        label: `${p.projectName || p.title} (${formatINR(p.projectValue ?? p.totalAmount)})`,
-                      })),
-                    ]}
-                  />
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>

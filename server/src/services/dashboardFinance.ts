@@ -156,7 +156,25 @@ export async function calculateFinancialMetrics(options: {
     }
   }
 
-  // 3. Process all payments with project allocation
+  // Group projects by client for general client-level payment allocation
+  const clientProjectsMap = new Map<string, any[]>();
+  for (const p of allProjects) {
+    const cId = p.clientId ? p.clientId.toString() : 'general';
+    if (!clientProjectsMap.has(cId)) {
+      clientProjectsMap.set(cId, []);
+    }
+    clientProjectsMap.get(cId)!.push(p);
+  }
+  // Sort projects chronologically within each client
+  for (const projs of clientProjectsMap.values()) {
+    projs.sort((a, b) => {
+      const da = new Date(a.startDate || a.createdAt || 0).getTime();
+      const db = new Date(b.startDate || b.createdAt || 0).getTime();
+      return da - db;
+    });
+  }
+
+  // 3. Process all payments with client/project allocation
   let cashCollected = 0;
   let currentMonthCollection = 0;
   let previousOutstandingCollected = 0;
@@ -168,62 +186,125 @@ export async function calculateFinancialMetrics(options: {
     const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
     const amt = fromDecimal(pm.amount);
     const pIdStr = pm.projectId ? pm.projectId.toString() : null;
-    const isLinkedToKnownProject = pIdStr && projectMap.has(pIdStr);
+    const cIdStr = pm.clientId ? pm.clientId.toString() : null;
 
     const isBeforeMonth = !isAllMonths && startDate && pmDate < startDate;
     const isInMonth = isAllMonths || (startDate && endDate && pmDate >= startDate && pmDate <= endDate);
 
+    const cProjects = cIdStr && clientProjectsMap.has(cIdStr)
+      ? clientProjectsMap.get(cIdStr)!
+      : (pIdStr && projectMap.has(pIdStr) ? [projectMap.get(pIdStr)!] : []);
+
     if (isBeforeMonth) {
-      if (isLinkedToKnownProject) {
-        projectPaymentsBeforeMonth.set(
-          pIdStr!,
-          (projectPaymentsBeforeMonth.get(pIdStr!) || 0) + amt
-        );
+      let unallocated = amt;
+      // If linked explicitly to a project, apply up to its net value
+      if (pIdStr && projectMap.has(pIdStr)) {
+        const lp = projectMap.get(pIdStr)!;
+        const net = getNetProjectValue(lp);
+        const prior = projectPaymentsBeforeMonth.get(pIdStr) || 0;
+        const cap = Math.max(0, round2(net - prior));
+        const take = Math.min(unallocated, cap);
+        projectPaymentsBeforeMonth.set(pIdStr, round2(prior + take));
+        unallocated = round2(unallocated - take);
+      }
+      // Distribute any remaining unallocated across client's projects
+      if (unallocated > 0 && cProjects.length > 0) {
+        for (const p of cProjects) {
+          if (unallocated <= 0) break;
+          const pid = p._id.toString();
+          const net = getNetProjectValue(p);
+          const prior = projectPaymentsBeforeMonth.get(pid) || 0;
+          const cap = Math.max(0, round2(net - prior));
+          if (cap > 0) {
+            const take = Math.min(unallocated, cap);
+            projectPaymentsBeforeMonth.set(pid, round2(prior + take));
+            unallocated = round2(unallocated - take);
+          }
+        }
       }
     } else if (isInMonth) {
       cashCollected = round2(cashCollected + amt);
       paymentsInMonthCount++;
 
-      if (!isLinkedToKnownProject) {
-        // Payment has no linked project or invalid project
-        unappliedCash = round2(unappliedCash + amt);
-      } else {
-        const linkedProject = projectMap.get(pIdStr!)!;
-        const projNetVal = getNetProjectValue(linkedProject);
-        const priorPaymentsOnProject = projectPaymentsBeforeMonth.get(pIdStr!) || 0;
-        const currentMonthPriorOnProject = projectPaymentsInMonth.get(pIdStr!) || 0;
-        const totalPaidBeforeThis = priorPaymentsOnProject + currentMonthPriorOnProject;
-        const remainingCapacity = Math.max(0, round2(projNetVal - totalPaidBeforeThis));
+      let remainingToApply = amt;
 
-        const appliedPortion = Math.min(amt, remainingCapacity);
-        const excessPortion = Math.max(0, round2(amt - appliedPortion));
+      // 1. If payment is explicitly linked to a project, apply to that project first
+      if (pIdStr && projectMap.has(pIdStr)) {
+        const lp = projectMap.get(pIdStr)!;
+        const net = getNetProjectValue(lp);
+        const priorBefore = projectPaymentsBeforeMonth.get(pIdStr) || 0;
+        const priorInMonth = projectPaymentsInMonth.get(pIdStr) || 0;
+        const cap = Math.max(0, round2(net - (priorBefore + priorInMonth)));
+        const take = Math.min(remainingToApply, cap);
 
-        if (excessPortion > 0) {
-          excessCash = round2(excessCash + excessPortion);
-        }
+        if (take > 0) {
+          projectPaymentsInMonth.set(pIdStr, round2(priorInMonth + take));
+          projectTotalPaymentsAllTime.set(pIdStr, round2((projectTotalPaymentsAllTime.get(pIdStr) || 0) + take));
 
-        projectPaymentsInMonth.set(
-          pIdStr!,
-          (projectPaymentsInMonth.get(pIdStr!) || 0) + appliedPortion
-        );
-
-        // Check if project was booked in current month or prior
-        const projBookedDate = new Date(linkedProject.startDate || linkedProject.createdAt || 0);
-        const isProjectBookedInMonth = isAllMonths || (startDate && projBookedDate >= startDate);
-
-        if (isProjectBookedInMonth) {
-          currentMonthCollection = round2(currentMonthCollection + appliedPortion);
-        } else {
-          previousOutstandingCollected = round2(previousOutstandingCollected + appliedPortion);
+          const projBookedDate = new Date(lp.startDate || lp.createdAt || 0);
+          const isProjectBookedInMonth = isAllMonths || (startDate && projBookedDate >= startDate);
+          if (isProjectBookedInMonth) {
+            currentMonthCollection = round2(currentMonthCollection + take);
+          } else {
+            previousOutstandingCollected = round2(previousOutstandingCollected + take);
+          }
+          remainingToApply = round2(remainingToApply - take);
         }
       }
-    }
 
-    if (isLinkedToKnownProject) {
-      projectTotalPaymentsAllTime.set(
-        pIdStr!,
-        (projectTotalPaymentsAllTime.get(pIdStr!) || 0) + amt
-      );
+      // 2. Apply remaining amount (or all of general client payment) across client's projects
+      if (remainingToApply > 0 && cProjects.length > 0) {
+        // Pass 1: Prior month projects with open dues
+        for (const p of cProjects) {
+          if (remainingToApply <= 0) break;
+          const pid = p._id.toString();
+          const projBookedDate = new Date(p.startDate || p.createdAt || 0);
+          const isOld = !isAllMonths && startDate && projBookedDate < startDate;
+          if (!isOld) continue;
+
+          const net = getNetProjectValue(p);
+          const priorBefore = projectPaymentsBeforeMonth.get(pid) || 0;
+          const priorInMonth = projectPaymentsInMonth.get(pid) || 0;
+          const cap = Math.max(0, round2(net - (priorBefore + priorInMonth)));
+          if (cap > 0) {
+            const take = Math.min(remainingToApply, cap);
+            projectPaymentsInMonth.set(pid, round2(priorInMonth + take));
+            projectTotalPaymentsAllTime.set(pid, round2((projectTotalPaymentsAllTime.get(pid) || 0) + take));
+            previousOutstandingCollected = round2(previousOutstandingCollected + take);
+            remainingToApply = round2(remainingToApply - take);
+          }
+        }
+
+        // Pass 2: Current month projects (or all projects in isAllMonths)
+        for (const p of cProjects) {
+          if (remainingToApply <= 0) break;
+          const pid = p._id.toString();
+          const projBookedDate = new Date(p.startDate || p.createdAt || 0);
+          const isOld = !isAllMonths && startDate && projBookedDate < startDate;
+          if (isOld) continue;
+
+          const net = getNetProjectValue(p);
+          const priorBefore = projectPaymentsBeforeMonth.get(pid) || 0;
+          const priorInMonth = projectPaymentsInMonth.get(pid) || 0;
+          const cap = Math.max(0, round2(net - (priorBefore + priorInMonth)));
+          if (cap > 0) {
+            const take = Math.min(remainingToApply, cap);
+            projectPaymentsInMonth.set(pid, round2(priorInMonth + take));
+            projectTotalPaymentsAllTime.set(pid, round2((projectTotalPaymentsAllTime.get(pid) || 0) + take));
+            currentMonthCollection = round2(currentMonthCollection + take);
+            remainingToApply = round2(remainingToApply - take);
+          }
+        }
+      }
+
+      // If money exceeds ALL contracted projects for this client:
+      if (remainingToApply > 0) {
+        if (cProjects.length > 0) {
+          excessCash = round2(excessCash + remainingToApply);
+        } else {
+          unappliedCash = round2(unappliedCash + remainingToApply);
+        }
+      }
     }
   }
 
@@ -379,15 +460,56 @@ export async function calculateEmployeeFinanceMetrics(
     projectMap.set(p._id.toString(), p);
   }
 
-  // Group payments by project up to the relevant period
+  // Group payments by project up to the relevant period (supporting both project-linked and general client payments)
   const paymentsByProject = new Map<string, number>();
-  for (const pm of allPayments) {
-    if (!pm.projectId) continue;
+  for (const p of allProjects) {
+    paymentsByProject.set(p._id.toString(), 0);
+  }
+
+  const clientProjsForEmp = new Map<string, any[]>();
+  for (const p of allProjects) {
+    const cId = p.clientId ? p.clientId.toString() : 'general';
+    if (!clientProjsForEmp.has(cId)) clientProjsForEmp.set(cId, []);
+    clientProjsForEmp.get(cId)!.push(p);
+  }
+  for (const projs of clientProjsForEmp.values()) {
+    projs.sort((a, b) => new Date(a.startDate || a.createdAt || 0).getTime() - new Date(b.startDate || b.createdAt || 0).getTime());
+  }
+
+  const sortedPaymentsForEmp = [...allPayments].sort((a, b) => new Date(a.paymentDate || a.createdAt || 0).getTime() - new Date(b.paymentDate || b.createdAt || 0).getTime());
+
+  for (const pm of sortedPaymentsForEmp) {
     const pmDate = new Date(pm.paymentDate || pm.createdAt);
     if (!isAllMonths && endDate && pmDate > endDate) continue;
-    const pId = pm.projectId.toString();
     const amt = fromDecimal(pm.amount);
-    paymentsByProject.set(pId, (paymentsByProject.get(pId) || 0) + amt);
+    const pIdStr = pm.projectId ? pm.projectId.toString() : null;
+    const cIdStr = pm.clientId ? pm.clientId.toString() : null;
+    const cProjects = cIdStr && clientProjsForEmp.has(cIdStr) ? clientProjsForEmp.get(cIdStr)! : (pIdStr && projectMap.has(pIdStr) ? [projectMap.get(pIdStr)!] : []);
+
+    let rem = amt;
+    if (pIdStr && projectMap.has(pIdStr)) {
+      const lp = projectMap.get(pIdStr)!;
+      const net = getNetProjectValue(lp);
+      const cur = paymentsByProject.get(pIdStr) || 0;
+      const take = Math.min(rem, Math.max(0, net - cur));
+      if (take > 0) {
+        paymentsByProject.set(pIdStr, round2(cur + take));
+        rem = round2(rem - take);
+      }
+    }
+    if (rem > 0 && cProjects.length > 0) {
+      for (const p of cProjects) {
+        if (rem <= 0) break;
+        const pid = p._id.toString();
+        const net = getNetProjectValue(p);
+        const cur = paymentsByProject.get(pid) || 0;
+        const take = Math.min(rem, Math.max(0, net - cur));
+        if (take > 0) {
+          paymentsByProject.set(pid, round2(cur + take));
+          rem = round2(rem - take);
+        }
+      }
+    }
   }
 
   let totalExpectedCommission = 0;
