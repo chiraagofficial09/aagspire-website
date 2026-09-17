@@ -104,13 +104,42 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         description: '',
       });
 
-      setCommissionSplit({
-        brokerPercent: 10,
-        employeePercent: 40,
-        officePercent: 10,
-        adminPercent: 35,
-        settlementPercent: 5,
-      });
+      // 1. Instant load from local storage
+      const cached = localStorage.getItem('default_project_commission_split');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setCommissionSplit({
+            brokerPercent: Number(parsed.brokerPercent ?? parsed.broker ?? 10),
+            employeePercent: Number(parsed.employeePercent ?? parsed.employee ?? 40),
+            officePercent: Number(parsed.officePercent ?? parsed.officeExpense ?? 10),
+            adminPercent: Number(parsed.adminPercent ?? parsed.adminShare ?? 35),
+            settlementPercent: Number(parsed.settlementPercent ?? parsed.settlementReserve ?? 5),
+          });
+        } catch (_) {
+          setCommissionSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
+        }
+      } else {
+        setCommissionSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
+      }
+
+      // 2. Fetch server default preset to ensure perfect synchronization
+      api.get('/admin/commissions/presets/default')
+        .then((res) => {
+          if (res.data?.success && res.data?.preset) {
+            const p = res.data.preset;
+            const updated = {
+              brokerPercent: Number(p.brokerPercent ?? 10),
+              employeePercent: Number(p.employeePercent ?? 40),
+              officePercent: Number(p.officePercent ?? 10),
+              adminPercent: Number(p.adminPercent ?? 35),
+              settlementPercent: Number(p.settlementPercent ?? 5),
+            };
+            setCommissionSplit(updated);
+            localStorage.setItem('default_project_commission_split', JSON.stringify(updated));
+          }
+        })
+        .catch(() => {});
     }
   }, [isOpen, project, clients]);
 
@@ -181,6 +210,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         onSuccess(res.data.project || res.data.data || res.data);
       } else {
         const res = await api.post('/admin/projects', payload);
+        // Persist used split so next added projects automatically default to this split
+        localStorage.setItem(
+          'default_project_commission_split',
+          JSON.stringify({
+            brokerPercent: Number(commissionSplit.brokerPercent),
+            employeePercent: Number(commissionSplit.employeePercent),
+            officePercent: Number(commissionSplit.officePercent),
+            adminPercent: Number(commissionSplit.adminPercent),
+            settlementPercent: Number(commissionSplit.settlementPercent),
+          })
+        );
         toast.success('Project created and assigned successfully');
         onSuccess(res.data.project || res.data.data || res.data);
       }
@@ -335,8 +375,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                   Number(commissionSplit.settlementPercent);
                 const isExact = Math.abs(curSum - 100) < 0.01;
                 return (
-                  <span className={`text-[11px] font-mono flex items-center gap-1 ${isExact ? 'text-emerald-400 font-bold' : 'text-amber-400'}`}>
-                    {isExact ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                  <span className={`text-[11px] font-mono flex items-center gap-1 ${isExact ? 'text-white font-bold' : 'text-zinc-400'}`}>
+                    {isExact ? <CheckCircle2 className="w-3 h-3 text-[#FF5A1F]" /> : <AlertTriangle className="w-3 h-3 text-zinc-500" />}
                     <span>{curSum.toFixed(1)}% / 100%</span>
                   </span>
                 );

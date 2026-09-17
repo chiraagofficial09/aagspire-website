@@ -219,3 +219,77 @@ export async function getCommissionHistory(req: AuthenticatedRequest, res: Respo
     res.status(500).json({ success: false, message: error.message });
   }
 }
+
+export async function getDefaultPreset(_req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    let defaultPreset = await CommissionPreset.findOne({ isDefault: true });
+    if (!defaultPreset) {
+      defaultPreset = await CommissionPreset.findOne().sort({ createdAt: 1 });
+    }
+    const data = defaultPreset
+      ? {
+          brokerPercent: defaultPreset.brokerPercent,
+          employeePercent: defaultPreset.employeePercent,
+          officePercent: defaultPreset.officePercent,
+          adminPercent: defaultPreset.adminPercent,
+          settlementPercent: defaultPreset.settlementPercent,
+        }
+      : {
+          brokerPercent: 10,
+          employeePercent: 40,
+          officePercent: 10,
+          adminPercent: 35,
+          settlementPercent: 5,
+        };
+
+    res.json({ success: true, preset: data, data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function setDefaultPreset(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const broker = req.body.brokerPercent ?? req.body.brokerPercentage ?? 10;
+    const employee = req.body.employeePercent ?? req.body.employeePercentage ?? 40;
+    const office = req.body.officePercent ?? req.body.officeExpensePercentage ?? 10;
+    const admin = req.body.adminPercent ?? req.body.adminSharePercentage ?? 35;
+    const settlement = req.body.settlementPercent ?? req.body.settlementReservePercentage ?? 5;
+
+    const split = {
+      brokerPercent: Number(broker),
+      employeePercent: Number(employee),
+      officePercent: Number(office),
+      adminPercent: Number(admin),
+      settlementPercent: Number(settlement),
+    };
+
+    validateCommissionPercentages(split);
+
+    let defaultPreset = await CommissionPreset.findOne({ isDefault: true });
+    if (defaultPreset) {
+      defaultPreset.brokerPercent = split.brokerPercent;
+      defaultPreset.employeePercent = split.employeePercent;
+      defaultPreset.officePercent = split.officePercent;
+      defaultPreset.adminPercent = split.adminPercent;
+      defaultPreset.settlementPercent = split.settlementPercent;
+      await defaultPreset.save();
+    } else {
+      defaultPreset = await CommissionPreset.create({
+        name: 'Standard Default',
+        ...split,
+        isDefault: true,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Default commission split saved successfully.',
+      preset: defaultPreset,
+      data: defaultPreset,
+    });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+}
+

@@ -41,6 +41,8 @@ import {
   deletePreset,
   updateProjectCommission,
   getCommissionHistory,
+  getDefaultPreset,
+  setDefaultPreset,
 } from '../controllers/commission.controller.js';
 
 import { listPayments, createPayment, deletePayment } from '../controllers/payment.controller.js';
@@ -224,6 +226,8 @@ router.get('/projects/:id/financials', async (req, res) => {
 });
 
 // Commission Presets & Edits
+router.get('/commissions/presets/default', getDefaultPreset);
+router.post('/commissions/presets/default', setDefaultPreset);
 router.get('/commissions/presets', getPresets);
 router.post('/commissions/presets', createPreset);
 router.delete('/commissions/presets/:id', deletePreset);
