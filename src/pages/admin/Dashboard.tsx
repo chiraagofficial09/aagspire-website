@@ -393,7 +393,7 @@ export const AdminDashboard: React.FC = () => {
           {/* Card 1: New Projects */}
           <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] sm:text-xs font-medium text-white/50">New Projects</span>
+              <span className="text-[11px] sm:text-xs font-medium text-white/50">Total This month</span>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
                 <Layers className="w-4 h-4" />
               </div>
@@ -402,23 +402,16 @@ export const AdminDashboard: React.FC = () => {
               <div className={`text-xl sm:text-2xl font-extrabold tracking-tight ${headingColor}`}>
                 {formatINR(newProjectValue)}
               </div>
-              <div className="text-[11px] font-mono text-zinc-400 mt-1">
-                Added this month
-              </div>
+             
             </div>
           </div>
 
-          {/* Operator: + */}
-          <div className="flex items-center justify-center py-1 lg:py-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-sm shrink-0 select-none shadow-sm">
-              +
-            </div>
-          </div>
+        
 
           {/* Card 2: Previous Month Due */}
           <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] sm:text-xs font-medium text-white/50">Previous Month Due</span>
+              <span className="text-[11px] sm:text-xs font-medium text-white/50">Previous Month Pending</span>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
                 <Clock className="w-4 h-4" />
               </div>
@@ -427,18 +420,11 @@ export const AdminDashboard: React.FC = () => {
               <div className={`text-xl sm:text-2xl font-extrabold tracking-tight ${headingColor}`}>
                 {formatINR(openingReceivable)}
               </div>
-              <div className="text-[11px] font-mono text-zinc-400 mt-1">
-                Pending from previous months
-              </div>
+             
             </div>
           </div>
 
-          {/* Operator: − */}
-          <div className="flex items-center justify-center py-1 lg:py-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-sm shrink-0 select-none shadow-sm">
-              −
-            </div>
-          </div>
+      
 
           {/* Card 3: Money Received This Month */}
           <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
@@ -452,34 +438,26 @@ export const AdminDashboard: React.FC = () => {
               <div className={`text-xl sm:text-2xl font-extrabold tracking-tight ${headingColor}`}>
                 {formatINR(cashCollected)}
               </div>
-              <div className="text-[11px] font-mono text-zinc-400 mt-1">
-                Received this month
-              </div>
+             
             </div>
           </div>
 
           {/* Operator: = */}
-          <div className="flex items-center justify-center py-1 lg:py-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/10 bg-white/5 flex items-center justify-center text-white/60 font-mono font-bold text-sm shrink-0 select-none shadow-sm">
-              =
-            </div>
-          </div>
+        
 
           {/* Card 4: Remaining Due */}
           <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] sm:text-xs font-medium text-white/50">Remaining Due</span>
+              <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Pending</span>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-ember/10 text-ember border border-ember/20">
                 <Tag className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-ember">
+              <div className="text-xl sm:text-2xl font-extrabold tracking-tight">
                 {formatINR(closingReceivable)}
               </div>
-              <div className="text-[11px] font-mono text-zinc-400 mt-1">
-                Still pending
-              </div>
+            
             </div>
           </div>
         </div>
@@ -491,7 +469,7 @@ export const AdminDashboard: React.FC = () => {
         <div className={`rounded-2xl ${isLight ? 'bg-white border border-[#FF5A1F]/40 shadow-[0_4px_25px_rgba(255,90,31,0.08)]' : 'bg-[#0e1017] border border-[#FF5A1F]/40 shadow-[0_0_25px_rgba(255,90,31,0.06)]'} p-4 sm:p-5 relative overflow-hidden flex flex-col justify-between`}>
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
-              EMPLOYEE SHARE
+              Team Commission
             </span>
             <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
               {formatSplitPercent(employeeSharePercent)}
@@ -499,13 +477,11 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-3">
             <div>
-              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
+              <span className="text-xl sm:text-2xl font-extrabold  tracking-tight font-sans">
                 {formatINR(employeeShareAmount)}
               </span>
             </div>
-            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
-              Team commission pool
-            </span>
+         
           </div>
         </div>
 
@@ -525,9 +501,7 @@ export const AdminDashboard: React.FC = () => {
                 {formatINR(adminShareAmount)}
               </span>
             </div>
-            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
-              Company admin allocation
-            </span>
+           
           </div>
         </div>
 
@@ -547,9 +521,7 @@ export const AdminDashboard: React.FC = () => {
                 {formatINR(officeExpenseAmount)}
               </span>
             </div>
-            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
-              Operating & overhead cost
-            </span>
+          
           </div>
         </div>
 
@@ -569,9 +541,7 @@ export const AdminDashboard: React.FC = () => {
                 {formatINR(brokerShareAmount)}
               </span>
             </div>
-            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
-              Referral & broker fee
-            </span>
+          
           </div>
         </div>
 
@@ -591,9 +561,7 @@ export const AdminDashboard: React.FC = () => {
                 {formatINR(reserveFundAmount)}
               </span>
             </div>
-            <span className="text-[11px] text-zinc-500 block mt-1 truncate">
-              Project settlement reserve
-            </span>
+          
           </div>
         </div>
       </div>
