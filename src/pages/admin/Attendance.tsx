@@ -111,6 +111,8 @@ export const AdminAttendance: React.FC = () => {
                         ? new Date(item.clockInAt || item.clockInTime).toLocaleTimeString('en-IN', {
                             hour: '2-digit',
                             minute: '2-digit',
+                            hour12: true,
+                            timeZone: 'Asia/Kolkata',
                           })
                         : '-'}
                     </td>
@@ -119,6 +121,8 @@ export const AdminAttendance: React.FC = () => {
                         ? new Date(item.clockOutAt || item.clockOutTime).toLocaleTimeString('en-IN', {
                             hour: '2-digit',
                             minute: '2-digit',
+                            hour12: true,
+                            timeZone: 'Asia/Kolkata',
                           })
                         : (item.clockInAt || item.clockInTime)
                         ? 'In session'

@@ -84,6 +84,8 @@ export const EmployeeAttendance: React.FC = () => {
                         ? new Date(h.clockInTime).toLocaleTimeString('en-IN', {
                             hour: '2-digit',
                             minute: '2-digit',
+                            hour12: true,
+                            timeZone: 'Asia/Kolkata',
                           })
                         : '-'}
                     </td>
@@ -92,6 +94,8 @@ export const EmployeeAttendance: React.FC = () => {
                         ? new Date(h.clockOutTime).toLocaleTimeString('en-IN', {
                             hour: '2-digit',
                             minute: '2-digit',
+                            hour12: true,
+                            timeZone: 'Asia/Kolkata',
                           })
                         : h.clockInTime
                         ? 'In session'

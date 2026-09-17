@@ -109,7 +109,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
   const formatTime = (dateStr: string | null) => {
     if (!dateStr) return '--:--';
     try {
-      return new Date(dateStr).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+      return new Date(dateStr).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
     } catch {
       return '--:--';
     }

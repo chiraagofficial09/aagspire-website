@@ -53,14 +53,17 @@ export async function clockIn(req: AuthenticatedRequest, res: Response): Promise
     if (attendance?.clockInAt) {
       res.status(400).json({
         success: false,
-        message: `Already clocked in today at ${new Date(attendance.clockInAt).toLocaleTimeString()}.`,
+        message: `Already clocked in today at ${new Date(attendance.clockInAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}.`,
       });
       return;
     }
 
     const now = new Date();
-    // Mark as late if after 10:30 AM
-    const isLate = now.getHours() > 10 || (now.getHours() === 10 && now.getMinutes() > 30);
+    // Convert to IST for late check (server may not be in India)
+    const istHour = parseInt(now.toLocaleString('en-IN', { hour: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }), 10);
+    const istMinute = parseInt(now.toLocaleString('en-IN', { minute: '2-digit', timeZone: 'Asia/Kolkata' }), 10);
+    // Mark as late if after 10:30 AM IST
+    const isLate = istHour > 10 || (istHour === 10 && istMinute > 30);
 
     if (attendance) {
       attendance.clockInAt = now;
@@ -79,14 +82,14 @@ export async function clockIn(req: AuthenticatedRequest, res: Response): Promise
       role: 'admin',
       type: 'attendance',
       title: isLate ? 'Staff Clocked In (Late)' : 'Staff Clocked In',
-      message: `${req.employee?.fullName || 'Staff Member'} clocked in at ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+      message: `${req.employee?.fullName || 'Staff Member'} clocked in at ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}.`,
       link: '/admin/attendance',
       metadata: { employeeId, date: today },
     }).catch(() => {});
 
     res.json({
       success: true,
-      message: `Clocked in successfully at ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+      message: `Clocked in successfully at ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}.`,
       attendance,
     });
   } catch (error: any) {
@@ -113,7 +116,7 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
     if (attendance.clockOutAt) {
       res.status(400).json({
         success: false,
-        message: `Already clocked out today at ${new Date(attendance.clockOutAt).toLocaleTimeString()}.`,
+        message: `Already clocked out today at ${new Date(attendance.clockOutAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}.`,
       });
       return;
     }
@@ -173,7 +176,7 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
 
     res.json({
       success: true,
-      message: `Clocked out at ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Total time: ${durationStr}. Work log recorded.`,
+      message: `Clocked out at ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}. Total time: ${durationStr}. Work log recorded.`,
       attendance,
       workLog: createdWorkLog,
     });
