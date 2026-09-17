@@ -253,14 +253,19 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
       };
     });
 
-    // Delivered projects should always show at the end of the list,
-    // but within delivered projects, the newly delivered appears first, and the first delivered project stays at the very last end ("last ma last")
+    const isFinished = (status: string) => {
+      const s = (status || '').toLowerCase();
+      return s === 'delivered' || s === 'completed';
+    };
+
+    // Finished (delivered/completed) projects should always show at the end of the list;
+    // within finished projects, newly finished appears first, and the first finished project stays at the very last end
     enriched.sort((a, b) => {
-      const aDelivered = (a.status || '').toLowerCase() === 'delivered';
-      const bDelivered = (b.status || '').toLowerCase() === 'delivered';
-      if (aDelivered && !bDelivered) return 1;
-      if (!aDelivered && bDelivered) return -1;
-      if (aDelivered && bDelivered) {
+      const aDone = isFinished(a.status);
+      const bDone = isFinished(b.status);
+      if (aDone && !bDone) return 1;
+      if (!aDone && bDone) return -1;
+      if (aDone && bDone) {
         const timeA = new Date(a.deliveredAt || a.updatedAt || a.createdAt || 0).getTime();
         const timeB = new Date(b.deliveredAt || b.updatedAt || b.createdAt || 0).getTime();
         return timeB - timeA;
@@ -638,9 +643,11 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
     if (newDeadline !== undefined) project.deadline = newDeadline ? new Date(newDeadline) : undefined;
     if (req.body.status) {
       const newStatus = req.body.status === 'signed' ? 'confirmed' : req.body.status;
-      if (newStatus === 'delivered' && project.status !== 'delivered') {
+      const wasFinished = project.status === 'delivered' || project.status === 'completed';
+      const isNowFinished = newStatus === 'delivered' || newStatus === 'completed';
+      if (isNowFinished && !wasFinished) {
         project.deliveredAt = new Date();
-      } else if (newStatus !== 'delivered') {
+      } else if (!isNowFinished) {
         project.deliveredAt = undefined;
       }
       project.status = newStatus;
@@ -769,6 +776,15 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
     }
 
     await project.save();
+
+    if (req.body.status) {
+      const effectiveStatus = req.body.status === 'completed' ? 'completed' : 'in_progress';
+      await WorkLog.updateMany(
+        { 'projectsWorked.projectId': project._id },
+        { $set: { 'projectsWorked.$[elem].status': effectiveStatus } },
+        { arrayFilters: [{ 'elem.projectId': project._id }] }
+      ).catch(() => {});
+    }
 
     await logAudit({
       userId: req.user!._id,
@@ -975,12 +991,22 @@ export async function updateProjectStatusByEmployee(req: AuthenticatedRequest, r
 
     const oldStatus = project.status;
     project.status = status;
-    if (status === 'delivered' && oldStatus !== 'delivered') {
+    const wasFinished = oldStatus === 'delivered' || oldStatus === 'completed';
+    const isNowFinished = status === 'delivered' || status === 'completed';
+    if (isNowFinished && !wasFinished) {
       project.deliveredAt = new Date();
-    } else if (status !== 'delivered') {
+    } else if (!isNowFinished) {
       project.deliveredAt = undefined;
     }
     await project.save();
+
+    // Keep WorkLog projectsWorked status in sync
+    const effectiveStatus = status === 'completed' ? 'completed' : 'in_progress';
+    await WorkLog.updateMany(
+      { 'projectsWorked.projectId': project._id },
+      { $set: { 'projectsWorked.$[elem].status': effectiveStatus } },
+      { arrayFilters: [{ 'elem.projectId': project._id }] }
+    ).catch(() => {});
 
     await logAudit({
       userId: req.user!._id,

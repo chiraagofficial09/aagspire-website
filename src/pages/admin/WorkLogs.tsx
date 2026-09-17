@@ -1,10 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Search,
   CheckCircle2,
   XCircle,
   MessageSquare,
   User,
+  Calendar,
+  Clock,
+  RotateCcw,
+  ExternalLink,
+  CheckCircle,
+  MoreHorizontal,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/work/StatusBadge';
@@ -12,6 +19,97 @@ import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomCalendarDropdown } from '../../components/work/CustomCalendarDropdown';
 import { EmptyState } from '../../components/work/EmptyState';
+
+interface ExtractedProject {
+  projectId?: string;
+  name: string;
+  code?: string;
+  status: 'completed' | 'in_progress';
+}
+
+function extractProjectsFromLog(log: any): ExtractedProject[] {
+  // 1. Direct projectsWorked array from backend
+  if (Array.isArray(log.projectsWorked) && log.projectsWorked.length > 0) {
+    return log.projectsWorked.map((p: any) => {
+      const prjObj = p.projectId && typeof p.projectId === 'object' ? p.projectId : null;
+      const rawStatus = prjObj?.status || p.status || 'in_progress';
+      const isDone = rawStatus === 'completed' || rawStatus === 'delivered';
+      return {
+        projectId: prjObj?._id || p.projectId || undefined,
+        name: p.projectName || prjObj?.projectName || 'Project Deliverable',
+        code: p.projectCode || prjObj?.projectCode || '',
+        status: isDone ? 'completed' : 'in_progress',
+      };
+    });
+  }
+
+  // 2. Parse from description if containing structured summary
+  const desc = String(log.description || '');
+  if (desc.includes('Completed:') || desc.includes('In Progress:')) {
+    const list: ExtractedProject[] = [];
+    desc.split('|').forEach((part) => {
+      const trimmed = part.trim();
+      if (trimmed.startsWith('Completed:')) {
+        trimmed
+          .replace('Completed:', '')
+          .split(',')
+          .map((n) => n.trim())
+          .filter(Boolean)
+          .forEach((name) => list.push({ name, status: 'completed' }));
+      } else if (trimmed.startsWith('In Progress:')) {
+        trimmed
+          .replace('In Progress:', '')
+          .split(',')
+          .map((n) => n.trim())
+          .filter(Boolean)
+          .forEach((name) => list.push({ name, status: 'in_progress' }));
+      }
+    });
+    if (list.length > 0) return list;
+  }
+
+  // 3. Fallback to primary projectId
+  if (log.projectId) {
+    const prj = typeof log.projectId === 'object' ? log.projectId : null;
+    const isDone = prj?.status === 'completed' || prj?.status === 'delivered' || log.status === 'approved';
+    return [
+      {
+        projectId: prj?._id || log.projectId,
+        name: prj?.projectName || log.taskName || 'Assigned Project',
+        code: prj?.projectCode || '',
+        status: isDone ? 'completed' : 'in_progress',
+      },
+    ];
+  }
+
+  // 4. Default task
+  return [
+    {
+      name: log.taskName || 'Daily Shift Work',
+      status: log.status === 'approved' ? 'completed' : 'in_progress',
+    },
+  ];
+}
+
+function formatWorkDate(dateVal: any): string {
+  if (!dateVal) return '—';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '—';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatWorkDuration(log: any): string {
+  const mins =
+    log.totalMinutes ||
+    (log.hoursWorked !== undefined ? Math.round(Number(log.hoursWorked) * 60) : 0);
+  if (!mins) return '0h';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m < 10 ? '0' + m : m}m`;
+}
 
 export const AdminWorkLogs: React.FC = () => {
   const toast = useToast();
@@ -22,6 +120,7 @@ export const AdminWorkLogs: React.FC = () => {
   const [employeeFilter, setEmployeeFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(null);
 
   const fetchWorkLogs = async () => {
     try {
@@ -100,48 +199,88 @@ export const AdminWorkLogs: React.FC = () => {
     }
   };
 
-  const filtered = workLogs.filter((log) => {
-    const term = search.toLowerCase();
-    const matchesSearch =
-      log.taskName?.toLowerCase().includes(term) ||
-      (log.employeeId?.fullName || log.employeeId?.name || '')?.toLowerCase().includes(term) ||
-      (log.projectId?.projectName || log.projectId?.title || '')?.toLowerCase().includes(term);
-    const matchesStatus = statusFilter === 'all' || log.status === statusFilter;
-    const logEmpId = typeof log.employeeId === 'object' && log.employeeId !== null
-      ? String(log.employeeId._id || log.employeeId.id || '')
-      : String(log.employeeId || '');
-    const matchesEmployee = employeeFilter === 'all' || logEmpId === String(employeeFilter);
+  const handleToggleProjectStatus = async (
+    projectId: string | undefined,
+    targetStatus: 'completed' | 'in_progress'
+  ) => {
+    if (!projectId) {
+      toast.error('No project linked to this deliverable');
+      return;
+    }
+    try {
+      setUpdatingProjectId(projectId);
+      await api.patch(`/admin/projects/${projectId}`, { status: targetStatus });
+      toast.success(
+        targetStatus === 'completed'
+          ? 'Project marked as completed!'
+          : 'Project reopened (in progress)'
+      );
+      fetchWorkLogs();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update project status');
+    } finally {
+      setUpdatingProjectId(null);
+    }
+  };
 
-    let matchesDate = true;
-    if (dateFilter && dateFilter !== 'all') {
-      const rawDate = log.logDate || log.workDate || log.createdAt;
-      if (rawDate) {
-        const d = new Date(rawDate);
-        if (!isNaN(d.getTime())) {
-          const year = d.getFullYear();
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const day = String(d.getDate()).padStart(2, '0');
-          const logYMD = `${year}-${month}-${day}`;
-          const logYM = `${year}-${month}`;
+  const filtered = useMemo(() => {
+    return workLogs.filter((log) => {
+      const term = search.toLowerCase();
+      const deliverables = extractProjectsFromLog(log);
+      const matchesSearch =
+        !term ||
+        log.taskName?.toLowerCase().includes(term) ||
+        (log.employeeId?.fullName || log.employeeId?.name || '')
+          ?.toLowerCase()
+          .includes(term) ||
+        (log.projectId?.projectName || log.projectId?.title || '')
+          ?.toLowerCase()
+          .includes(term) ||
+        deliverables.some(
+          (d) =>
+            d.name.toLowerCase().includes(term) ||
+            (d.code && d.code.toLowerCase().includes(term))
+        );
 
-          if (dateFilter.length === 7) {
-            matchesDate = logYM === dateFilter;
-          } else {
-            matchesDate = logYMD === dateFilter;
+      const matchesStatus = statusFilter === 'all' || log.status === statusFilter;
+      const logEmpId =
+        typeof log.employeeId === 'object' && log.employeeId !== null
+          ? String(log.employeeId._id || log.employeeId.id || '')
+          : String(log.employeeId || '');
+      const matchesEmployee =
+        employeeFilter === 'all' || logEmpId === String(employeeFilter);
+
+      let matchesDate = true;
+      if (dateFilter && dateFilter !== 'all') {
+        const rawDate = log.logDate || log.workDate || log.createdAt;
+        if (rawDate) {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const logYMD = `${year}-${month}-${day}`;
+            const logYM = `${year}-${month}`;
+
+            if (dateFilter.length === 7) {
+              matchesDate = logYM === dateFilter;
+            } else {
+              matchesDate = logYMD === dateFilter;
+            }
           }
         }
       }
-    }
 
-    return matchesSearch && matchesStatus && matchesEmployee && matchesDate;
-  });
+      return matchesSearch && matchesStatus && matchesEmployee && matchesDate;
+    });
+  }, [workLogs, search, statusFilter, employeeFilter, dateFilter]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-white">Work logs</h1>
-        <p className="text-xs text-zinc-400 mt-1">Review timesheets and track employee hours.</p>
+        <p className="text-xs text-zinc-400 mt-1">Review shift timesheets and monitor project deliverables.</p>
       </div>
 
       {/* Filter and Search Bar */}
@@ -175,7 +314,7 @@ export const AdminWorkLogs: React.FC = () => {
             className="w-full sm:w-44"
             options={[
               { value: 'all', label: 'All statuses' },
-              { value: 'pending', label: 'Pending' },
+              { value: 'submitted', label: 'Submitted' },
               { value: 'approved', label: 'Approved' },
               { value: 'rejected', label: 'Rejected' },
               { value: 'changes_requested', label: 'Changes requested' },
@@ -184,105 +323,208 @@ export const AdminWorkLogs: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left text-xs min-w-[620px]">
-            <thead>
-              <tr className="border-b border-white/[0.06]">
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TASK</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">EMPLOYEE</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PROJECT</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">HOURS</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">DATE</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">STATUS</th>
-                <th className="py-4 px-6 text-right"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
-              {loading ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-500 font-mono">
-                    Loading work logs...
-                  </td>
-                </tr>
-              ) : filtered.length > 0 ? (
-                filtered.map((log) => (
-                  <tr key={log._id} className="hover:bg-white/[0.015] transition-colors">
-                    <td className="py-4 px-6 max-w-xs">
-                      <div className="font-semibold text-white text-sm">{log.taskName}</div>
-                      {log.description && (
-                        <div className="text-xs text-zinc-500 line-clamp-1 mt-0.5">{log.description}</div>
-                      )}
-                      {log.rejectionReason && (
-                        <div className="text-[11px] text-red-400 font-mono mt-1">
-                          Note: {log.rejectionReason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm font-medium text-white block">
-                        {log.employeeId?.fullName || log.employeeId?.name || 'Staff Member'}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm text-zinc-300">
-                        {log.projectId?.projectName || log.projectId?.title || 'Creative Task'}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 font-mono font-medium text-white text-sm">
-                      {log.hoursWorked !== undefined ? `${log.hoursWorked}h` : log.totalMinutes ? `${Math.round(log.totalMinutes / 60)}h` : '0h'}
-                    </td>
-                    <td className="py-4 px-6 text-zinc-400 text-xs font-mono">
-                      {new Date(log.logDate || log.createdAt).toLocaleDateString('en-IN')}
-                    </td>
-                    <td className="py-4 px-6">
-                      <StatusBadge status={log.status} type="workLog" />
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {log.status !== 'approved' && (
-                          <button
-                            onClick={() => handleUpdateStatus(log._id, 'approved')}
-                            title="Approve Timesheet"
-                            className="p-1.5 rounded-lg bg-ember/15 hover:bg-ember/25 text-ember transition-colors cursor-pointer"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                          </button>
-                        )}
-                        {log.status !== 'rejected' && (
-                          <button
-                            onClick={() => handleUpdateStatus(log._id, 'rejected')}
-                            title="Reject Timesheet"
-                            className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 text-white/50 hover:text-red-400 transition-colors cursor-pointer"
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        )}
-                        {log.status !== 'changes_requested' && (
-                          <button
-                            onClick={() => handleUpdateStatus(log._id, 'changes_requested')}
-                            title="Request Revision"
-                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
-                          >
-                            <MessageSquare className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="py-8">
-                    <EmptyState type="workLogs" />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* Logs Display - Option 1: Ultra-Clean Minimal Card */}
+      {loading ? (
+        <div className="bg-[#090a0e] border border-white/[0.06] rounded-xl p-10 text-center text-zinc-500 font-mono text-xs">
+          Loading work logs...
         </div>
-      </div>
+      ) : filtered.length > 0 ? (
+        <div className="space-y-3">
+          {filtered.map((log) => {
+            const deliverables = extractProjectsFromLog(log);
+            const empName =
+              log.employeeId?.fullName ||
+              log.employeeId?.name ||
+              'Staff Member';
+            const logDateStr = formatWorkDate(
+              log.logDate || log.workDate || log.createdAt
+            );
+            const durationStr = formatWorkDuration(log);
+
+            return (
+              <div
+                key={log._id}
+                className="bg-[#0b0f17] border border-white/[0.08] rounded-2xl p-5 space-y-4 shadow-sm"
+              >
+                {/* Header Bar matching screenshot */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-white/[0.06]">
+                  {/* Left: [📅 17 Sept 2026] | [👤 chirag] | [⏱ 15m] */}
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
+                    {/* Date Item */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-[#FF5A1F]/15 border border-[#FF5A1F]/30 text-[#FF5A1F] flex items-center justify-center shrink-0 shadow-sm">
+                        <Calendar className="w-4 h-4 text-[#FF5A1F]" />
+                      </div>
+                      <span className="font-bold text-white text-sm tracking-tight">{logDateStr}</span>
+                    </div>
+
+                    {/* Vertical Divider */}
+                    <div className="h-4 w-px bg-white/[0.12] hidden sm:block" />
+
+                    {/* Employee Item */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-[#FF5A1F]/15 border border-[#FF5A1F]/30 text-[#FF5A1F] flex items-center justify-center shrink-0 shadow-sm">
+                        <User className="w-4 h-4 text-[#FF5A1F]" />
+                      </div>
+                      <span className="font-bold text-white text-sm tracking-tight">{empName}</span>
+                    </div>
+
+                    {/* Vertical Divider */}
+                    <div className="h-4 w-px bg-white/[0.12] hidden sm:block" />
+
+                    {/* Duration / Hours Item */}
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-[#FF5A1F]/15 border border-[#FF5A1F]/30 text-[#FF5A1F] flex items-center justify-center shrink-0 shadow-sm">
+                        <Clock className="w-4 h-4 text-[#FF5A1F]" />
+                      </div>
+                      <span className="font-bold text-white text-sm tracking-tight">{durationStr}</span>
+                    </div>
+                  </div>
+
+                  {/* Right: [● Submitted] & Circular Action Buttons */}
+                  <div className="flex items-center gap-2.5">
+                    {/* Submitted Pill Badge */}
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#131926] border border-white/[0.08] text-zinc-300">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 shrink-0" />
+                      <span className="capitalize">{log.status?.replace('_', ' ')}</span>
+                    </div>
+
+                    {/* Circular Verification Action Buttons */}
+                    <div className="flex items-center gap-1.5 pl-1">
+                      {log.status !== 'approved' && (
+                        <button
+                          onClick={() => handleUpdateStatus(log._id, 'approved')}
+                          title="Approve Timesheet"
+                          className="w-8 h-8 rounded-full bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-400 border border-emerald-500/30 flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      {log.status !== 'rejected' && (
+                        <button
+                          onClick={() => handleUpdateStatus(log._id, 'rejected')}
+                          title="Reject Timesheet"
+                          className="w-8 h-8 rounded-full bg-[#131926] hover:bg-red-500/15 text-zinc-400 hover:text-red-400 border border-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                      {log.status !== 'changes_requested' && (
+                        <button
+                          onClick={() =>
+                            handleUpdateStatus(log._id, 'changes_requested')
+                          }
+                          title="Request Revision"
+                          className="w-8 h-8 rounded-full bg-[#131926] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-table matching screenshot: NO. | PROJECT | STATUS | ••• */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[480px]">
+                    <thead>
+                      <tr className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                        <th className="py-2.5 px-3 w-12 text-zinc-400">NO.</th>
+                        <th className="py-2.5 px-3">PROJECT</th>
+                        <th className="py-2.5 px-3 text-right w-40">STATUS</th>
+                        <th className="py-2.5 px-3 w-10 text-right"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.03]">
+                      {deliverables.map((item, idx) => {
+                        const isCompleted = item.status === 'completed';
+
+                        return (
+                          <tr
+                            key={idx}
+                            className="hover:bg-white/[0.015] transition-colors"
+                          >
+                            {/* NO. */}
+                            <td className="py-3 px-3 font-normal text-zinc-400 text-xs">
+                              {idx + 1}.
+                            </td>
+
+                            {/* PROJECT: Name only */}
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-white text-sm">
+                                {item.name}
+                              </span>
+                            </td>
+
+                            {/* STATUS (Pill badge with colored dot) */}
+                            <td className="py-3 px-3 text-right">
+                              {isCompleted ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#0a231c] text-emerald-400 border border-emerald-500/30">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                                  Completed
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
+                                  Pending
+                                </span>
+                              )}
+                            </td>
+
+                            {/* More Options (•••) */}
+                            <td className="py-3 px-3 text-right">
+                              {item.projectId ? (
+                                <Link
+                                  to={`/admin/projects/${item.projectId}`}
+                                  title="View project details"
+                                  className="p-1 rounded text-zinc-500 hover:text-[#FF5A1F] transition-colors inline-block"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Link>
+                              ) : (
+                                <span className="p-1 text-zinc-600 inline-block">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Additional Notes or Rejection Reason if present */}
+                {(log.rejectionReason ||
+                  (log.description &&
+                    !log.description.includes('Completed:') &&
+                    !log.description.includes('In Progress:'))) && (
+                  <div className="px-4 py-2 border-t border-white/[0.03] text-[11px] text-zinc-500 space-y-0.5">
+                    {log.description &&
+                      !log.description.includes('Completed:') &&
+                      !log.description.includes('In Progress:') && (
+                        <p>{log.description}</p>
+                      )}
+                    {log.rejectionReason && (
+                      <p className="text-red-400 font-mono">
+                        Note: {log.rejectionReason}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="bg-[#090a0e] border border-white/[0.06] rounded-xl p-8">
+          <EmptyState
+            type="workLogs"
+            title="No work logs found"
+            description="No work records match your search criteria. Adjust your filters to see more results."
+          />
+        </div>
+      )}
 
       <div className="text-xs text-zinc-500 px-1">
         {filtered.length} {filtered.length === 1 ? 'work log' : 'work logs'}

@@ -35,7 +35,8 @@ export async function listWorkLogs(req: AuthenticatedRequest, res: Response): Pr
 
     const workLogs = await WorkLog.find(filter)
       .populate('employeeId', 'fullName employeeCode designation')
-      .populate('projectId', 'projectName projectCode')
+      .populate('projectId', 'projectName projectCode status')
+      .populate('projectsWorked.projectId', 'projectName projectCode status')
       .populate('reviewedBy', 'name email')
       .sort({ workDate: -1, createdAt: -1 });
 
@@ -107,6 +108,14 @@ export async function createWorkLog(req: AuthenticatedRequest, res: Response): P
     const workLog = await WorkLog.create({
       employeeId,
       projectId: project._id,
+      projectsWorked: [
+        {
+          projectId: project._id,
+          projectName: project.projectName,
+          projectCode: project.projectCode,
+          status: 'in_progress',
+        },
+      ],
       workDate: workDate ? new Date(workDate) : new Date(),
       taskName,
       description,

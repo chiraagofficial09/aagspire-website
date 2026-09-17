@@ -1,7 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
-import { Clock, LogIn, LogOut, CheckCircle2, ArrowRight, FileText, X, AlertCircle, Loader2 } from 'lucide-react';
-import { CustomSelect, SelectOption } from './CustomSelect';
+import {
+  Clock,
+  LogIn,
+  LogOut,
+  CheckCircle2,
+  ArrowRight,
+  FolderKanban,
+  X,
+  AlertCircle,
+  Loader2,
+  CheckSquare,
+  Square,
+  Search,
+  Check,
+} from 'lucide-react';
 
 interface ClockWidgetProps {
   compact?: boolean;
@@ -17,13 +30,13 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Clock Out Work Log Modal State
+  // Clock Out Multi-Project Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [workDescription, setWorkDescription] = useState('');
-  const [taskName, setTaskName] = useState('Daily Shift Work');
-  const [selectedProject, setSelectedProject] = useState('');
   const [projects, setProjects] = useState<any[]>([]);
-  const [descError, setDescError] = useState('');
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+  const [projectStatusMap, setProjectStatusMap] = useState<Record<string, 'in_progress' | 'completed'>>({});
+  const [projectSearch, setProjectSearch] = useState('');
 
   const fetchStatus = async () => {
     try {
@@ -70,31 +83,58 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
   };
 
   const openClockOutModal = () => {
-    setWorkDescription('');
-    setTaskName('Daily Shift Work');
-    setDescError('');
+    setSelectedProjectIds([]);
+    setProjectSearch('');
     setIsModalOpen(true);
-    if (projects.length === 0) {
-      api.get('/employee/projects')
-        .then((res) => {
-          setProjects(res.data.data || res.data.projects || []);
-        })
-        .catch(() => {});
+    setLoadingProjects(true);
+    api.get('/employee/projects')
+      .then((res) => {
+        const list = res.data.data || res.data.projects || [];
+        setProjects(list);
+        const map: Record<string, 'in_progress' | 'completed'> = {};
+        list.forEach((p: any) => {
+          map[p._id] = p.status === 'completed' ? 'completed' : 'in_progress';
+        });
+        setProjectStatusMap(map);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingProjects(false));
+  };
+
+  const toggleProject = (id: string) => {
+    if (selectedProjectIds.includes(id)) {
+      setSelectedProjectIds(selectedProjectIds.filter((pid) => pid !== id));
+    } else {
+      setSelectedProjectIds([...selectedProjectIds, id]);
+      if (!projectStatusMap[id]) {
+        const p = projects.find((proj) => proj._id === id);
+        setProjectStatusMap((prev) => ({
+          ...prev,
+          [id]: p?.status === 'completed' ? 'completed' : 'in_progress',
+        }));
+      }
     }
   };
 
-  const handleSubmitClockOut = async () => {
-    if (!workDescription.trim()) {
-      setDescError('Please describe the work you accomplished today before clocking out.');
-      return;
-    }
+  const handleStatusChange = (id: string, status: 'in_progress' | 'completed', e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProjectStatusMap((prev) => ({
+      ...prev,
+      [id]: status,
+    }));
+  };
 
+  const handleSubmitClockOut = async () => {
     try {
       setActionLoading(true);
+      const payloadProjects = selectedProjectIds.map((id) => ({
+        projectId: id,
+        status: projectStatusMap[id] || 'in_progress',
+      }));
+
       await api.post('/employee/attendance/clock-out', {
-        workDescription: workDescription.trim(),
-        taskName: taskName.trim() || 'Daily Shift Work',
-        projectId: selectedProject || undefined,
+        projects: payloadProjects,
+        projectIds: selectedProjectIds,
       });
       setIsModalOpen(false);
       await fetchStatus();
@@ -106,6 +146,17 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
     }
   };
 
+  const filteredProjects = useMemo(() => {
+    if (!projectSearch.trim()) return projects;
+    const q = projectSearch.toLowerCase();
+    return projects.filter(
+      (p) =>
+        (p.projectName || p.title || '').toLowerCase().includes(q) ||
+        (p.projectCode || '').toLowerCase().includes(q) ||
+        (p.clientId?.companyName || p.clientId?.name || '').toLowerCase().includes(q)
+    );
+  }, [projects, projectSearch]);
+
   const formatTime = (dateStr: string | null) => {
     if (!dateStr) return '--:--';
     try {
@@ -114,14 +165,6 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
       return '--:--';
     }
   };
-
-  const projectOptions: SelectOption<string>[] = [
-    { value: '', label: 'General Work / No Specific Project' },
-    ...projects.map((p) => ({
-      value: String(p._id),
-      label: `${p.projectName || p.title}${p.projectCode ? ` (${p.projectCode})` : ''}`,
-    })),
-  ];
 
   const renderModal = () => {
     if (!isModalOpen) return null;
@@ -133,11 +176,11 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#FF5A1F]/15 flex items-center justify-center text-[#FF5A1F] shrink-0">
-                <FileText className="w-5 h-5" />
+                <FolderKanban className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-white tracking-tight">Clock Out &amp; Log Work</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">Describe what you did today to add it directly to logs</p>
+                <p className="text-xs text-zinc-400 mt-0.5">Select the projects you worked on today</p>
               </div>
             </div>
             <button
@@ -165,61 +208,144 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
             </div>
           </div>
 
-          {/* Form Fields */}
-          <div className="space-y-4">
-            {/* Work Description */}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                What did you work on today? <span className="text-[#FF5A1F]">*</span>
+          {/* Projects Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-zinc-300">
+                Select Projects Worked On Today ({selectedProjectIds.length} selected)
               </label>
-              <textarea
-                rows={4}
-                value={workDescription}
-                onChange={(e) => {
-                  setWorkDescription(e.target.value);
-                  if (descError) setDescError('');
-                }}
-                placeholder="Describe tasks completed, revisions done, assets created, meetings attended..."
-                className={`w-full bg-[#08090d] border ${descError ? 'border-red-500/50' : 'border-white/[0.08]'} rounded-xl p-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF5A1F]/50 transition-colors resize-none`}
-              />
-              {descError && (
-                <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>{descError}</span>
-                </p>
+              {projects.length > 0 && (
+                <div className="flex items-center gap-2 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProjectIds(projects.map((p) => p._id))}
+                    className="text-[#FF5A1F] hover:underline cursor-pointer"
+                  >
+                    Select All
+                  </button>
+                  <span className="text-zinc-600">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProjectIds([])}
+                    className="text-zinc-400 hover:underline cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                </div>
               )}
             </div>
 
-            {/* Task Name */}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Task Name / Summary (Optional)
-              </label>
-              <input
-                type="text"
-                value={taskName}
-                onChange={(e) => setTaskName(e.target.value)}
-                placeholder="e.g. Daily Shift Work, Video Editing, Revisions"
-                className="w-full bg-[#08090d] border border-white/[0.08] rounded-xl px-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF5A1F]/50 transition-colors"
-              />
+            {/* Search Box if more than 3 projects */}
+            {projects.length > 3 && (
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <input
+                  type="text"
+                  value={projectSearch}
+                  onChange={(e) => setProjectSearch(e.target.value)}
+                  placeholder="Search assigned projects..."
+                  className="w-full bg-[#08090d] border border-white/[0.08] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF5A1F]/50"
+                />
+              </div>
+            )}
+
+            {/* Projects List Container */}
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+              {loadingProjects ? (
+                <div className="py-8 text-center text-xs text-zinc-500 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#FF5A1F]" />
+                  <span>Loading assigned projects...</span>
+                </div>
+              ) : filteredProjects.length > 0 ? (
+                filteredProjects.map((p) => {
+                  const isSelected = selectedProjectIds.includes(p._id);
+                  const currentStatus = projectStatusMap[p._id] || (p.status === 'completed' ? 'completed' : 'in_progress');
+
+                  return (
+                    <div
+                      key={p._id}
+                      onClick={() => toggleProject(p._id)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer select-none flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        isSelected
+                          ? 'bg-[#FF5A1F]/10 border-[#FF5A1F]/40'
+                          : 'bg-white/[0.02] border-white/[0.06] hover:border-white/15'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="shrink-0">
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-[#FF5A1F]" />
+                          ) : (
+                            <Square className="w-4 h-4 text-zinc-500" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-white truncate">
+                            {p.projectName || p.title}
+                          </p>
+                          <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-zinc-400 mt-0.5 flex-wrap">
+                            {p.projectCode && <span className="text-[#FF5A1F]/80">{p.projectCode}</span>}
+                            {(p.clientId?.companyName || p.clientId?.name) && (
+                              <>
+                                <span>•</span>
+                                <span className="text-zinc-300 truncate max-w-[150px]">{p.clientId?.companyName || p.clientId?.name}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Status Toggle buttons when project is selected */}
+                      {isSelected ? (
+                        <div className="flex items-center gap-1 shrink-0 bg-black/60 p-1 rounded-lg border border-white/10 self-end sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={(e) => handleStatusChange(p._id, 'in_progress', e)}
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                              currentStatus === 'in_progress'
+                                ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-sm'
+                                : 'text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            In Progress
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleStatusChange(p._id, 'completed', e)}
+                            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                              currentStatus === 'completed'
+                                ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                                : 'text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>Completed</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[10.5px] font-mono text-zinc-500 uppercase px-2 py-0.5 rounded bg-white/[0.03] self-end sm:self-auto">
+                          {p.status?.replace('_', ' ')}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="py-6 text-center text-xs text-zinc-500 border border-dashed border-white/10 rounded-xl">
+                  {projectSearch ? 'No matching projects found.' : 'No assigned projects found.'}
+                </div>
+              )}
             </div>
 
-            {/* Assigned Project (Optional) */}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Related Project (Optional)
-              </label>
-              <CustomSelect
-                value={selectedProject}
-                onChange={(val) => setSelectedProject(String(val))}
-                options={projectOptions}
-                placeholder="General Work / No Specific Project"
-              />
-            </div>
+            {selectedProjectIds.length === 0 && (
+              <p className="text-[11px] text-zinc-400 font-mono italic">
+                * Note: If no projects are selected, this shift will be logged as general daily work.
+              </p>
+            )}
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-3 pt-2 border-t border-white/5">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}

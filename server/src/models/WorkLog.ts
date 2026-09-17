@@ -2,9 +2,17 @@ import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export type WorkLogStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'changes_requested';
 
+export interface IWorkLogProjectWorked {
+  projectId?: Types.ObjectId;
+  projectName: string;
+  projectCode?: string;
+  status: string;
+}
+
 export interface IWorkLog extends Document {
   employeeId: Types.ObjectId;
   projectId?: Types.ObjectId;
+  projectsWorked?: IWorkLogProjectWorked[];
   workDate: Date;
   taskName: string;
   description?: string;
@@ -23,6 +31,14 @@ const WorkLogSchema = new Schema<IWorkLog>(
   {
     employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true, index: true },
     projectId: { type: Schema.Types.ObjectId, ref: 'Project', required: false, index: true },
+    projectsWorked: [
+      {
+        projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
+        projectName: { type: String },
+        projectCode: { type: String },
+        status: { type: String, default: 'in_progress' },
+      },
+    ],
     workDate: { type: Date, default: Date.now, index: true },
     taskName: { type: String, required: true, trim: true },
     description: { type: String },

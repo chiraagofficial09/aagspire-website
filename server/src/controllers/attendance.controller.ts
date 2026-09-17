@@ -2,6 +2,7 @@ import { Response } from 'express';
 import mongoose from 'mongoose';
 import { Attendance } from '../models/Attendance.js';
 import { WorkLog } from '../models/WorkLog.js';
+import { Project } from '../models/Project.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
 import { createNotification } from '../services/notification.service.js';
@@ -121,9 +122,7 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
       return;
     }
 
-    const { workDescription, description, taskName, projectId } = req.body || {};
-    const finalDescription = (workDescription || description || '').trim();
-    const finalTaskName = (taskName || '').trim() || 'Daily Shift Work';
+    const { projects, projectIds, workDescription, description, taskName, projectId } = req.body || {};
 
     const now = new Date();
     attendance.clockOutAt = now;
@@ -137,48 +136,123 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
       attendance.status = 'half_day';
     }
 
-    if (finalDescription) {
-      attendance.notes = finalDescription;
+    // Normalize multiple incoming projects
+    let incomingProjects: { projectId: string; status?: string }[] = [];
+    if (Array.isArray(projects) && projects.length > 0) {
+      incomingProjects = projects
+        .filter((p) => p && (p.projectId || p._id))
+        .map((p) => ({
+          projectId: String(p.projectId || p._id),
+          status: p.status === 'completed' ? 'completed' : 'in_progress',
+        }));
+    } else if (Array.isArray(projectIds) && projectIds.length > 0) {
+      incomingProjects = projectIds.map((id: string) => ({
+        projectId: String(id),
+        status: 'in_progress',
+      }));
+    } else if (projectId && mongoose.Types.ObjectId.isValid(projectId)) {
+      incomingProjects = [{ projectId: String(projectId), status: 'in_progress' }];
     }
 
-    await attendance.save();
+    const updatedProjectsSummary: { id: any; name: string; code?: string; status: string }[] = [];
 
-    // Automatically create a WorkLog entry so it goes directly to logs
-    let validProjectId: any = undefined;
-    if (projectId && mongoose.Types.ObjectId.isValid(projectId)) {
-      validProjectId = projectId;
+    for (const item of incomingProjects) {
+      if (!mongoose.Types.ObjectId.isValid(item.projectId)) continue;
+      const proj = await Project.findById(item.projectId);
+      if (proj) {
+        // Update project status
+        if (item.status === 'completed') {
+          proj.status = 'completed';
+          proj.deliveredAt = new Date();
+          await proj.save();
+        } else if (item.status === 'in_progress') {
+          if (proj.status !== 'completed' && proj.status !== 'delivered') {
+            proj.status = 'in_progress';
+            await proj.save();
+          }
+        }
+
+        updatedProjectsSummary.push({
+          id: proj._id,
+          name: proj.projectName,
+          code: proj.projectCode,
+          status: item.status === 'completed' ? 'completed' : 'in_progress',
+        });
+      }
     }
 
-    const createdWorkLog = await WorkLog.create({
+    // Create ONE SINGLE consolidated WorkLog entry for this entire shift
+    let singleTaskName = 'Daily Shift Work';
+    let singleDescription = (workDescription || description || '').trim() || 'Daily shift completed.';
+    let primaryProjectId: any = undefined;
+
+    if (updatedProjectsSummary.length === 1) {
+      const p = updatedProjectsSummary[0];
+      singleTaskName = p.name;
+      singleDescription = p.status === 'completed' ? 'Project completed.' : 'Ongoing project work (in progress).';
+      primaryProjectId = p.id;
+    } else if (updatedProjectsSummary.length > 1) {
+      singleTaskName = `Daily Shift Work (${updatedProjectsSummary.length} Projects)`;
+      const completedList = updatedProjectsSummary.filter((p) => p.status === 'completed').map((p) => p.name);
+      const inProgressList = updatedProjectsSummary.filter((p) => p.status !== 'completed').map((p) => p.name);
+      const parts: string[] = [];
+      if (completedList.length > 0) parts.push(`Completed: ${completedList.join(', ')}`);
+      if (inProgressList.length > 0) parts.push(`In Progress: ${inProgressList.join(', ')}`);
+      singleDescription = parts.join(' | ');
+      primaryProjectId = undefined;
+    }
+
+    await WorkLog.create({
       employeeId,
-      projectId: validProjectId,
+      projectId: primaryProjectId,
+      projectsWorked: updatedProjectsSummary.map((p) => ({
+        projectId: p.id,
+        projectName: p.name,
+        projectCode: p.code,
+        status: p.status,
+      })),
       workDate: today,
-      taskName: finalTaskName,
-      description: finalDescription || 'Daily shift completed.',
+      taskName: singleTaskName,
+      description: singleDescription,
       startTime: attendance.clockInAt,
       endTime: now,
       totalMinutes: attendance.totalMinutes,
       status: 'submitted',
     });
 
+    attendance.notes = updatedProjectsSummary.length > 0
+      ? `Projects: ${updatedProjectsSummary.map((p) => `${p.name} (${p.status})`).join(', ')}`
+      : singleDescription;
+
+    await attendance.save();
+
     const hours = Math.floor(attendance.totalMinutes / 60);
     const mins = attendance.totalMinutes % 60;
     const durationStr = `${hours}h ${mins}m`;
+
+    let notifMessage = `${req.employee?.fullName || 'Staff Member'} clocked out (${durationStr}).`;
+    if (updatedProjectsSummary.length > 0) {
+      const completedList = updatedProjectsSummary.filter((p) => p.status === 'completed').map((p) => p.name);
+      const inProgressList = updatedProjectsSummary.filter((p) => p.status !== 'completed').map((p) => p.name);
+      const parts: string[] = [];
+      if (completedList.length > 0) parts.push(`Completed: ${completedList.join(', ')}`);
+      if (inProgressList.length > 0) parts.push(`In Progress: ${inProgressList.join(', ')}`);
+      notifMessage += ` ${parts.join(' | ')}`;
+    }
 
     createNotification({
       role: 'admin',
       type: 'attendance',
       title: 'Staff Clocked Out & Logged Work',
-      message: `${req.employee?.fullName || 'Staff Member'} clocked out (${durationStr}). Work: "${finalTaskName}"${finalDescription ? ` - ${finalDescription}` : ''}`,
+      message: notifMessage,
       link: '/admin/work-logs',
-      metadata: { employeeId, date: today, totalMinutes: attendance.totalMinutes, workLogId: createdWorkLog._id },
+      metadata: { employeeId, date: today, totalMinutes: attendance.totalMinutes },
     }).catch(() => {});
 
     res.json({
       success: true,
-      message: `Clocked out at ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}. Total time: ${durationStr}. Work log recorded.`,
+      message: `Clocked out at ${now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })}. Total time: ${durationStr}.`,
       attendance,
-      workLog: createdWorkLog,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
