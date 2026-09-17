@@ -273,9 +273,9 @@ export const NotificationBell: React.FC = () => {
 
       {/* Popover Dropdown - Sleek Minimal & Premium Dark Card */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 z-50 w-84 sm:w-[400px] bg-[#0c0d12] border border-white/[0.1] rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 z-50 w-[330px] sm:w-[400px] max-h-[calc(100vh-90px)] flex flex-col bg-[#0c0d12] border border-white/[0.1] rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="px-4 py-3.5 border-b border-white/[0.06] flex items-center justify-between">
+          <div className="px-4 py-3.5 border-b border-white/[0.06] flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-white">Notifications</h3>
               {unreadCount > 0 && (
@@ -296,7 +296,7 @@ export const NotificationBell: React.FC = () => {
           </div>
 
           {/* Minimalist Filter Tabs */}
-          <div className="px-3.5 py-2 border-b border-white/[0.04] flex items-center gap-1.5 bg-white/[0.01]">
+          <div className="px-3.5 py-2 border-b border-white/[0.04] flex items-center gap-1.5 bg-white/[0.01] shrink-0">
             {[
               { id: 'all', label: 'All' },
               ...(isAdmin ? [{ id: 'payment', label: 'Payments' }] : []),
@@ -321,7 +321,7 @@ export const NotificationBell: React.FC = () => {
           </div>
 
           {/* Notifications Scrollable List */}
-          <div className="max-h-84 overflow-y-auto custom-scrollbar divide-y divide-white/[0.04]">
+          <div className="max-h-[360px] sm:max-h-[400px] overflow-y-auto custom-scrollbar divide-y divide-white/[0.04] overscroll-contain">
             {filteredNotifications.length === 0 ? (
               <div className="py-12 text-center px-4">
                 <Bell className="w-7 h-7 text-zinc-600 mx-auto mb-2 opacity-40" />
@@ -381,7 +381,7 @@ export const NotificationBell: React.FC = () => {
 
           {/* Popover Footer */}
           {hasReadNotifications && (
-            <div className="px-4 py-2.5 border-t border-white/[0.04] bg-white/[0.01] flex items-center justify-center">
+            <div className="px-4 py-2.5 border-t border-white/[0.04] bg-white/[0.01] flex items-center justify-center shrink-0">
               <button
                 onClick={clearRead}
                 className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1.5 cursor-pointer py-0.5"
