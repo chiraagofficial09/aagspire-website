@@ -55,6 +55,12 @@ import {
 } from '../controllers/settlement.controller.js';
 
 import { listReceipts, getReceiptById, downloadReceiptPdf } from '../controllers/receipt.controller.js';
+import {
+  listOfficeExpenses,
+  createOfficeExpense,
+  updateOfficeExpense,
+  deleteOfficeExpense,
+} from '../controllers/officeExpense.controller.js';
 import { getAdminAnalytics } from '../controllers/analytics.controller.js';
 import { exportReportCsv } from '../controllers/report.controller.js';
 import { calculateEmployeeEarnings } from '../services/earnings.service.js';
@@ -250,6 +256,12 @@ router.get('/receipts', listReceipts);
 router.get('/receipts/:id', getReceiptById);
 router.get('/receipts/:id/download', downloadReceiptPdf);
 router.get('/receipts/:id/pdf', downloadReceiptPdf);
+
+// Office Expenses
+router.get('/expenses', listOfficeExpenses);
+router.post('/expenses', createOfficeExpense);
+router.patch('/expenses/:id', updateOfficeExpense);
+router.delete('/expenses/:id', deleteOfficeExpense);
 
 // Reports
 router.get('/reports/:type/export', exportReportCsv);

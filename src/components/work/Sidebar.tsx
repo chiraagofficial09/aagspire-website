@@ -11,6 +11,7 @@ import {
   CreditCard, 
   Percent,
   ReceiptText,
+  WalletCards,
   Settings,
   Clock,
   LogOut,
@@ -107,6 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
             <SectionLabel text="FINANCE" />
             <NavItem item={{ label: 'Payments', path: '/admin/payments', icon: CreditCard }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Commission', path: '/admin/commissions', icon: Percent }} onNavigate={() => setMobileOpen(false)} />
+            <NavItem item={{ label: 'Office Expenses', path: '/admin/expenses', icon: WalletCards }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Receipts', path: '/admin/receipts', icon: ReceiptText }} onNavigate={() => setMobileOpen(false)} />
 
             {/* SYSTEM */}
