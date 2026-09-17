@@ -10,23 +10,34 @@ function getUserFilter(req: AuthenticatedRequest) {
     return {
       $or: [
         { recipient: userId },
-        { role: { $in: ['admin', 'all'] } },
+        {
+          recipient: { $in: [null, undefined] },
+          role: { $in: ['admin', 'all'] },
+        },
       ],
     };
   }
 
-  // For employee: never show payment or settlement notifications (client payments/payouts are admin-only)
+  // For employee: only show notifications that are:
+  // 1. Directly addressed to this employee (recipient matches their userId)
+  // 2. Broadcasts to everyone with NO specific recipient (recipient is null/undefined and role is 'all')
+  // Never show another employee's direct notifications (recipient matches only this user)
+  // Never show admin-only, client-related, or payment-related notifications
   return {
     $and: [
       {
         $or: [
           { recipient: userId },
-          { role: { $in: ['employee', 'all'] } },
+          {
+            recipient: { $in: [null, undefined] },
+            role: 'all',
+          },
         ],
       },
       {
-        type: { $nin: ['payment', 'settlement'] },
-        title: { $not: /payment/i },
+        role: { $ne: 'admin' },
+        type: { $nin: ['payment', 'client'] },
+        title: { $not: /payment|client added/i },
       },
     ],
   };
@@ -57,8 +68,9 @@ export async function listNotifications(req: AuthenticatedRequest, res: Response
 export async function markAsRead(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const notification = await Notification.findByIdAndUpdate(
-      id,
+    const filter = { _id: id, ...getUserFilter(req) };
+    const notification = await Notification.findOneAndUpdate(
+      filter,
       { isRead: true },
       { new: true }
     );

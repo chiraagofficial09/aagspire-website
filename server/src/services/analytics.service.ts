@@ -84,18 +84,23 @@ export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMo
   });
 
   // Calculate project-value-weighted average splits using only projects booked in the selected month
+  const hasProjectsInMonth = bookedInMonthProjects.length > 0;
   const projectsToCalculate =
-    bookedInMonthProjects.length > 0
+    hasProjectsInMonth
       ? bookedInMonthProjects
       : allProjects.filter((p) => p.status !== 'cancelled');
   const projectInputs = buildProjectCommissionInputs(projectsToCalculate, commissionMap);
   const weightedSplits = calculateWeightedCommissionSplits(projectInputs);
 
-  const totalBrokerAllocation = weightedSplits.broker.amount;
-  const totalEmployeeAllocation = weightedSplits.employee.amount;
-  const totalOfficeAllocation = weightedSplits.office.amount;
-  const totalAdminShare = weightedSplits.admin.amount;
-  const totalSettlementReserve = weightedSplits.settlement.amount;
+  // If no projects booked in the selected month, amounts must be ₹0
+  // (percentages still reflect weighted averages for reference)
+  const zeroAmounts = !isAllMonths && !hasProjectsInMonth;
+
+  const totalBrokerAllocation = zeroAmounts ? 0 : weightedSplits.broker.amount;
+  const totalEmployeeAllocation = zeroAmounts ? 0 : weightedSplits.employee.amount;
+  const totalOfficeAllocation = zeroAmounts ? 0 : weightedSplits.office.amount;
+  const totalAdminShare = zeroAmounts ? 0 : weightedSplits.admin.amount;
+  const totalSettlementReserve = zeroAmounts ? 0 : weightedSplits.settlement.amount;
 
   const brokerPercent = weightedSplits.broker.percent;
   const employeePercent = weightedSplits.employee.percent;

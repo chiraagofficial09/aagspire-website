@@ -44,12 +44,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       const res = await api.get('/notifications');
       let items: NotificationItem[] = res.data?.data || [];
       if (user?.role === 'employee') {
+        const currentUserId = user.id || (user as any)._id;
         items = items.filter(
-          (n) =>
-            n.type !== 'payment' &&
-            n.type !== 'settlement' &&
-            !n.title?.toLowerCase().includes('payment') &&
-            !n.message?.toLowerCase().includes('payout of')
+          (n) => {
+            // Personal notifications must match current employee's userId
+            if (n.recipient && n.recipient.toString() !== currentUserId?.toString()) {
+              return false;
+            }
+            return (
+              n.type !== 'payment' &&
+              n.type !== 'client' &&
+              !n.title?.toLowerCase().includes('payment') &&
+              !n.title?.toLowerCase().includes('client added') &&
+              !n.message?.toLowerCase().includes('payout of')
+            );
+          }
         );
       }
       const unread = items.filter((n) => !n.isRead).length;

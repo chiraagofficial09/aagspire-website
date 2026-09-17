@@ -13,9 +13,24 @@ export interface CreateNotificationParams {
 
 export async function createNotification(params: CreateNotificationParams): Promise<void> {
   try {
+    const recipientId = params.recipient ? new Types.ObjectId(params.recipient.toString()) : undefined;
+    let role = params.role;
+
+    if (recipientId) {
+      // Direct personal notification: MUST be addressed to the specific user and never role='all'
+      if (!role || role === 'all') {
+        role = 'employee';
+      }
+    } else {
+      // Broadcast / role notification without a specific recipient
+      if (!role) {
+        role = 'all';
+      }
+    }
+
     await Notification.create({
-      recipient: params.recipient ? new Types.ObjectId(params.recipient.toString()) : undefined,
-      role: params.role || (params.recipient ? undefined : 'all'),
+      recipient: recipientId,
+      role,
       type: params.type || 'system',
       title: params.title,
       message: params.message,

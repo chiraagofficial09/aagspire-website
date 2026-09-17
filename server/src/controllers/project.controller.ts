@@ -709,6 +709,34 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
       newValue: project.toObject(),
     });
 
+    // Notify newly assigned employees
+    if (req.body.assignedEmployees) {
+      const oldAssignedIds = (oldValue.assignedEmployees || []).map((id: any) => id.toString());
+      const newAssignedIds = req.body.assignedEmployees.map((id: string) => id.toString());
+      const newlyAssigned = newAssignedIds.filter((id: string) => !oldAssignedIds.includes(id));
+
+      if (newlyAssigned.length > 0) {
+        Employee.find({ _id: { $in: newlyAssigned } })
+          .select('userId fullName')
+          .then((emps) => {
+            for (const emp of emps) {
+              if (emp.userId) {
+                createNotification({
+                  recipient: emp.userId,
+                  role: 'employee',
+                  type: 'project',
+                  title: 'Assigned to Project',
+                  message: `You were assigned to project "${project.projectName}" (${project.projectCode}).`,
+                  link: '/employee/projects',
+                  metadata: { projectId: project._id },
+                }).catch(() => {});
+              }
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
     const projectData = {
       ...project.toObject(),
       title: project.projectName,
@@ -746,6 +774,10 @@ export async function updateEmployeeAllocations(req: AuthenticatedRequest, res: 
     const employeeAmount = fromDecimal(commission.employeeAmount);
     const updatedAllocations = await allocateEmployeePool(project._id, employeeAmount, normalizedShares);
 
+    const oldAssignedIds = (project.assignedEmployees || []).map((id: any) => id.toString());
+    const newAssignedIds = normalizedShares.map((s: EmployeeShareInput) => s.employeeId.toString());
+    const newlyAssigned = newAssignedIds.filter((id: string) => !oldAssignedIds.includes(id));
+
     // Update assignedEmployees on Project model
     project.assignedEmployees = normalizedShares.map((s: EmployeeShareInput) => new Types.ObjectId(s.employeeId));
     await project.save();
@@ -757,6 +789,28 @@ export async function updateEmployeeAllocations(req: AuthenticatedRequest, res: 
       entityId: project._id,
       newValue: normalizedShares,
     });
+
+    // Notify newly assigned employees
+    if (newlyAssigned.length > 0) {
+      Employee.find({ _id: { $in: newlyAssigned } })
+        .select('userId fullName')
+        .then((emps) => {
+          for (const emp of emps) {
+            if (emp.userId) {
+              createNotification({
+                recipient: emp.userId,
+                role: 'employee',
+                type: 'project',
+                title: 'Assigned to Project',
+                message: `You were assigned to project "${project.projectName}" (${project.projectCode}).`,
+                link: '/employee/projects',
+                metadata: { projectId: project._id },
+              }).catch(() => {});
+            }
+          }
+        })
+        .catch(() => {});
+    }
 
     res.json({ success: true, message: 'Employee commission pool allocated successfully.', allocations: updatedAllocations, data: updatedAllocations });
   } catch (error: any) {
