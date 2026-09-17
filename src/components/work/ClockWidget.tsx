@@ -283,15 +283,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                           <p className="text-xs font-semibold text-white truncate">
                             {p.projectName || p.title}
                           </p>
-                          <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-zinc-400 mt-0.5 flex-wrap">
-                            {p.projectCode && <span className="text-[#FF5A1F]/80">{p.projectCode}</span>}
-                            {(p.clientId?.companyName || p.clientId?.name) && (
-                              <>
-                                <span>•</span>
-                                <span className="text-zinc-300 truncate max-w-[150px]">{p.clientId?.companyName || p.clientId?.name}</span>
-                              </>
-                            )}
-                          </div>
+                          
                         </div>
                       </div>
 

@@ -575,9 +575,7 @@ export const AdminDashboard: React.FC = () => {
               <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
                 Bookings vs Cash Collection
               </h2>
-              <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                New business booked vs client money received (includes debt recovery)
-              </p>
+             
             </div>
             <div className="flex items-center gap-3 text-xs font-semibold">
               <span className="flex items-center gap-1.5 text-ember">
@@ -637,9 +635,7 @@ export const AdminDashboard: React.FC = () => {
               <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
                 Receivable Reconciliation
               </h2>
-              <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                Closing = Opening + Bookings - Applied Collections
-              </p>
+             
             </div>
             <div className="flex items-center gap-3 text-xs font-semibold">
               <span className="flex items-center gap-1.5 text-zinc-400">
