@@ -144,8 +144,26 @@ export async function createClient(req: AuthenticatedRequest, res: Response): Pr
     const finalCompanyName = companyName || name;
     const finalGst = gstNumber || taxId;
 
-    const count = await Client.countDocuments();
-    const clientCode = generateClientCode(count + 1);
+    const existingClients = await Client.find(
+      { clientCode: { $regex: /^AAG-CLI-/ } },
+      { clientCode: 1 }
+    ).lean();
+    let maxSeq = 0;
+    for (const c of existingClients) {
+      if (c.clientCode) {
+        const parts = c.clientCode.split('-');
+        const seq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+    let nextSeq = maxSeq + 1;
+    let clientCode = generateClientCode(nextSeq);
+    while (await Client.exists({ clientCode })) {
+      nextSeq++;
+      clientCode = generateClientCode(nextSeq);
+    }
 
     const client = await Client.create({
       clientCode,

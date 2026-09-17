@@ -314,15 +314,31 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
       : round2((numValue * discountPercent) / 100);
     const netValue = Math.max(0, round2(numValue - discountAmount));
 
-    // Generate Project Code: AAG-PRJ-YYYY-XXXX
+    // Generate Project Code: AAG-PRJ-YYYY-XXXX (guarantee uniqueness even if past projects were deleted)
     const currentYear = new Date().getFullYear();
-    const count = await Project.countDocuments({
-      createdAt: {
-        $gte: new Date(currentYear, 0, 1),
-        $lt: new Date(currentYear + 1, 0, 1),
-      },
-    });
-    const projectCode = generateProjectCode(count + 1, currentYear);
+    const prefix = `AAG-PRJ-${currentYear}-`;
+    const existingProjects = await Project.find(
+      { projectCode: { $regex: `^${prefix}` } },
+      { projectCode: 1 }
+    ).lean();
+
+    let maxSeq = 0;
+    for (const p of existingProjects) {
+      if (p.projectCode) {
+        const parts = p.projectCode.split('-');
+        const seq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+
+    let nextSeq = maxSeq + 1;
+    let projectCode = generateProjectCode(nextSeq, currentYear);
+    while (await Project.exists({ projectCode })) {
+      nextSeq++;
+      projectCode = generateProjectCode(nextSeq, currentYear);
+    }
 
     // 1. Create Project
     const project = await Project.create({

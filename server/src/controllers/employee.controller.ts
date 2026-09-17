@@ -68,9 +68,27 @@ export async function createEmployee(req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    // Generate next sequential employee code
-    const totalEmployees = await Employee.countDocuments();
-    const employeeCode = generateEmployeeCode(totalEmployees + 1);
+    // Generate next sequential employee code (collision-proof)
+    const existingEmployees = await Employee.find(
+      { employeeCode: { $regex: /^AAG-EMP-/ } },
+      { employeeCode: 1 }
+    ).lean();
+    let maxSeq = 0;
+    for (const e of existingEmployees) {
+      if (e.employeeCode) {
+        const parts = e.employeeCode.split('-');
+        const seq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+    let nextSeq = maxSeq + 1;
+    let employeeCode = generateEmployeeCode(nextSeq);
+    while (await Employee.exists({ employeeCode })) {
+      nextSeq++;
+      employeeCode = generateEmployeeCode(nextSeq);
+    }
 
     // Create user account with default or provided password
     const rawPassword = password || 'Aagspire@123';
@@ -331,8 +349,27 @@ export async function payEmployeeDirect(req: AuthenticatedRequest, res: Response
     const earnings = await calculateEmployeeEarnings(employee._id);
 
     const currentYear = new Date().getFullYear();
-    const count = await Settlement.countDocuments();
-    const settlementCode = generateSettlementCode(count + 1, currentYear);
+    const prefix = `AAG-SET-${currentYear}-`;
+    const existingSettlements = await Settlement.find(
+      { settlementCode: { $regex: `^${prefix}` } },
+      { settlementCode: 1 }
+    ).lean();
+    let maxSeq = 0;
+    for (const s of existingSettlements) {
+      if (s.settlementCode) {
+        const parts = s.settlementCode.split('-');
+        const seq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+    let nextSeq = maxSeq + 1;
+    let settlementCode = generateSettlementCode(nextSeq, currentYear);
+    while (await Settlement.exists({ settlementCode })) {
+      nextSeq++;
+      settlementCode = generateSettlementCode(nextSeq, currentYear);
+    }
 
     const payDate = paymentDate ? new Date(paymentDate) : new Date();
 
@@ -389,13 +426,27 @@ export async function payEmployeeDirect(req: AuthenticatedRequest, res: Response
     }
 
     // Generate receipt
-    const receiptCount = await Receipt.countDocuments({
-      createdAt: {
-        $gte: new Date(currentYear, 0, 1),
-        $lt: new Date(currentYear + 1, 0, 1),
-      },
-    });
-    const receiptCode = generateReceiptCode(receiptCount + 1, currentYear);
+    const prefixReceipt = `AAG-RCP-${currentYear}-`;
+    const existingReceipts = await Receipt.find(
+      { receiptCode: { $regex: `^${prefixReceipt}` } },
+      { receiptCode: 1 }
+    ).lean();
+    let maxReceiptSeq = 0;
+    for (const r of existingReceipts) {
+      if (r.receiptCode) {
+        const parts = r.receiptCode.split('-');
+        const seq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(seq) && seq > maxReceiptSeq) {
+          maxReceiptSeq = seq;
+        }
+      }
+    }
+    let nextReceiptSeq = maxReceiptSeq + 1;
+    let receiptCode = generateReceiptCode(nextReceiptSeq, currentYear);
+    while (await Receipt.exists({ receiptCode })) {
+      nextReceiptSeq++;
+      receiptCode = generateReceiptCode(nextReceiptSeq, currentYear);
+    }
 
     const receiptData = {
       receiptCode,

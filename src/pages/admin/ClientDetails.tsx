@@ -558,30 +558,6 @@ export const AdminClientDetails: React.FC = () => {
         </div>
       )}
 
-      {/* INFORMATIONAL MESSAGE BANNER: When older collections exist in the selected month */}
-      {!isAllMonths && hasPreviousCollections && previousCollectionsMessage && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-ember/15 via-[#FF5A1F]/5 to-transparent border border-ember/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm animate-fade-in">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-ember/20 flex items-center justify-center text-ember shrink-0">
-              <Info className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="font-bold text-white">
-                {previousCollectionsMessage}
-              </p>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                Collections from older projects count towards cash received and reduce their project outstanding, without inflating new project booking value.
-              </p>
-            </div>
-          </div>
-          {newProjectValue > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 shrink-0 self-start sm:self-auto">
-              <span className="text-[10px] font-mono uppercase text-zinc-400">Current-Month Collection Rate:</span>
-              <span className="text-xs font-mono font-bold text-ember">{collectionRate}%</span>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Notice if Unapplied Cash or Excess Cash exists */}
       {(unappliedCash > 0 || excessCash > 0) && (
@@ -679,27 +655,21 @@ export const AdminClientDetails: React.FC = () => {
           </div>
         </div>
 
-        {/* Collection Rate & Progress Bar */}
+        {/* Payment Progress Bar */}
         <div className="space-y-2 pt-2 border-t border-white/5">
           <div className="w-full bg-[#181920] h-2.5 rounded-full overflow-hidden">
             <div
               className="bg-[#FF5A1F] h-full rounded-full transition-all duration-500"
               style={{
-                width: isAllMonths
-                  ? `${allTimeContractVal > 0 ? Math.min(100, Math.round((allTimePaidVal / allTimeContractVal) * 100)) : 0}%`
-                  : `${Math.min(100, collectionRate)}%`,
+                width: `${allTimeContractVal > 0 ? Math.min(100, Math.round((allTimePaidVal / allTimeContractVal) * 100)) : 0}%`,
               }}
             />
           </div>
           <div className="flex items-center justify-between text-xs text-white/50 font-normal">
             <span>
-              {isAllMonths ? (
-                `${allTimeContractVal > 0 ? Math.min(100, Math.round((allTimePaidVal / allTimeContractVal) * 100)) : 0}% overall payment received`
-              ) : newProjectValue > 0 ? (
-                `${collectionRate}% Current-Month Project Collection Rate (${formatINR(currentMonthCollection)} / ${formatINR(newProjectValue)})`
-              ) : (
-                'No new projects booked in this month'
-              )}
+              {allTimeContractVal > 0
+                ? `${Math.min(100, Math.round((allTimePaidVal / allTimeContractVal) * 100))}% overall payment received (${formatINR(allTimePaidVal)} of ${formatINR(allTimeContractVal)})`
+                : 'No projects found'}
             </span>
             {!isAllMonths && (
               <div className="flex items-center gap-2">

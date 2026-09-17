@@ -157,13 +157,27 @@ export async function createSettlement(req: AuthenticatedRequest, res: Response)
     }
 
     const currentYear = new Date().getFullYear();
-    const count = await Settlement.countDocuments({
-      createdAt: {
-        $gte: new Date(currentYear, 0, 1),
-        $lt: new Date(currentYear + 1, 0, 1),
-      },
-    });
-    const settlementCode = generateSettlementCode(count + 1, currentYear);
+    const prefix = `AAG-SET-${currentYear}-`;
+    const existingSettlements = await Settlement.find(
+      { settlementCode: { $regex: `^${prefix}` } },
+      { settlementCode: 1 }
+    ).lean();
+    let maxSeq = 0;
+    for (const s of existingSettlements) {
+      if (s.settlementCode) {
+        const parts = s.settlementCode.split('-');
+        const seq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+    let nextSeq = maxSeq + 1;
+    let settlementCode = generateSettlementCode(nextSeq, currentYear);
+    while (await Settlement.exists({ settlementCode })) {
+      nextSeq++;
+      settlementCode = generateSettlementCode(nextSeq, currentYear);
+    }
 
     const adj = adjustments ? round2(parseFloat(adjustments)) : 0;
     const finalPayable = Math.max(0, round2(earnings.totalPayable + adj));
@@ -282,13 +296,27 @@ export async function paySettlement(req: AuthenticatedRequest, res: Response): P
 
     // Automatically generate Receipt
     const currentYear = new Date().getFullYear();
-    const count = await Receipt.countDocuments({
-      createdAt: {
-        $gte: new Date(currentYear, 0, 1),
-        $lt: new Date(currentYear + 1, 0, 1),
-      },
-    });
-    const receiptCode = generateReceiptCode(count + 1, currentYear);
+    const prefix = `AAG-RCP-${currentYear}-`;
+    const existingReceipts = await Receipt.find(
+      { receiptCode: { $regex: `^${prefix}` } },
+      { receiptCode: 1 }
+    ).lean();
+    let maxSeq = 0;
+    for (const r of existingReceipts) {
+      if (r.receiptCode) {
+        const parts = r.receiptCode.split('-');
+        const seq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+    let nextSeq = maxSeq + 1;
+    let receiptCode = generateReceiptCode(nextSeq, currentYear);
+    while (await Receipt.exists({ receiptCode })) {
+      nextSeq++;
+      receiptCode = generateReceiptCode(nextSeq, currentYear);
+    }
 
     const employee = settlement.employeeId as any;
     const items = await SettlementItem.find({ settlementId: settlement._id }).populate('projectId', 'projectName projectCode projectValue discountPercent');
