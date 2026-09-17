@@ -348,7 +348,7 @@ export const AdminWorkLogs: React.FC = () => {
               >
                 {/* Header Bar matching screenshot */}
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-white/[0.06]">
-                  {/* Left: [📅 17 Sept 2026] | [👤 chirag] | [⏱ 15m] */}
+
                   <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
                     {/* Date Item */}
                     <div className="flex items-center gap-2.5">
@@ -395,7 +395,7 @@ export const AdminWorkLogs: React.FC = () => {
                         <button
                           onClick={() => handleUpdateStatus(log._id, 'approved')}
                           title="Approve Timesheet"
-                          className="w-8 h-8 rounded-full bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-400 border border-emerald-500/30 flex items-center justify-center transition-colors cursor-pointer"
+                          className="w-8 h-8 rounded-full bg-[#FF5A1F] text-white border border-[#FF5A1F]/30 flex items-center justify-center cursor-pointer"
                         >
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
@@ -459,8 +459,8 @@ export const AdminWorkLogs: React.FC = () => {
                             {/* STATUS (Pill badge with colored dot) */}
                             <td className="py-3 px-3 text-right">
                               {isCompleted ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#0a231c] text-emerald-400 border border-emerald-500/30">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
                                   Completed
                                 </span>
                               ) : (

@@ -229,8 +229,14 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
     const hours = Math.floor(attendance.totalMinutes / 60);
     const mins = attendance.totalMinutes % 60;
     const durationStr = `${hours}h ${mins}m`;
+    const clockOutTime = now.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Kolkata',
+    });
 
-    let notifMessage = `${req.employee?.fullName || 'Staff Member'} clocked out (${durationStr}).`;
+    let notifMessage = `${req.employee?.fullName || 'Staff Member'} clocked out at ${clockOutTime} (Total: ${durationStr}).`;
     if (updatedProjectsSummary.length > 0) {
       const completedList = updatedProjectsSummary.filter((p) => p.status === 'completed').map((p) => p.name);
       const inProgressList = updatedProjectsSummary.filter((p) => p.status !== 'completed').map((p) => p.name);
@@ -246,7 +252,7 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
       title: 'Staff Clocked Out & Logged Work',
       message: notifMessage,
       link: '/admin/work-logs',
-      metadata: { employeeId, date: today, totalMinutes: attendance.totalMinutes },
+      metadata: { employeeId, date: today, totalMinutes: attendance.totalMinutes, clockOutTime },
     }).catch(() => {});
 
     res.json({
