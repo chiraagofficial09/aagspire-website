@@ -628,14 +628,6 @@ export const AdminClientDetails: React.FC = () => {
               <p className="text-xl font-bold text-white tracking-tight">
                 {formatINR(cashCollected)}
               </p>
-             
-              {(currentMonthCollection > 0 || previousOutstandingCollected > 0) && !isAllMonths && (
-                <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-1.5 border-t border-white/5 text-[10px] text-zinc-400 font-mono">
-                  <span>This month: <strong className="text-white">{formatINR(currentMonthCollection)}</strong></span>
-                  <span>•</span>
-                  <span>Old projects: <strong className="text-white">{formatINR(previousOutstandingCollected)}</strong></span>
-                </div>
-              )}
             </div>
           </div>
 

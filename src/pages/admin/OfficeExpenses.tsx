@@ -255,9 +255,7 @@ export const AdminOfficeExpenses: React.FC = () => {
             {formatINR(selectedMonth === 'all' ? overallTotal : filteredTotal)}
           </div>
         </div>
-        <div className="w-12 h-12 rounded-xl bg-[#FF5A1F]/15 border border-[#FF5A1F]/30 text-[#FF5A1F] flex items-center justify-center shrink-0 shadow-sm">
-          <Calendar className="w-6 h-6 text-[#FF5A1F]" />
-        </div>
+      
       </div>
 
       {/* Filter and Search Bar */}
@@ -296,22 +294,22 @@ export const AdminOfficeExpenses: React.FC = () => {
       {/* Expenses Table (Strictly Orange, White, and Black) */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left text-xs min-w-[500px]">
+          <table className="w-full text-left text-xs min-w-[700px]">
             <thead>
               <tr className="border-b border-white/[0.06] bg-white/[0.01]">
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase w-14">
+                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase" style={{width:'60px'}}>
                   NO.
+                </th>
+                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
+                  EXPENSE NAME
                 </th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
                   DATE
                 </th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
-                  EXPENSE NAME
-                </th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase text-right">
                   MONEY
                 </th>
-                <th className="py-4 px-6 text-right w-24"></th>
+                <th className="py-4 px-6 text-right" style={{width:'80px'}}></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
@@ -326,26 +324,23 @@ export const AdminOfficeExpenses: React.FC = () => {
                   return (
                     <tr key={exp._id} className="hover:bg-white/[0.015] transition-colors">
                       {/* NO. */}
-                      <td className="py-4 px-6 font-mono text-xs text-zinc-500">
+                      <td className="py-4 px-6 font-mono text-xs text-zinc-500 whitespace-nowrap">
                         {idx + 1}
                       </td>
-
-                      {/* DATE */}
-                      <td className="py-4 px-6">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium text-xs text-zinc-300">
-                          {formatDate(exp.expenseDate)}
-                        </div>
-                      </td>
-
-                      {/* EXPENSE NAME */}
-                      <td className="py-4 px-6">
-                        <div className="font-semibold text-white text-sm">
+                      <td className="py-4 px-6 whitespace-nowrap">
+                        <div className="font-semibold text-white text-sm truncate">
                           {exp.title}
                         </div>
                       </td>
+                      {/* DATE */}
+                      <td className="py-4 px-6 whitespace-nowrap font-medium text-xs text-zinc-300">
+                        {formatDate(exp.expenseDate)}
+                      </td>
+
+                     
 
                       {/* MONEY (Bold Orange) */}
-                      <td className="py-4 px-6 text-right font-mono text-sm font-bold text-[#FF5A1F]">
+                      <td className="py-4 px-6 font-mono text-sm font-bold text-[#FF5A1F] whitespace-nowrap">
                         {formatINR(exp.amount)}
                       </td>
 
@@ -413,6 +408,20 @@ export const AdminOfficeExpenses: React.FC = () => {
 
             {/* Modal Form - ONLY Date, Expense Name, and Money */}
             <form onSubmit={handleSubmit} className="space-y-4">
+                 
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
+                  Expense Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Office Rent, Electricity, Tea, Snacks"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  required
+                  className="w-full px-3.5 py-2.5 bg-[#13151f] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF5A1F]/50 transition-colors"
+                />
+              </div>
               {/* 1. Date */}
               <div>
                 <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
@@ -427,20 +436,7 @@ export const AdminOfficeExpenses: React.FC = () => {
                 />
               </div>
 
-              {/* 2. Expense Name */}
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
-                  Expense Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Office Rent, Electricity, Tea, Snacks"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                  className="w-full px-3.5 py-2.5 bg-[#13151f] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF5A1F]/50 transition-colors"
-                />
-              </div>
+           
 
               {/* 3. Money (₹) */}
               <div>
