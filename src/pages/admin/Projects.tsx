@@ -553,7 +553,9 @@ export const AdminProjects: React.FC = () => {
 
       {/* Fixed-position Dropdown Action Menu */}
       {activeMenuId && (() => {
-        const activePrj = filtered.find((p) => p._id === activeMenuId);
+        const activePrj =
+          filtered.find((p) => (p._id || p.id) === activeMenuId) ||
+          projects.find((p) => (p._id || p.id) === activeMenuId);
         if (!activePrj) return null;
         return (
           <div
@@ -576,7 +578,7 @@ export const AdminProjects: React.FC = () => {
               <span>Commission Split</span>
             </Link>
             <button
-              onClick={() => handleDelete(activePrj._id, activePrj.projectName || activePrj.title)}
+              onClick={() => handleDelete(activePrj._id || activePrj.id, activePrj.projectName || activePrj.title)}
               className="w-full text-left px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer"
             >
               <Trash2 className="w-3 h-3 text-red-400" />
