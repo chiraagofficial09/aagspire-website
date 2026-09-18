@@ -11,6 +11,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { formatINR } from '../../utils/formatters';
 import { StatusBadge } from '../../components/work/StatusBadge';
 import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';
@@ -251,7 +252,12 @@ export const AdminProjects: React.FC = () => {
 
   // Helper to render a project table row
   const renderProjectRow = (prj: any, rowNumber: number) => {
-    const clientName = prj.clientId?.companyName || prj.clientId?.name || 'Jyotnar Natural Foods';
+    const clientObj =
+      typeof prj.clientId === 'object' && prj.clientId !== null
+        ? prj.clientId
+        : clients.find((c) => c._id === prj.clientId || c.id === prj.clientId);
+    const clientName = clientObj?.companyName || clientObj?.name || 'Client Production';
+    const projectVal = prj.projectValue ?? prj.netProjectValue ?? prj.totalAmount ?? prj.grossProjectValue ?? 0;
 
     return (
       <tr key={prj._id} className="hover:bg-white/[0.015] transition-colors">
@@ -265,6 +271,9 @@ export const AdminProjects: React.FC = () => {
         </td>
         <td className="py-3.5 px-5">
           <span className="text-sm text-zinc-300">{clientName}</span>
+        </td>
+        <td className="py-3.5 px-5 font-mono text-sm font-semibold text-[#FF5A1F]">
+          {formatINR(projectVal)}
         </td>
         <td className="py-3.5 px-5">
           {prj.assignedEmployees && prj.assignedEmployees.length > 0 ? (
@@ -450,12 +459,13 @@ export const AdminProjects: React.FC = () => {
               {pendingProjects.length > 0 ? (
                 <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
                   <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-left text-xs min-w-[660px]">
+                    <table className="w-full text-left text-xs min-w-[760px]">
                       <thead>
                         <tr className="border-b border-white/[0.06] bg-white/[0.01]">
                           <th className="py-3.5 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase w-12">NO.</th>
                           <th className="py-3.5 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PROJECT</th>
                           <th className="py-3.5 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CLIENT</th>
+                          <th className="py-3.5 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TOTAL</th>
                           <th className="py-3.5 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">ASSIGNED TO</th>
                           <th className="py-3.5 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">STATUS</th>
                           <th className="py-3.5 px-5 text-right w-28"></th>
@@ -511,12 +521,13 @@ export const AdminProjects: React.FC = () => {
 
                       {/* Projects inside the Date Box */}
                       <div className="overflow-x-auto custom-scrollbar">
-                        <table className="w-full text-left text-xs min-w-[660px]">
+                        <table className="w-full text-left text-xs min-w-[760px]">
                           <thead>
                             <tr className="border-b border-white/[0.06] bg-white/[0.01]">
                               <th className="py-3 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase w-12">NO.</th>
                               <th className="py-3 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PROJECT</th>
                               <th className="py-3 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CLIENT</th>
+                              <th className="py-3 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TOTAL</th>
                               <th className="py-3 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">ASSIGNED TO</th>
                               <th className="py-3 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">STATUS</th>
                               <th className="py-3 px-5 text-right w-28"></th>
