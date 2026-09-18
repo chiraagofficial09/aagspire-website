@@ -28,17 +28,6 @@ export const Login: React.FC = () => {
     }
   };
 
-  const fillDemo = (role: 'admin' | 'employee') => {
-    if (role === 'admin') {
-      setEmail('admin@aagspire.com');
-      setPassword('AagspireAdmin@2026');
-    } else {
-      setEmail('jshailesh798@gmail.com');
-      setPassword('');
-    }
-    setError(null);
-  };
-
   return (
     <div className="rounded-3xl bg-[#0b0c11] border border-white/[0.08] p-8 sm:p-10 shadow-[0_25px_70px_rgba(0,0,0,0.9)] relative">
       {/* Brand Header matching mockup */}
@@ -130,34 +119,6 @@ export const Login: React.FC = () => {
           </button>
         </div>
       </form>
-
-      {/* Divider */}
-      <div className="relative my-7 text-center">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-white/[0.07]" />
-        </div>
-        <span className="relative px-3 bg-[#0b0c11] text-[10px] font-mono text-zinc-500 uppercase tracking-widest">
-          Admin and Employee Access Only
-        </span>
-      </div>
-
-      {/* Quick Demo Credentials */}
-      <div className="flex items-center justify-center gap-2">
-        <button
-          type="button"
-          onClick={() => fillDemo('admin')}
-          className="px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/[0.06] text-[10px] font-mono transition-all cursor-pointer"
-        >
-          Fill Admin
-        </button>
-        <button
-          type="button"
-          onClick={() => fillDemo('employee')}
-          className="px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/[0.06] text-[10px] font-mono transition-all cursor-pointer"
-        >
-          Fill Staff (Sanjay)
-        </button>
-      </div>
     </div>
   );
 };
