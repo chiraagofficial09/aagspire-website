@@ -106,6 +106,35 @@ export async function sendPasswordResetEmail(
 </body>
 </html>`;
 
+  // 1. If Brevo API key is configured, send via Brevo REST API (HTTPS - port 443)
+  if (ENV.BREVO_API_KEY) {
+    const senderEmail = ENV.BREVO_SENDER_EMAIL || 'aagspire@gmail.com';
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': ENV.BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: 'Aagspire', email: senderEmail },
+        to: [{ email: to }],
+        subject: 'Reset Your Password — Aagspire',
+        htmlContent: htmlBody,
+      }),
+    });
+
+    const data = (await response.json()) as any;
+    if (!response.ok) {
+      console.error('[EmailService] Brevo API error:', data);
+      throw new Error(data.message || 'Failed to send password reset email via Brevo.');
+    }
+
+    console.log(`[EmailService] Password reset email successfully sent via Brevo to ${to}. MessageId: ${data.messageId}`);
+    return;
+  }
+
+  // 2. Otherwise send via Resend
   const resend = getResendClient();
   const { data, error } = await resend.emails.send({
     from,
@@ -119,5 +148,5 @@ export async function sendPasswordResetEmail(
     throw new Error(error.message || 'Failed to send password reset email via Resend.');
   }
 
-  console.log(`[EmailService] Password reset email successfully sent to ${to}. MessageId: ${data?.id}`);
+  console.log(`[EmailService] Password reset email successfully sent via Resend to ${to}. MessageId: ${data?.id}`);
 }
