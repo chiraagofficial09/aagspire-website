@@ -13,10 +13,6 @@ export const ENV = {
     .filter(Boolean),
   ADMIN_INITIAL_EMAIL: (process.env.ADMIN_INITIAL_EMAIL || 'admin@aagspire.com').trim(),
   ADMIN_INITIAL_PASSWORD: (process.env.ADMIN_INITIAL_PASSWORD || 'AagspireAdmin@2026').trim(),
-  SMTP_HOST: (process.env.SMTP_HOST || 'smtp.gmail.com').trim(),
-  SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
-  SMTP_USER: (process.env.SMTP_USER || '').trim(),
-  SMTP_PASS: (process.env.SMTP_PASS || '').trim(),
-  SMTP_FROM_NAME: (process.env.SMTP_FROM_NAME || 'Aagspire').trim(),
-  SMTP_FROM_EMAIL: (process.env.SMTP_FROM_EMAIL || '').trim(),
+  RESEND_API_KEY: (process.env.RESEND_API_KEY || '').trim(),
+  RESEND_FROM_EMAIL: (process.env.RESEND_FROM_EMAIL || 'Aagspire <onboarding@resend.dev>').trim(),
 };

@@ -1,29 +1,21 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { ENV } from '../config/env.js';
 
-function getTransporter() {
-  const host = ENV.SMTP_HOST || 'smtp.gmail.com';
-  const isGmail = host.toLowerCase().includes('gmail');
-  const user = ENV.SMTP_USER;
-  const pass = ENV.SMTP_PASS ? ENV.SMTP_PASS.replace(/\s+/g, '') : undefined;
+let resendClient: Resend | null = null;
 
-  if (isGmail) {
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user, pass },
-    });
+function getResendClient(): Resend {
+  const apiKey = ENV.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY is not configured in environment variables.');
   }
-
-  return nodemailer.createTransport({
-    host,
-    port: ENV.SMTP_PORT || 587,
-    secure: ENV.SMTP_PORT === 465,
-    auth: { user, pass },
-  });
+  if (!resendClient) {
+    resendClient = new Resend(apiKey);
+  }
+  return resendClient;
 }
 
 /**
- * Send a password reset email with a clickable reset link.
+ * Send a password reset email with a clickable reset link via Resend.
  */
 export async function sendPasswordResetEmail(
   to: string,
@@ -31,8 +23,7 @@ export async function sendPasswordResetEmail(
 ): Promise<void> {
   const clientOrigin = ENV.CLIENT_ORIGIN[0] || 'http://localhost:5173';
   const resetUrl = `${clientOrigin}/work/reset-password?token=${resetToken}`;
-  const fromName = ENV.SMTP_FROM_NAME || 'Aagspire';
-  const fromEmail = ENV.SMTP_FROM_EMAIL || ENV.SMTP_USER || 'noreply@aagspire.com';
+  const from = ENV.RESEND_FROM_EMAIL || 'Aagspire <onboarding@resend.dev>';
 
   const htmlBody = `
 <!DOCTYPE html>
@@ -115,12 +106,18 @@ export async function sendPasswordResetEmail(
 </body>
 </html>`;
 
-  const transporter = getTransporter();
-  const info = await transporter.sendMail({
-    from: `"${fromName}" <${fromEmail}>`,
-    to,
+  const resend = getResendClient();
+  const { data, error } = await resend.emails.send({
+    from,
+    to: [to],
     subject: 'Reset Your Password — Aagspire',
     html: htmlBody,
   });
-  console.log(`[EmailService] Password reset email successfully sent to ${to}. MessageId: ${info.messageId}`);
+
+  if (error) {
+    console.error('[EmailService] Resend API error:', error);
+    throw new Error(error.message || 'Failed to send password reset email via Resend.');
+  }
+
+  console.log(`[EmailService] Password reset email successfully sent to ${to}. MessageId: ${data?.id}`);
 }
