@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Users,
@@ -15,9 +15,11 @@ import { useToast } from '../../components/work/Toast';
 import { formatINR } from '../../utils/formatters';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { ProjectModal } from '../../components/work/ProjectModal';
+import { WorkLogCard } from '../../components/work/WorkLogCard';
 
 export const AdminProjectDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
   const [project, setProject] = useState<any>(null);
@@ -28,7 +30,10 @@ export const AdminProjectDetails: React.FC = () => {
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const [allClients, setAllClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'commission'>('overview');
+  const initialTab = (searchParams.get('tab') as any) || 'overview';
+  const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'commission' | 'workLogs'>(
+    initialTab === 'workLogs' || initialTab === 'team' || initialTab === 'commission' ? initialTab : 'overview'
+  );
 
   // Modals
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -62,6 +67,7 @@ export const AdminProjectDetails: React.FC = () => {
 
       const proj = pRes.data.data?.project || pRes.data.project || pRes.data.data;
       setProject(proj);
+      setWorkLogs(pRes.data.data?.workLogs || pRes.data.workLogs || []);
 
       const commData = cRes.data.data || cRes.data.commission || pRes.data.commission || pRes.data.data?.commission;
       if (commData) {
@@ -95,6 +101,34 @@ export const AdminProjectDetails: React.FC = () => {
       fetchAll();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  const handleUpdateWorkLogStatus = async (
+    logId: string,
+    status: 'approved' | 'rejected' | 'changes_requested'
+  ) => {
+    try {
+      let rejectionReason: string | undefined = undefined;
+      if (status === 'rejected' || status === 'changes_requested') {
+        const promptMsg =
+          status === 'rejected'
+            ? 'Please enter the reason for rejecting this work log:'
+            : 'Please enter details for the changes requested:';
+        const input = window.prompt(promptMsg);
+        if (input === null) return;
+        rejectionReason = input.trim() || undefined;
+      }
+      await api.patch(`/admin/work-logs/${logId}/status`, {
+        status,
+        rejectionReason,
+      });
+      toast.success(`Work log ${status.replace('_', ' ')} successfully`);
+      fetchAll();
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || 'Failed to update work log status'
+      );
     }
   };
 
@@ -242,6 +276,7 @@ export const AdminProjectDetails: React.FC = () => {
           { key: 'overview', label: 'Overview' },
           { key: 'team', label: `Creative Team (${team.length})` },
           { key: 'commission', label: '100% Commission Split' },
+          { key: 'workLogs', label: `Work Logs (${workLogs.length})` },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -494,6 +529,28 @@ export const AdminProjectDetails: React.FC = () => {
               Save Commission Structure
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Work Logs Tab */}
+      {activeTab === 'workLogs' && (
+        <div className="space-y-4">
+          {workLogs.length > 0 ? (
+            <div className="space-y-3">
+              {workLogs.map((log: any) => (
+                <WorkLogCard
+                  key={log._id || log.id}
+                  log={log}
+                  showEmployee={true}
+                  onStatusUpdate={handleUpdateWorkLogStatus}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-white/40 font-mono text-xs bg-[#0b0c10] border border-white/[0.06] rounded-2xl">
+              No recorded work logs for this project yet.
+            </div>
+          )}
         </div>
       )}
 

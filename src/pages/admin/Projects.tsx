@@ -9,6 +9,7 @@ import {
   Sliders,
   Calendar,
   CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
@@ -576,6 +577,13 @@ export const AdminProjects: React.FC = () => {
             >
               <Sliders className="w-3 h-3 text-[#FF5A1F]" />
               <span>Commission Split</span>
+            </Link>
+            <Link
+              to={`/admin/projects/${activePrj._id || activePrj.id}?tab=workLogs`}
+              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-[#FF5A1F] hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer"
+            >
+              <Clock className="w-3 h-3 text-[#FF5A1F]" />
+              <span>Work Logs</span>
             </Link>
             <button
               onClick={() => handleDelete(activePrj._id || activePrj.id, activePrj.projectName || activePrj.title)}

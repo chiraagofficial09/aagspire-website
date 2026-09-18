@@ -24,6 +24,7 @@ import { formatINR } from '../../utils/formatters';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { MonthSelectDropdown } from '../../components/work/MonthSelectDropdown';
+import { WorkLogCard } from '../../components/work/WorkLogCard';
 
 export const AdminEmployeeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -211,6 +212,34 @@ export const AdminEmployeeDetails: React.FC = () => {
       fetchAll();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to delete payout');
+    }
+  };
+
+  const handleUpdateWorkLogStatus = async (
+    logId: string,
+    status: 'approved' | 'rejected' | 'changes_requested'
+  ) => {
+    try {
+      let rejectionReason: string | undefined = undefined;
+      if (status === 'rejected' || status === 'changes_requested') {
+        const promptMsg =
+          status === 'rejected'
+            ? 'Please enter the reason for rejecting this work log:'
+            : 'Please enter details for the changes requested:';
+        const input = window.prompt(promptMsg);
+        if (input === null) return;
+        rejectionReason = input.trim() || undefined;
+      }
+      await api.patch(`/admin/work-logs/${logId}/status`, {
+        status,
+        rejectionReason,
+      });
+      toast.success(`Work log ${status.replace('_', ' ')} successfully`);
+      fetchAll(selectedMonth);
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || 'Failed to update work log status'
+      );
     }
   };
 
@@ -402,53 +431,23 @@ export const AdminEmployeeDetails: React.FC = () => {
 
       {/* Tab: Work Logs */}
       {activeTab === 'workLogs' && (
-        <div className="premium-table-wrap">
-          <table className="w-full text-left text-xs min-w-[550px]">
-            <thead className="bg-white/[0.02] border-b border-white/10 text-white/40 font-mono text-[10px] uppercase">
-              <tr>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Task / Project</th>
-                <th className="py-3 px-4">Duration</th>
-                <th className="py-3 px-4">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {workLogs.length > 0 ? (
-                workLogs.map((log: any) => {
-                  const logId = log._id || log.id;
-                  const dateStr = log.workDate || log.logDate || log.createdAt;
-                  const duration = log.totalMinutes || (log.hoursWorked ? Math.round(log.hoursWorked * 60) : 0);
-                  const projectName = log.projectId?.projectName || log.projectName;
-
-                  return (
-                    <tr key={logId} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3 px-4 font-mono text-white/60">
-                        {dateStr ? new Date(dateStr).toLocaleDateString('en-IN') : '—'}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="font-medium text-white block">{log.taskName}</span>
-                        {projectName && (
-                          <span className="text-[10px] font-mono text-white/40 mt-0.5 block">{projectName}</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 font-mono text-white/70">
-                        {duration} mins {duration >= 60 ? `(${(duration / 60).toFixed(1)}h)` : ''}
-                      </td>
-                      <td className="py-3 px-4">
-                        <StatusBadge status={log.status || 'submitted'} />
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-white/40 font-mono">
-                    No recorded work logs for this employee.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="space-y-4">
+          {workLogs.length > 0 ? (
+            <div className="space-y-3">
+              {workLogs.map((log: any) => (
+                <WorkLogCard
+                  key={log._id || log.id}
+                  log={log}
+                  showEmployee={false}
+                  onStatusUpdate={handleUpdateWorkLogStatus}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-white/40 font-mono text-xs bg-[#0b0c10] border border-white/[0.06] rounded-2xl">
+              No recorded work logs for this employee.
+            </div>
+          )}
         </div>
       )}
 

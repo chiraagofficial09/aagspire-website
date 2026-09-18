@@ -25,7 +25,12 @@ export async function listWorkLogs(req: AuthenticatedRequest, res: Response): Pr
       if (employeeId) filter.employeeId = employeeId;
     }
 
-    if (projectId) filter.projectId = projectId;
+    if (projectId) {
+      filter.$or = [
+        { projectId },
+        { 'projectsWorked.projectId': projectId },
+      ];
+    }
     if (status && status !== 'all') filter.status = status;
 
     const monthRange = getMonthDateRange(month as string | undefined);

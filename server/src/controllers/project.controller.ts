@@ -481,9 +481,15 @@ export async function getProjectById(req: AuthenticatedRequest, res: Response): 
         { clientId: project.clientId?._id || project.clientId },
       ],
     }).sort({ paymentDate: 1, createdAt: 1 });
-    const workLogs = await WorkLog.find({ projectId: project._id })
-      .populate('employeeId', 'fullName employeeCode')
-      .sort({ workDate: -1 });
+    const workLogs = await WorkLog.find({
+      $or: [
+        { projectId: project._id },
+        { 'projectsWorked.projectId': project._id },
+      ],
+    })
+      .populate('employeeId', 'fullName employeeCode designation')
+      .populate('projectsWorked.projectId', 'projectName projectCode status')
+      .sort({ workDate: -1, createdAt: -1 });
 
     const grossVal = fromDecimal(project.projectValue);
     const discountPercent = Number(project.discountPercent) || 0;
