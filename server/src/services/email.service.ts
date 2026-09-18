@@ -106,6 +106,45 @@ export async function sendPasswordResetEmail(
 </body>
 </html>`;
 
+  // 1. If EmailJS template is configured, send via EmailJS REST API (HTTPS - port 443)
+  if (ENV.EMAILJS_TEMPLATE_ID) {
+    const payload: Record<string, any> = {
+      service_id: ENV.EMAILJS_SERVICE_ID || 'service_b81cuxs',
+      template_id: ENV.EMAILJS_TEMPLATE_ID,
+      user_id: ENV.EMAILJS_PUBLIC_KEY || '8PDKzojjqVOtZ9Dhn',
+      template_params: {
+        to_email: to,
+        email: to,
+        recipient_email: to,
+        reset_link: resetUrl,
+        reset_url: resetUrl,
+        from_name: 'Aagspire',
+      },
+    };
+
+    if (ENV.EMAILJS_PRIVATE_KEY) {
+      payload.accessToken = ENV.EMAILJS_PRIVATE_KEY;
+    }
+
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('[EmailService] EmailJS send error:', response.status, errText);
+      throw new Error(errText || 'Failed to send password reset email via EmailJS.');
+    }
+
+    console.log(`[EmailService] Password reset email successfully sent via EmailJS to ${to}.`);
+    return;
+  }
+
+  // 2. Otherwise send via Resend
   const resend = getResendClient();
   const { data, error } = await resend.emails.send({
     from,

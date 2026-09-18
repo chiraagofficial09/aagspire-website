@@ -15,4 +15,8 @@ export const ENV = {
   ADMIN_INITIAL_PASSWORD: (process.env.ADMIN_INITIAL_PASSWORD || 'AagspireAdmin@2026').trim(),
   RESEND_API_KEY: (process.env.RESEND_API_KEY || '').trim(),
   RESEND_FROM_EMAIL: (process.env.RESEND_FROM_EMAIL || 'Aagspire <onboarding@resend.dev>').trim(),
+  EMAILJS_SERVICE_ID: (process.env.EMAILJS_SERVICE_ID || 'service_b81cuxs').trim(),
+  EMAILJS_TEMPLATE_ID: (process.env.EMAILJS_TEMPLATE_ID || '').trim(),
+  EMAILJS_PUBLIC_KEY: (process.env.EMAILJS_PUBLIC_KEY || '8PDKzojjqVOtZ9Dhn').trim(),
+  EMAILJS_PRIVATE_KEY: (process.env.EMAILJS_PRIVATE_KEY || '').trim(),
 };
