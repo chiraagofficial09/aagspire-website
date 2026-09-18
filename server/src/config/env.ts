@@ -15,6 +15,4 @@ export const ENV = {
   ADMIN_INITIAL_PASSWORD: (process.env.ADMIN_INITIAL_PASSWORD || 'AagspireAdmin@2026').trim(),
   RESEND_API_KEY: (process.env.RESEND_API_KEY || '').trim(),
   RESEND_FROM_EMAIL: (process.env.RESEND_FROM_EMAIL || 'Aagspire <onboarding@resend.dev>').trim(),
-  BREVO_API_KEY: (process.env.BREVO_API_KEY || '').trim(),
-  BREVO_SENDER_EMAIL: (process.env.BREVO_SENDER_EMAIL || 'aagspire@gmail.com').trim(),
 };
