@@ -202,7 +202,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
         {/* Footer info */}
         <div className="flex items-center justify-between text-[11px] font-mono text-white/40 pt-1">
-          <span>Aagspire Creative Management System</span>
+          <span>Aagspire</span>
           <span>Digitally authorized and verified document</span>
         </div>
       </div>

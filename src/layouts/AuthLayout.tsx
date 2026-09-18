@@ -46,7 +46,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
 
       {/* Footer */}
       <footer className="p-6 text-center text-[10px] font-mono text-white/20 z-10 tracking-wider">
-        &copy; {new Date().getFullYear()} Aagspire Creative Studio. Internal Workspace for Authorized Personnel Only.
+        &copy; {new Date().getFullYear()} Aagspire. Internal Workspace for Authorized Personnel Only.
       </footer>
     </div>
   );
