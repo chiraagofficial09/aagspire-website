@@ -459,10 +459,9 @@ export const AdminEmployeeDetails: React.FC = () => {
             <thead className="bg-white/[0.02] border-b border-white/10 text-white/40 font-mono text-[10px] uppercase">
               <tr>
                 <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Settlement Code</th>
+              
                 <th className="py-3 px-4">Amount Paid</th>
                 <th className="py-3 px-4">Method</th>
-                <th className="py-3 px-4">Reference / UTR</th>
                 <th className="py-3 px-4">Notes</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
@@ -477,9 +476,6 @@ export const AdminEmployeeDetails: React.FC = () => {
                       <td className="py-3 px-4 font-mono text-white/60">
                         {dateStr ? new Date(dateStr).toLocaleDateString('en-IN') : '—'}
                       </td>
-                      <td className="py-3 px-4 font-mono font-medium text-white/80">
-                        {p.settlementCode || 'SETTLEMENT'}
-                      </td>
                       <td className="py-3 px-4 font-mono font-bold text-ember">
                         {formatINR(p.amount)}
                       </td>
@@ -487,9 +483,6 @@ export const AdminEmployeeDetails: React.FC = () => {
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 text-white/80 border border-white/10">
                           {p.paymentMethod || 'Bank Transfer'}
                         </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-white/60">
-                        {p.paymentReference || '—'}
                       </td>
                       <td className="py-3 px-4 text-white/50 max-w-[200px] truncate">
                         {p.notes || '—'}
@@ -778,17 +771,6 @@ export const AdminEmployeeDetails: React.FC = () => {
                     ]}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-white/60 block mb-1">Transaction Ref / UTR</label>
-                <input
-                  type="text"
-                  placeholder="e.g. UTR202609081234"
-                  value={payRef}
-                  onChange={(e) => setPayRef(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-ember focus:outline-none"
-                />
               </div>
 
               <div>
