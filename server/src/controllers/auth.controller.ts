@@ -7,6 +7,7 @@ import { LoginSession } from '../models/LoginSession.js';
 import { signToken } from '../utils/tokenHelper.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
+import { sendPasswordResetEmail } from '../services/email.service.js';
 
 export async function login(req: Request, res: Response): Promise<void> {
   try {
@@ -164,7 +165,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
     const user = await User.findOne({ email: email?.toLowerCase().trim() });
     if (!user) {
       // Don't reveal account existence
-      res.json({ success: true, message: 'If this email exists, password reset instructions have been generated.' });
+      res.json({ success: true, message: 'If this email exists, a password reset link has been sent.' });
       return;
     }
 
@@ -173,11 +174,25 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
     user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await user.save();
 
+    // Send the reset email
+    try {
+      await sendPasswordResetEmail(user.email, resetToken);
+    } catch (emailErr: any) {
+      console.error('Failed to send password reset email:', emailErr.message);
+      // Clear the reset token since email failed
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save();
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send password reset email. Please try again later.',
+      });
+      return;
+    }
+
     res.json({
       success: true,
-      message: 'Password reset token generated successfully.',
-      // In development, return the token for ease of testing
-      resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined,
+      message: 'Password reset link has been sent to your email address.',
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
