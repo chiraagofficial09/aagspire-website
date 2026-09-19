@@ -87,15 +87,21 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
     setProjectSearch('');
     setIsModalOpen(true);
     setLoadingProjects(true);
-    api.get('/employee/projects')
+    api.get('/employee/projects?status=in_progress')
       .then((res) => {
-        const list = res.data.data || res.data.projects || [];
+        const rawList = res.data.data || res.data.projects || [];
+        // Strictly filter to only projects currently in_progress
+        const list = rawList.filter((p: any) => p.status === 'in_progress');
         setProjects(list);
         const map: Record<string, 'in_progress' | 'completed'> = {};
         list.forEach((p: any) => {
-          map[p._id] = p.status === 'completed' ? 'completed' : 'in_progress';
+          map[p._id] = 'in_progress';
         });
         setProjectStatusMap(map);
+        // If employee has only 1 in-progress project, auto-select it for convenience
+        if (list.length === 1) {
+          setSelectedProjectIds([list[0]._id]);
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingProjects(false));
@@ -107,10 +113,9 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
     } else {
       setSelectedProjectIds([...selectedProjectIds, id]);
       if (!projectStatusMap[id]) {
-        const p = projects.find((proj) => proj._id === id);
         setProjectStatusMap((prev) => ({
           ...prev,
-          [id]: p?.status === 'completed' ? 'completed' : 'in_progress',
+          [id]: 'in_progress',
         }));
       }
     }
@@ -118,6 +123,9 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
 
   const handleStatusChange = (id: string, status: 'in_progress' | 'completed', e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!selectedProjectIds.includes(id)) {
+      setSelectedProjectIds((prev) => [...prev, id]);
+    }
     setProjectStatusMap((prev) => ({
       ...prev,
       [id]: status,
@@ -147,9 +155,10 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
   };
 
   const filteredProjects = useMemo(() => {
-    if (!projectSearch.trim()) return projects;
+    const list = projects.filter((p) => p.status === 'in_progress');
+    if (!projectSearch.trim()) return list;
     const q = projectSearch.toLowerCase();
-    return projects.filter(
+    return list.filter(
       (p) =>
         (p.projectName || p.title || '').toLowerCase().includes(q) ||
         (p.projectCode || '').toLowerCase().includes(q) ||
@@ -179,8 +188,8 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                 <FolderKanban className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white tracking-tight">Clock Out &amp; Log Work</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">Select the projects you worked on today</p>
+                <h3 className="text-base font-bold text-white tracking-tight">Clock Out &amp; Update Project</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">Select the in-progress project you worked on and update its status</p>
               </div>
             </div>
             <button
@@ -212,13 +221,13 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-zinc-300">
-                Select Projects Worked On Today ({selectedProjectIds.length} selected)
+                In-Progress Projects ({selectedProjectIds.length} selected)
               </label>
-              {projects.length > 0 && (
+              {filteredProjects.length > 1 && (
                 <div className="flex items-center gap-2 text-[11px]">
                   <button
                     type="button"
-                    onClick={() => setSelectedProjectIds(projects.map((p) => p._id))}
+                    onClick={() => setSelectedProjectIds(filteredProjects.map((p) => p._id))}
                     className="text-[#FF5A1F] hover:underline cursor-pointer"
                   >
                     Select All
@@ -236,14 +245,14 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
             </div>
 
             {/* Search Box if more than 3 projects */}
-            {projects.length > 3 && (
+            {filteredProjects.length > 3 && (
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                 <input
                   type="text"
                   value={projectSearch}
                   onChange={(e) => setProjectSearch(e.target.value)}
-                  placeholder="Search assigned projects..."
+                  placeholder="Search in-progress projects..."
                   className="w-full bg-[#08090d] border border-white/[0.08] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF5A1F]/50"
                 />
               </div>
@@ -254,12 +263,12 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
               {loadingProjects ? (
                 <div className="py-8 text-center text-xs text-zinc-500 flex items-center justify-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-[#FF5A1F]" />
-                  <span>Loading assigned projects...</span>
+                  <span>Loading in-progress projects...</span>
                 </div>
               ) : filteredProjects.length > 0 ? (
                 filteredProjects.map((p) => {
                   const isSelected = selectedProjectIds.includes(p._id);
-                  const currentStatus = projectStatusMap[p._id] || (p.status === 'completed' ? 'completed' : 'in_progress');
+                  const currentStatus = projectStatusMap[p._id] || 'in_progress';
 
                   return (
                     <div
@@ -267,7 +276,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                       onClick={() => toggleProject(p._id)}
                       className={`p-3 rounded-xl border transition-all cursor-pointer select-none flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         isSelected
-                          ? 'bg-[#FF5A1F]/10 border-[#FF5A1F]/40'
+                          ? 'bg-[#FF5A1F]/10 border-[#FF5A1F]/40 shadow-[0_0_15px_rgba(255,90,31,0.08)]'
                           : 'bg-white/[0.02] border-white/[0.06] hover:border-white/15'
                       }`}
                     >
@@ -283,7 +292,15 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                           <p className="text-xs font-semibold text-white truncate">
                             {p.projectName || p.title}
                           </p>
-                          
+                          {(p.projectCode || p.clientId?.companyName || p.clientId?.name) && (
+                            <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-zinc-400 mt-0.5">
+                              {(p.clientId?.companyName || p.clientId?.name) && (                                                          
+                                  <span className="text-zinc-300 truncate max-w-[150px]">
+                                    {p.clientId?.companyName || p.clientId?.name}
+                                  </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -315,8 +332,8 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                           </button>
                         </div>
                       ) : (
-                        <span className="text-[10.5px] font-mono text-zinc-500 uppercase px-2 py-0.5 rounded bg-white/[0.03] self-end sm:self-auto">
-                          {p.status?.replace('_', ' ')}
+                        <span className="text-[10.5px] font-mono text-amber-400/90 uppercase px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/20 self-end sm:self-auto">
+                          In Progress
                         </span>
                       )}
                     </div>
@@ -324,14 +341,14 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                 })
               ) : (
                 <div className="py-6 text-center text-xs text-zinc-500 border border-dashed border-white/10 rounded-xl">
-                  {projectSearch ? 'No matching projects found.' : 'No assigned projects found.'}
+                  {projectSearch ? 'No matching in-progress projects found.' : 'No active in-progress projects assigned.'}
                 </div>
               )}
             </div>
 
             {selectedProjectIds.length === 0 && (
               <p className="text-[11px] text-zinc-400 font-mono italic">
-                * Note: If no projects are selected, this shift will be logged as general daily work.
+                * Note: If no project is selected, this shift will be logged as general daily work.
               </p>
             )}
           </div>

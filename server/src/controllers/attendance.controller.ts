@@ -160,16 +160,34 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
       if (!mongoose.Types.ObjectId.isValid(item.projectId)) continue;
       const proj = await Project.findById(item.projectId);
       if (proj) {
+        const oldStatus = proj.status;
         // Update project status
         if (item.status === 'completed') {
           proj.status = 'completed';
           proj.deliveredAt = new Date();
           await proj.save();
+
+          await WorkLog.updateMany(
+            { 'projectsWorked.projectId': proj._id },
+            { $set: { 'projectsWorked.$[elem].status': 'completed' } },
+            { arrayFilters: [{ 'elem.projectId': proj._id }] }
+          ).catch(() => {});
         } else if (item.status === 'in_progress') {
           if (proj.status !== 'completed' && proj.status !== 'delivered') {
             proj.status = 'in_progress';
             await proj.save();
           }
+        }
+
+        if (oldStatus !== proj.status) {
+          await logAudit({
+            userId: req.user!._id,
+            action: 'EMPLOYEE_UPDATE_PROJECT_STATUS',
+            entityType: 'Project',
+            entityId: proj._id,
+            oldValue: { status: oldStatus },
+            newValue: { status: proj.status },
+          }).catch(() => {});
         }
 
         updatedProjectsSummary.push({
