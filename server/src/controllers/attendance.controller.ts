@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { Attendance } from '../models/Attendance.js';
 import { WorkLog } from '../models/WorkLog.js';
 import { Project } from '../models/Project.js';
@@ -367,6 +367,31 @@ export async function manualAdjustAttendance(req: AuthenticatedRequest, res: Res
     });
 
     res.json({ success: true, message: 'Attendance record updated.', attendance, data: attendance });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function deleteAttendance(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const record = await Attendance.findById(id);
+    if (!record) {
+      res.status(404).json({ success: false, message: 'Attendance record not found.' });
+      return;
+    }
+
+    await Attendance.findByIdAndDelete(id);
+
+    await logAudit({
+      userId: req.user!._id,
+      action: 'DELETE_ATTENDANCE',
+      entityType: 'Attendance',
+      entityId: new Types.ObjectId(id),
+      oldValue: record.toObject(),
+    });
+
+    res.json({ success: true, message: 'Attendance record removed successfully.' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

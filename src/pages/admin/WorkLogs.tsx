@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Search,
   CheckCircle2,
@@ -28,11 +28,20 @@ export const AdminWorkLogs: React.FC = () => {
   const [workLogs, setWorkLogs] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const urlEmpId = searchParams.get('employeeId');
+  const urlDate = searchParams.get('date');
+
   const [statusFilter, setStatusFilter] = useState('all');
-  const [employeeFilter, setEmployeeFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [employeeFilter, setEmployeeFilter] = useState(urlEmpId || 'all');
+  const [dateFilter, setDateFilter] = useState(urlDate || 'all');
   const [search, setSearch] = useState('');
   const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (urlEmpId) setEmployeeFilter(urlEmpId);
+    if (urlDate) setDateFilter(urlDate);
+  }, [urlEmpId, urlDate]);
 
   const fetchWorkLogs = async () => {
     try {

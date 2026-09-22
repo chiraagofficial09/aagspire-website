@@ -48,7 +48,7 @@ import {
 
 import { listPayments, createPayment, deletePayment } from '../controllers/payment.controller.js';
 import { listWorkLogs, reviewWorkLog, deleteWorkLog } from '../controllers/workLog.controller.js';
-import { listAttendance, manualAdjustAttendance } from '../controllers/attendance.controller.js';
+import { listAttendance, manualAdjustAttendance, deleteAttendance } from '../controllers/attendance.controller.js';
 import {
   listSettlements,
   previewSettlement,
@@ -279,6 +279,7 @@ router.delete('/work-logs/:id', deleteWorkLog);
 // Attendance Management
 router.get('/attendance', listAttendance);
 router.post('/attendance/manual', manualAdjustAttendance);
+router.delete('/attendance/:id', deleteAttendance);
 
 // Settlements & Payments
 router.get('/settlements', listSettlements);

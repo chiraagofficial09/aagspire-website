@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Calendar, Clock, ExternalLink } from 'lucide-react';
+import { Search, Calendar, Clock, ExternalLink, Trash2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { CustomCalendarDropdown } from '../../components/work/CustomCalendarDropdown';
 import { EmptyState } from '../../components/work/EmptyState';
+import { useToast } from '../../components/work/Toast';
+import { useAlert } from '../../context/AlertContext';
 
 export const AdminAttendance: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
+  const { showConfirm } = useAlert();
   const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('');
@@ -118,14 +122,59 @@ export const AdminAttendance: React.FC = () => {
     return '—';
   };
 
-  const handleCheckWork = (item: any) => {
+  const handleViewWork = (item: any, groupDateKey?: string) => {
     const empId = item.employeeId?._id || item.employeeId;
-    const dateStr = item.date?.split('T')[0] || '';
-    // Navigate to work logs filtered by employee
+    let dateParam = '';
+    if (groupDateKey && groupDateKey !== 'Unknown Date') {
+      dateParam = groupDateKey;
+    } else {
+      const rawDate = item.date || item.createdAt;
+      if (rawDate) {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          dateParam = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+      }
+    }
+
+    const queryParts: string[] = [];
     if (empId) {
-      navigate(`/admin/work-logs?employeeId=${empId}${dateStr ? `&date=${dateStr}` : ''}`);
+      queryParts.push(`employeeId=${empId}`);
+    }
+    if (dateParam) {
+      queryParts.push(`date=${dateParam}`);
+    }
+
+    if (queryParts.length > 0) {
+      navigate(`/admin/work-logs?${queryParts.join('&')}`);
     } else {
       navigate('/admin/work-logs');
+    }
+  };
+
+  const handleDeleteAttendance = async (item: any) => {
+    const empName = item.employeeId?.fullName || item.employeeId?.name || 'this team member';
+    const rawDate = item.date || item.createdAt;
+    const dateFormatted = rawDate
+      ? new Date(rawDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : 'this date';
+
+    const confirmed = await showConfirm({
+      title: 'Remove Attendance Record',
+      message: `Are you sure you want to remove the attendance record for "${empName}" on ${dateFormatted}? This action cannot be undone.`,
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/admin/attendance/${item._id}`);
+      toast.success('Attendance record removed successfully');
+      setAttendance((prev) => prev.filter((a) => a._id !== item._id));
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to remove attendance record');
     }
   };
 
@@ -214,8 +263,7 @@ export const AdminAttendance: React.FC = () => {
                         </div>
                       </th>
                       <th className="py-3 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TOTAL HOURS</th>
-                      <th className="py-3 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">WORK LOG</th>
-                      <th className="py-3 px-6 text-right text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">ACTION</th>
+                      <th className="py-3 px-6 text-right text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">WORK LOG</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.03]">
@@ -265,25 +313,26 @@ export const AdminAttendance: React.FC = () => {
                             {formatHours(item)}
                           </td>
 
-                          {/* Work Log / Note */}
-                          <td className="py-4 px-6 text-xs text-zinc-400 max-w-[200px]">
-                            {item.notes ? (
-                              <span className="line-clamp-2" title={item.notes}>{item.notes}</span>
-                            ) : (
-                              <span className="text-zinc-600 italic">No note</span>
-                            )}
-                          </td>
-
-                          {/* Check Work Button */}
+                          {/* Work Log Column: View Work & Remove Attendance */}
                           <td className="py-4 px-6 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleCheckWork(item)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              <span>Check Work</span>
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleViewWork(item, group.dateKey)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>View Work</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAttendance(item)}
+                                title="Remove Attendance Record"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 text-xs font-medium transition-colors cursor-pointer border border-rose-500/20"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
