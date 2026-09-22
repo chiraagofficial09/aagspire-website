@@ -9,6 +9,7 @@ import {
   getEmployeeById,
   updateEmployee,
   toggleEmployeeStatus,
+  toggleEmployeeStar,
   deleteEmployee,
   payEmployeeDirect,
   listEmployeePayouts,
@@ -70,7 +71,7 @@ import { ProjectCommission } from '../models/ProjectCommission.js';
 import { ProjectEmployee } from '../models/ProjectEmployee.js';
 import { Project } from '../models/Project.js';
 import { ClientPayment } from '../models/ClientPayment.js';
-import { fromDecimal } from '../utils/decimalHelper.js';
+import { fromDecimal, toDecimal, round2 } from '../utils/decimalHelper.js';
 
 const router = Router();
 
@@ -90,6 +91,7 @@ router.put('/employees/:id', updateEmployee);
 router.patch('/employees/:id', updateEmployee);
 router.delete('/employees/:id', deleteEmployee);
 router.patch('/employees/:id/status', toggleEmployeeStatus);
+router.patch('/employees/:id/star', toggleEmployeeStar);
 router.post('/employees/:id/pay', payEmployeeDirect);
 router.get('/employees/:id/payouts', listEmployeePayouts);
 router.delete('/employees/:id/payouts/:payoutId', deleteEmployeePayout);
@@ -127,6 +129,18 @@ router.put('/projects/:id/employees', updateEmployeeAllocations);
 // Project sub-resources
 router.get('/projects/:id/team', async (req, res) => {
   try {
+    const project = await Project.findById(req.params.id);
+    const assignedIds = (project?.assignedEmployees || []).map((id: any) => id.toString());
+
+    if (assignedIds.length === 0) {
+      await ProjectEmployee.deleteMany({ projectId: req.params.id });
+    } else {
+      await ProjectEmployee.deleteMany({
+        projectId: req.params.id,
+        employeeId: { $nin: project?.assignedEmployees || [] },
+      });
+    }
+
     const team = await ProjectEmployee.find({ projectId: req.params.id }).populate('employeeId');
     res.json({ success: true, data: team });
   } catch (err: any) {
@@ -155,6 +169,24 @@ router.delete('/projects/:id/team/:memberId', async (req, res) => {
     const item = await ProjectEmployee.findByIdAndDelete(req.params.memberId);
     if (item) {
       await Project.findByIdAndUpdate(req.params.id, { $pull: { assignedEmployees: item.employeeId } });
+
+      // Recalculate remaining team members' shares and allocatedCommission
+      const remainingAllocations = await ProjectEmployee.find({ projectId: req.params.id });
+      if (remainingAllocations.length > 0) {
+        const commission = await ProjectCommission.findOne({ projectId: req.params.id });
+        const employeeTotal = commission ? fromDecimal(commission.employeeAmount) : 0;
+        const count = remainingAllocations.length;
+        const equalShare = round2(100 / count);
+        for (let idx = 0; idx < count; idx++) {
+          const alloc = remainingAllocations[idx];
+          const share = idx === count - 1 ? round2(100 - equalShare * (count - 1)) : equalShare;
+          const allocAmt = round2((employeeTotal * share) / 100);
+          alloc.sharePercent = share;
+          alloc.sharePercentage = share;
+          alloc.allocatedCommission = toDecimal(allocAmt);
+          await alloc.save();
+        }
+      }
     }
     res.json({ success: true, message: 'Member removed' });
   } catch (err: any) {
@@ -198,7 +230,7 @@ router.get('/projects/:id/commission/history', getCommissionHistory);
 router.get('/projects/:id/financials', async (req, res) => {
   try {
     const payments = await ClientPayment.find({ projectId: req.params.id });
-    const collectedAmount = payments.reduce((sum, p) => sum + fromDecimal(p.amount), 0);
+    const collectedAmount = payments.reduce((sum: number, p: any) => sum + fromDecimal(p.amount), 0);
     const comm = await ProjectCommission.findOne({ projectId: req.params.id });
     const prj = await Project.findById(req.params.id);
     const totalVal = prj ? fromDecimal(prj.projectValue) : 0;

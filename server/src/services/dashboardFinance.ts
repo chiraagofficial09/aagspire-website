@@ -541,6 +541,12 @@ export async function calculateEmployeeFinanceMetrics(
       : allProjects.filter((p) => (p.status as any) !== 'cancelled');
 
   for (const p of relevantProjects) {
+    // Only accrue expected and earned employee commission if project has assigned employees
+    const isAssigned = p.assignedEmployees && p.assignedEmployees.length > 0;
+    if (!isAssigned) {
+      continue;
+    }
+
     const pId = p._id.toString();
     const netVal = getNetProjectValue(p);
     const comm = commissionMap.get(pId);

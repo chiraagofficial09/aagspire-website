@@ -97,7 +97,31 @@ export async function calculateEmployeeEarnings(
   const allEmpIds = Array.from(new Set([empId.toString(), userRelatedId.toString()])).map((idStr) => new Types.ObjectId(idStr));
 
   // 1. Find all project allocations for this employee
-  const allocations = await ProjectEmployee.find({ employeeId: { $in: allEmpIds } }).populate('projectId');
+  const rawAllocations = await ProjectEmployee.find({ employeeId: { $in: allEmpIds } }).populate('projectId');
+  const allocations: typeof rawAllocations = [];
+
+  for (const alloc of rawAllocations) {
+    const proj = alloc.projectId as any;
+    if (!proj) {
+      // Orphaned allocation pointing to non-existent project
+      await ProjectEmployee.deleteOne({ _id: alloc._id }).catch(() => {});
+      continue;
+    }
+
+    // Verify employee is actually still assigned on the Project document
+    const assignedList = proj.assignedEmployees || [];
+    const isStillAssigned = assignedList.some((aId: any) =>
+      allEmpIds.some((empIdObj) => empIdObj.toString() === (aId?._id || aId).toString())
+    );
+
+    if (!isStillAssigned) {
+      // Employee was unassigned from this project - clean up stale ProjectEmployee record
+      await ProjectEmployee.deleteOne({ _id: alloc._id }).catch(() => {});
+      continue;
+    }
+
+    allocations.push(alloc);
+  }
 
   // Also check projects where employee is assigned directly via Project.assignedEmployees
   const existingProjectIds = new Set(

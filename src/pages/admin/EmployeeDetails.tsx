@@ -15,6 +15,7 @@ import {
   Pencil,
   Trash2,
   X,
+  Star,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { StatCard } from '../../components/work/StatCard';
@@ -68,6 +69,7 @@ export const AdminEmployeeDetails: React.FC = () => {
     designation: '',
     department: '',
     defaultCommissionPercent: 40,
+    isStar: false,
     bankDetails: {
       accountNumber: '',
       ifscCode: '',
@@ -117,6 +119,7 @@ export const AdminEmployeeDetails: React.FC = () => {
           designation: emp.designation || '',
           department: emp.department || '',
           defaultCommissionPercent: emp.defaultCommissionPercent ?? 40,
+          isStar: Boolean(emp.isStar),
           bankDetails: {
             accountNumber: emp.bankDetails?.accountNumber || '',
             ifscCode: emp.bankDetails?.ifscCode || '',
@@ -314,7 +317,15 @@ export const AdminEmployeeDetails: React.FC = () => {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-[#FF5A1F] tracking-tight">{employee.fullName || employee.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-[#FF5A1F] tracking-tight">{employee.fullName || employee.name}</h1>
+              {employee.isStar && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <span>Star Member</span>
+                </span>
+              )}
+            </div>
             <p className="text-xs text-white/50 font-mono">
               {employee.designation || 'Staff'}
             </p>
@@ -674,6 +685,30 @@ export const AdminEmployeeDetails: React.FC = () => {
                     className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-ember focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* Star Member Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                <div className="flex items-center gap-2">
+                  <Star className={`w-4 h-4 ${editForm.isStar ? 'text-amber-400 fill-amber-400' : 'text-white/40'}`} />
+                  <div>
+                    <div className="text-xs font-semibold text-white">Star Team Member</div>
+                    <div className="text-[11px] text-white/50">Assigning this member gives 100% project commission to Admin</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditForm((prev) => ({ ...prev, isStar: !prev.isStar }))}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
+                    editForm.isStar ? 'bg-amber-500' : 'bg-white/20'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                      editForm.isStar ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-white/10">

@@ -30,12 +30,8 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
         res.json({ success: true, count: 0, projects: [], data: [] });
         return;
       }
-      const peRecords = await ProjectEmployee.find({ employeeId: req.employee._id }).lean();
-      const peProjectIds = peRecords.map((pe) => pe.projectId);
-      filter.$or = [
-        { assignedEmployees: req.employee._id },
-        { _id: { $in: peProjectIds } },
-      ];
+      const possibleIds = [req.employee._id, req.employee.userId].filter(Boolean);
+      filter.assignedEmployees = { $in: possibleIds };
     }
 
     if (status && status !== 'all') {
@@ -793,6 +789,11 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
         await ProjectEmployee.deleteMany({
           projectId: project._id,
           employeeId: { $nin: project.assignedEmployees },
+        });
+      } else {
+        // All employees unassigned from project - remove all allocations
+        await ProjectEmployee.deleteMany({
+          projectId: project._id,
         });
       }
     }

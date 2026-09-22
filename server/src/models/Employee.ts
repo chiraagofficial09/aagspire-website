@@ -19,6 +19,7 @@ export interface IEmployee extends Document {
     ifscCode?: string;
   };
   upiId?: string;
+  isStar?: boolean;
   status: 'active' | 'inactive';
   createdAt: Date;
   updatedAt: Date;
@@ -44,6 +45,7 @@ const EmployeeSchema = new Schema<IEmployee>(
       ifscCode: { type: String, trim: true, uppercase: true },
     },
     upiId: { type: String, trim: true },
+    isStar: { type: Boolean, default: false },
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   },
   { timestamps: true }

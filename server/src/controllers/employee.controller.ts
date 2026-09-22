@@ -55,6 +55,7 @@ export async function createEmployee(req: AuthenticatedRequest, res: Response): 
       address,
       bankDetails,
       upiId,
+      isStar,
     } = req.body;
 
     if (!fullName || !email) {
@@ -115,6 +116,7 @@ export async function createEmployee(req: AuthenticatedRequest, res: Response): 
       address,
       bankDetails,
       upiId,
+      isStar: Boolean(isStar),
       status: 'active',
     });
 
@@ -225,6 +227,7 @@ export async function updateEmployee(req: AuthenticatedRequest, res: Response): 
       'bankDetails',
       'upiId',
       'status',
+      'isStar',
     ];
 
     allowedFields.forEach((field) => {
@@ -293,6 +296,38 @@ export async function toggleEmployeeStatus(req: AuthenticatedRequest, res: Respo
       success: true,
       message: `Employee status changed to ${nextStatus}.`,
       employee,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function toggleEmployeeStar(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const employee = await Employee.findById(id);
+    if (!employee) {
+      res.status(404).json({ success: false, message: 'Employee not found.' });
+      return;
+    }
+
+    const nextStar = !employee.isStar;
+    employee.isStar = nextStar;
+    await employee.save();
+
+    await logAudit({
+      userId: req.user!._id,
+      action: 'TOGGLE_EMPLOYEE_STAR',
+      entityType: 'Employee',
+      entityId: employee._id,
+      newValue: { isStar: nextStar },
+    });
+
+    res.json({
+      success: true,
+      message: `Employee ${employee.fullName} ${nextStar ? 'marked as star' : 'star removed'}.`,
+      employee,
+      isStar: nextStar,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

@@ -101,9 +101,14 @@ export const AdminProjectDetails: React.FC = () => {
 
   if (!project) return <div className="p-8 text-center text-white/50 font-mono">Project not found.</div>;
 
-  const teamMembers = team.length > 0
-    ? team.map((m: any) => m.employeeId?.fullName || m.employeeId?.name).filter(Boolean)
-    : (project.assignedEmployees || []).map((e: any) => e.fullName || e.name).filter(Boolean);
+  const assignedList = (project.assignedEmployees && project.assignedEmployees.length > 0)
+    ? project.assignedEmployees
+    : [];
+  const teamMembers = assignedList.length > 0
+    ? (team.length > 0
+        ? team.map((m: any) => m.employeeId?.fullName || m.employeeId?.name).filter(Boolean)
+        : assignedList.map((e: any) => e.fullName || e.name).filter(Boolean))
+    : [];
   const teamMemberDisplay = teamMembers.length > 0 ? teamMembers.join(', ') : 'Unassigned';
 
   return (

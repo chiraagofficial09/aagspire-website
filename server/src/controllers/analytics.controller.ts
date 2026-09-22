@@ -97,19 +97,19 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
     // 1. Personal Earnings Breakdown (month-filtered)
     const earnings = await calculateEmployeeEarnings(employeeId, targetMonth);
 
-    // 2. Assigned Projects (support both Project.assignedEmployees and ProjectEmployee)
-    const peRecords = await ProjectEmployee.find({ employeeId });
-    const peProjectIds = peRecords.map((pe) => pe.projectId);
-
+    // 2. Assigned Projects (strictly projects where employee is in assignedEmployees)
+    const possibleEmpIds = [employeeId, req.employee?.userId].filter(Boolean);
     const assignedProjectsDocs = await Project.find({
-      $or: [
-        { assignedEmployees: employeeId },
-        { _id: { $in: peProjectIds } },
-      ],
+      assignedEmployees: { $in: possibleEmpIds },
     })
       .populate('clientId', 'name companyName clientCode')
       .populate('assignedEmployees', 'fullName employeeCode designation')
       .sort({ createdAt: -1 });
+
+    const peRecords = await ProjectEmployee.find({
+      employeeId: { $in: possibleEmpIds },
+      projectId: { $in: assignedProjectsDocs.map((p) => p._id) },
+    });
 
     // Filter projects if specific month is requested (Option B: strict project date)
     const filteredProjectsDocs = assignedProjectsDocs.filter((p) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Users, Sliders, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { X, Users, Sliders, CheckCircle2, AlertTriangle, Star } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
 import { useToast } from './Toast';
@@ -46,6 +46,43 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     settlementPercent: 5,
   });
 
+  const [savedNonStarSplit, setSavedNonStarSplit] = useState(commissionSplit);
+
+  const hasStarEmployee = formData.assignedEmployees.some((empId: string) => {
+    const emp = employees.find((e) => (e._id || e.id) === empId);
+    return Boolean(emp?.isStar);
+  });
+
+  const handleAssignedEmployeesChange = (vals: string[]) => {
+    const starSelected = vals.some((empId: string) => {
+      const emp = employees.find((e) => (e._id || e.id) === empId);
+      return Boolean(emp?.isStar);
+    });
+
+    if (starSelected) {
+      if (!hasStarEmployee) {
+        setSavedNonStarSplit(commissionSplit);
+      }
+      setCommissionSplit({
+        brokerPercent: 0,
+        employeePercent: 0,
+        officePercent: 0,
+        adminPercent: 100,
+        settlementPercent: 0,
+      });
+    } else if (hasStarEmployee) {
+      setCommissionSplit(savedNonStarSplit || {
+        brokerPercent: 10,
+        employeePercent: 40,
+        officePercent: 10,
+        adminPercent: 35,
+        settlementPercent: 5,
+      });
+    }
+
+    setFormData((prev) => ({ ...prev, assignedEmployees: vals }));
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -84,14 +121,29 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         description: project.description || '',
       });
 
-      const comm = project.commission || {};
-      setCommissionSplit({
-        brokerPercent: Number(comm.brokerPercent ?? comm.brokerPercentage ?? 10),
-        employeePercent: Number(comm.employeePercent ?? comm.employeePercentage ?? 40),
-        officePercent: Number(comm.officePercent ?? comm.officeExpensePercentage ?? 10),
-        adminPercent: Number(comm.adminPercent ?? comm.adminSharePercentage ?? 35),
-        settlementPercent: Number(comm.settlementPercent ?? comm.settlementReservePercentage ?? 5),
+      const starSelected = assignedEmployees.some((empId: string) => {
+        const emp = employees.find((e) => (e._id || e.id) === empId);
+        return Boolean(emp?.isStar);
       });
+
+      if (starSelected) {
+        setCommissionSplit({
+          brokerPercent: 0,
+          employeePercent: 0,
+          officePercent: 0,
+          adminPercent: 100,
+          settlementPercent: 0,
+        });
+      } else {
+        const comm = project.commission || {};
+        setCommissionSplit({
+          brokerPercent: Number(comm.brokerPercent ?? comm.brokerPercentage ?? 10),
+          employeePercent: Number(comm.employeePercent ?? comm.employeePercentage ?? 40),
+          officePercent: Number(comm.officePercent ?? comm.officeExpensePercentage ?? 10),
+          adminPercent: Number(comm.adminPercent ?? comm.adminSharePercentage ?? 35),
+          settlementPercent: Number(comm.settlementPercent ?? comm.settlementReservePercentage ?? 5),
+        });
+      }
     } else {
       setFormData({
         title: '',
@@ -165,12 +217,28 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       return;
     }
 
+    const splitToUse = hasStarEmployee
+      ? {
+          brokerPercent: 0,
+          employeePercent: 0,
+          officePercent: 0,
+          adminPercent: 100,
+          settlementPercent: 0,
+        }
+      : {
+          brokerPercent: Number(commissionSplit.brokerPercent),
+          employeePercent: Number(commissionSplit.employeePercent),
+          officePercent: Number(commissionSplit.officePercent),
+          adminPercent: Number(commissionSplit.adminPercent),
+          settlementPercent: Number(commissionSplit.settlementPercent),
+        };
+
     const splitSum =
-      Number(commissionSplit.brokerPercent) +
-      Number(commissionSplit.employeePercent) +
-      Number(commissionSplit.officePercent) +
-      Number(commissionSplit.adminPercent) +
-      Number(commissionSplit.settlementPercent);
+      Number(splitToUse.brokerPercent) +
+      Number(splitToUse.employeePercent) +
+      Number(splitToUse.officePercent) +
+      Number(splitToUse.adminPercent) +
+      Number(splitToUse.settlementPercent);
 
     if (Math.abs(splitSum - 100) > 0.01) {
       toast.warning(`Commission split must equal 100.0%. Current sum: ${splitSum.toFixed(1)}%`);
@@ -195,13 +263,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         endDate: formData.endDate || undefined,
         status: formData.status,
         description: formData.description.trim(),
-        commissionSplit: {
-          brokerPercent: Number(commissionSplit.brokerPercent),
-          employeePercent: Number(commissionSplit.employeePercent),
-          officePercent: Number(commissionSplit.officePercent),
-          adminPercent: Number(commissionSplit.adminPercent),
-          settlementPercent: Number(commissionSplit.settlementPercent),
-        },
+        commissionSplit: splitToUse,
       };
 
       if (project && project._id) {
@@ -302,12 +364,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             </div>
             <MultiSelect
               values={formData.assignedEmployees}
-              onChange={(vals) => setFormData({ ...formData, assignedEmployees: vals })}
+              onChange={handleAssignedEmployeesChange}
               placeholder="Select team members to assign..."
               options={employees.map((emp) => ({
                 value: emp._id,
                 label: emp.fullName || emp.name,
                 sublabel: emp.employeeCode ? `(${emp.employeeCode})` : undefined,
+                isStar: Boolean(emp.isStar),
               }))}
             />
           </div>
@@ -355,112 +418,137 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             />
           </div>
 
-          {/* Project-Specific 5-Tier Commission Split Configuration */}
-          <div className="p-4 rounded-xl bg-[#07080c] border border-white/[0.08] space-y-3">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-3.5 h-3.5 text-[#FF5A1F]" />
-                <span className="font-semibold text-white text-xs">Project Commission Split (5-Tier)</span>
+          {/* Project-Specific 5-Tier Commission Split Configuration or Star Notice */}
+          {hasStarEmployee ? (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-[#0a0b10] to-amber-500/5 border border-amber-500/25 text-xs animate-fade-in space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  </div>
+                  <div>
+                    <span className="font-semibold text-white text-xs">Star Team Member Assigned</span>
+                    <span className="ml-2 text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+                      100% Admin Share
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[11px] font-mono text-amber-300 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>100.0% / 100%</span>
+                </span>
               </div>
-              {(() => {
-                const curSum =
-                  Number(commissionSplit.brokerPercent) +
-                  Number(commissionSplit.employeePercent) +
-                  Number(commissionSplit.officePercent) +
-                  Number(commissionSplit.adminPercent) +
-                  Number(commissionSplit.settlementPercent);
-                const isExact = Math.abs(curSum - 100) < 0.01;
-                return (
-                  <span className={`text-[11px] font-mono flex items-center gap-1 ${isExact ? 'text-white font-bold' : 'text-zinc-400'}`}>
-                    {isExact ? <CheckCircle2 className="w-3 h-3 text-[#FF5A1F]" /> : <AlertTriangle className="w-3 h-3 text-zinc-500" />}
-                    <span>{curSum.toFixed(1)}% / 100%</span>
+              <p className="text-[11px] text-zinc-400 pl-8">
+                Star team member selected. The commission split box is hidden, and 100% project share is assigned directly to Admin.
+              </p>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-[#07080c] border border-white/[0.08] space-y-3">
+              <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                <div className="flex items-center gap-2">
+                  <Sliders className="w-3.5 h-3.5 text-[#FF5A1F]" />
+                  <span className="font-semibold text-white text-xs">Project Commission Split (5-Tier)</span>
+                </div>
+                {(() => {
+                  const curSum =
+                    Number(commissionSplit.brokerPercent) +
+                    Number(commissionSplit.employeePercent) +
+                    Number(commissionSplit.officePercent) +
+                    Number(commissionSplit.adminPercent) +
+                    Number(commissionSplit.settlementPercent);
+                  const isExact = Math.abs(curSum - 100) < 0.01;
+                  return (
+                    <span className={`text-[11px] font-mono flex items-center gap-1 ${isExact ? 'text-white font-bold' : 'text-zinc-400'}`}>
+                      {isExact ? <CheckCircle2 className="w-3 h-3 text-[#FF5A1F]" /> : <AlertTriangle className="w-3 h-3 text-zinc-500" />}
+                      <span>{curSum.toFixed(1)}% / 100%</span>
+                    </span>
+                  );
+                })()}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                <div>
+                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Employee %</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={commissionSplit.employeePercent}
+                    onChange={(e) =>
+                      setCommissionSplit({ ...commissionSplit, employeePercent: Number(e.target.value) })
+                    }
+                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                  />
+                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.employeePercent) || 0)) / 100)}
                   </span>
-                );
-              })()}
-            </div>
+                </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
-              <div>
-                <label className="text-zinc-400 block text-[10px] mb-1 truncate">Employee %</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={commissionSplit.employeePercent}
-                  onChange={(e) =>
-                    setCommissionSplit({ ...commissionSplit, employeePercent: Number(e.target.value) })
-                  }
-                  className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                />
-                <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                  {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.employeePercent) || 0)) / 100)}
-                </span>
-              </div>
+                <div>
+                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Admin %</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={commissionSplit.adminPercent}
+                    onChange={(e) =>
+                      setCommissionSplit({ ...commissionSplit, adminPercent: Number(e.target.value) })
+                    }
+                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                  />
+                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.adminPercent) || 0)) / 100)}
+                  </span>
+                </div>
 
-              <div>
-                <label className="text-zinc-400 block text-[10px] mb-1 truncate">Admin %</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={commissionSplit.adminPercent}
-                  onChange={(e) =>
-                    setCommissionSplit({ ...commissionSplit, adminPercent: Number(e.target.value) })
-                  }
-                  className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                />
-                <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                  {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.adminPercent) || 0)) / 100)}
-                </span>
-              </div>
+                <div>
+                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Office %</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={commissionSplit.officePercent}
+                    onChange={(e) =>
+                      setCommissionSplit({ ...commissionSplit, officePercent: Number(e.target.value) })
+                    }
+                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                  />
+                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.officePercent) || 0)) / 100)}
+                  </span>
+                </div>
 
-              <div>
-                <label className="text-zinc-400 block text-[10px] mb-1 truncate">Office %</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={commissionSplit.officePercent}
-                  onChange={(e) =>
-                    setCommissionSplit({ ...commissionSplit, officePercent: Number(e.target.value) })
-                  }
-                  className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                />
-                <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                  {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.officePercent) || 0)) / 100)}
-                </span>
-              </div>
+                <div>
+                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Broker %</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={commissionSplit.brokerPercent}
+                    onChange={(e) =>
+                      setCommissionSplit({ ...commissionSplit, brokerPercent: Number(e.target.value) })
+                    }
+                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                  />
+                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.brokerPercent) || 0)) / 100)}
+                  </span>
+                </div>
 
-              <div>
-                <label className="text-zinc-400 block text-[10px] mb-1 truncate">Broker %</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={commissionSplit.brokerPercent}
-                  onChange={(e) =>
-                    setCommissionSplit({ ...commissionSplit, brokerPercent: Number(e.target.value) })
-                  }
-                  className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                />
-                <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                  {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.brokerPercent) || 0)) / 100)}
-                </span>
-              </div>
-
-              <div>
-                <label className="text-zinc-400 block text-[10px] mb-1 truncate">Reserve %</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={commissionSplit.settlementPercent}
-                  onChange={(e) =>
-                    setCommissionSplit({ ...commissionSplit, settlementPercent: Number(e.target.value) })
-                  }
-                  className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                />
-                <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                  {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.settlementPercent) || 0)) / 100)}
-                </span>
+                <div>
+                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Reserve %</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={commissionSplit.settlementPercent}
+                    onChange={(e) =>
+                      setCommissionSplit({ ...commissionSplit, settlementPercent: Number(e.target.value) })
+                    }
+                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                  />
+                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.settlementPercent) || 0)) / 100)}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.06]">
             <button

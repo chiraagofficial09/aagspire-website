@@ -7,6 +7,7 @@ import {
   Trash2,
   X,
   MoreVertical,
+  Star,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
@@ -42,6 +43,7 @@ export const AdminEmployees: React.FC = () => {
       upiId: '',
       panNumber: '',
     },
+    isStar: false,
   });
 
   const fetchEmployees = async () => {
@@ -94,6 +96,7 @@ export const AdminEmployees: React.FC = () => {
         upiId: '',
         panNumber: '',
       },
+      isStar: false,
     });
     setIsModalOpen(true);
   };
@@ -115,6 +118,7 @@ export const AdminEmployees: React.FC = () => {
         upiId: emp.bankDetails?.upiId || emp.upiId || '',
         panNumber: emp.bankDetails?.panNumber || '',
       },
+      isStar: Boolean(emp.isStar),
     });
     setActiveMenuId(null);
     setIsModalOpen(true);
@@ -239,11 +243,19 @@ export const AdminEmployees: React.FC = () => {
                     <tr key={emp._id} className="hover:bg-white/[0.015] transition-colors">
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-xs text-zinc-200">
+                          <div className="w-8 h-8 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-xs text-zinc-200 shrink-0">
                             {displayName ? displayName[0].toUpperCase() : 'E'}
                           </div>
                           <div>
-                            <div className="font-semibold text-white text-sm">{displayName}</div>
+                            <div className="font-semibold text-white text-sm flex items-center gap-1.5">
+                              <span>{displayName}</span>
+                              {emp.isStar && (
+                                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                  <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                                  STAR
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -426,6 +438,34 @@ export const AdminEmployees: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {/* Star Employee Toggle - Only available when editing team member */}
+              {editingEmployee && (
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#0e0f16] border border-white/[0.06]">
+                  <div className="flex items-center gap-2.5">
+                    <Star className={`w-4 h-4 ${formData.isStar ? 'fill-amber-400 text-amber-400' : 'text-zinc-500'}`} />
+                    <div>
+                      <span className="font-semibold text-white block text-xs">Star Team Member</span>
+                      <span className="text-[11px] text-zinc-500 block">
+                        100% project share is assigned to Admin; commission split box is hidden.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData((prev) => ({ ...prev, isStar: !prev.isStar }))}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
+                      formData.isStar ? 'bg-amber-500' : 'bg-zinc-700'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                        formData.isStar ? 'translate-x-4' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
 
               {/* Bank details */}
               <div className="p-3.5 rounded-xl bg-[#0e0f16] border border-white/[0.06] space-y-3">

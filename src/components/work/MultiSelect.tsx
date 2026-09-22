@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check, X, Users } from 'lucide-react';
+import { ChevronDown, Check, X, Users, Star } from 'lucide-react';
 
 export interface MultiSelectOption {
   value: string;
   label: string;
   sublabel?: string;
   avatarText?: string;
+  isStar?: boolean;
 }
 
 export interface MultiSelectProps {
@@ -152,6 +153,9 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                     >
                       {isSelected && <Check className="w-3 h-3 text-[#FF5A1F] stroke-[3]" />}
                     </div>
+                    {opt.isStar && (
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                    )}
                     <span className="truncate">{opt.label}</span>
                     {opt.sublabel && (
                       <span
@@ -160,6 +164,15 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                         }`}
                       >
                         {opt.sublabel}
+                      </span>
+                    )}
+                    {opt.isStar && (
+                      <span
+                        className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                          isSelected ? 'bg-black/25 text-white' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        STAR
                       </span>
                     )}
                   </div>
@@ -178,7 +191,11 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
               key={opt.value}
               className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-[#0e0f16] border border-white/[0.08] text-xs text-zinc-200 shadow-sm animate-fade-in"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
+              {opt.isStar ? (
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
+              )}
               <span className="font-medium text-white">{opt.label}</span>
               {opt.sublabel && (
                 <span className="text-[10px] text-zinc-500 font-mono">

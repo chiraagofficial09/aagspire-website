@@ -29,6 +29,7 @@ export interface EmployeeProfile {
     ifscCode?: string;
   };
   upiId?: string;
+  isStar?: boolean;
   status: 'active' | 'inactive';
 }
 
