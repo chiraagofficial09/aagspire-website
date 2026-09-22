@@ -457,7 +457,7 @@ export const AdminDashboard: React.FC = () => {
         {/* Card 1: EMPLOYEE SHARE */}
         <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
               Team Commission
             </span>
             <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
@@ -477,8 +477,8 @@ export const AdminDashboard: React.FC = () => {
         {/* Card 2: ADMIN SHARE */}
         <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
-              ADMIN SHARE
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400  tracking-wider block">
+              Admin Share
             </span>
             <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
               {formatSplitPercent(adminSharePercent)}
@@ -497,8 +497,8 @@ export const AdminDashboard: React.FC = () => {
         {/* Card 3: OFFICE EXPENSE */}
         <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
-              OFFICE EXPENSE
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400  tracking-wider block">
+              Office Expense
             </span>
             <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
               {formatSplitPercent(officeExpensePercent)}
@@ -517,8 +517,8 @@ export const AdminDashboard: React.FC = () => {
         {/* Card 4: BROKER SHARE */}
         <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
-              BROKER SHARE
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
+              Broker Share
             </span>
             <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
               {formatSplitPercent(brokerSharePercent)}
@@ -537,8 +537,8 @@ export const AdminDashboard: React.FC = () => {
         {/* Card 5: RESERVE FUND */}
         <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
-              RESERVE FUND
+            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
+              Reserve Fund
             </span>
             <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
               {formatSplitPercent(reserveFundPercent)}

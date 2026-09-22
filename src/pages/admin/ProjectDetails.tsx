@@ -194,7 +194,7 @@ export const AdminProjectDetails: React.FC = () => {
                 <StatusBadge status={project.status} type="project" />
               </div>
               <div>
-                <span className="text-white/40 block font-mono text-[10px] mb-1">Team Member</span>
+                <span className="text-white/40 block font-mono text-[10px] mb-1">TEAM MEMBER</span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-white/10 text-white border-white/15">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
                   <span className="truncate max-w-[150px]">{teamMemberDisplay}</span>
