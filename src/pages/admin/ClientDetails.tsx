@@ -48,37 +48,79 @@ export const AdminClientDetails: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
 
-  // Deductions state (local, client-side entries)
+  // Deductions state
   interface DeductionEntry {
     id: string;
     label: string;
+    projectName: string;
     date: string;
     amount: number;
   }
+  const [showDeductionCard, setShowDeductionCard] = useState(false);
   const [deductions, setDeductions] = useState<DeductionEntry[]>([]);
   const [isDeductionModalOpen, setIsDeductionModalOpen] = useState(false);
-  const [deductionLabel, setDeductionLabel] = useState('');
+  const [deductionProjectName, setDeductionProjectName] = useState('');
   const [deductionDate, setDeductionDate] = useState(new Date().toISOString().split('T')[0]);
   const [deductionAmount, setDeductionAmount] = useState('');
 
   const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
 
-  const handleAddDeduction = (e: React.FormEvent) => {
+  const handleAddDeduction = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(deductionAmount);
     if (!amt || amt <= 0) return;
-    setDeductions(prev => [
-      ...prev,
-      { id: Date.now().toString(), label: deductionLabel || 'Project Deduction', date: deductionDate, amount: amt },
-    ]);
-    setDeductionLabel('');
+    const finalProjectName = deductionProjectName.trim() || 'Project Deduction';
+
+    const newEntry: DeductionEntry = {
+      id: Date.now().toString(),
+      label: finalProjectName,
+      projectName: finalProjectName,
+      date: deductionDate,
+      amount: amt,
+    };
+    const updated = [...deductions, newEntry];
+    setDeductions(updated);
+    setShowDeductionCard(true);
+    setDeductionProjectName('');
     setDeductionDate(new Date().toISOString().split('T')[0]);
     setDeductionAmount('');
     setIsDeductionModalOpen(false);
+
+    if (id) {
+      try {
+        await api.put(`/admin/clients/${id}`, {
+          deductions: updated.map((d) => ({
+            projectName: d.projectName || d.label,
+            date: d.date,
+            amount: d.amount,
+          })),
+        });
+        toast.success('Deduction added successfully');
+      } catch (err) {
+        console.error('Failed to persist deduction:', err);
+        toast.error('Failed to save deduction to server');
+      }
+    }
   };
 
-  const handleRemoveDeduction = (id: string) => {
-    setDeductions(prev => prev.filter(d => d.id !== id));
+  const handleRemoveDeduction = async (entryId: string) => {
+    const updated = deductions.filter((d) => d.id !== entryId);
+    setDeductions(updated);
+    if (id) {
+      try {
+        await api.put(`/admin/clients/${id}`, {
+          deductions: updated.map((d) => ({
+            projectName: d.projectName || d.label,
+            date: d.date,
+            amount: d.amount,
+          })),
+        });
+        toast.success('Deduction removed');
+      } catch (err) {
+        console.error('Failed to remove deduction:', err);
+        toast.error('Failed to remove deduction from server');
+      }
+    }
   };
 
   // Month-wise billing state
@@ -143,6 +185,19 @@ export const AdminClientDetails: React.FC = () => {
           address: c.address || '',
           taxId: c.gstNumber || c.taxId || '',
         });
+        if (Array.isArray(c.deductions)) {
+          const loaded: DeductionEntry[] = c.deductions.map((d: any) => ({
+            id: d._id ? String(d._id) : (d.id || `${Date.now()}-${Math.random()}`),
+            projectName: d.projectName || d.label || 'Project Deduction',
+            label: d.projectName || d.label || 'Project Deduction',
+            date: d.date ? new Date(d.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            amount: Number(d.amount) || 0,
+          }));
+          setDeductions(loaded);
+          if (loaded.length > 0) {
+            setShowDeductionCard(true);
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching client details', err);
@@ -180,7 +235,7 @@ export const AdminClientDetails: React.FC = () => {
       message: `Are you sure you want to delete "${client.companyName || client.name}"? This action cannot be undone.`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
-      variant: 'danger',
+      type: 'danger',
     });
     if (!confirmed) return;
     try {
@@ -431,7 +486,7 @@ export const AdminClientDetails: React.FC = () => {
       message: 'Are you sure you want to delete this payment record? This action cannot be undone.',
       confirmText: 'Delete',
       cancelText: 'Cancel',
-      variant: 'danger',
+      type: 'danger',
     });
     if (!confirmed) return;
     try {
@@ -605,8 +660,25 @@ export const AdminClientDetails: React.FC = () => {
         </div>
       )}
 
-      {/* Financial Overview Card with 4 CONNECTED EQUATION CARDS */}
+      {/* Financial Overview Card */}
       <div className="rounded-2xl bg-[#0c0d12] border border-white/[0.06] p-6 sm:p-7 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="w-1 h-4 rounded-full bg-[#FF5A1F] shrink-0" />
+            <h2 className="text-lg font-bold text-[#FF5A1F] tracking-tight">Financial Overview</h2>
+          </div>
+          {!showDeductionCard && (
+            <button
+              type="button"
+              onClick={() => setShowDeductionCard(true)}
+              className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10 hover:bg-[#FF5A1F]/20 hover:text-[#FF5A1F] hover:border-[#FF5A1F]/40 transition-colors cursor-pointer"
+              title="Add Deductions Box"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 lg:gap-3.5">
           {/* Card 1: Total */}
           <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
@@ -668,50 +740,79 @@ export const AdminClientDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 5: Deductions */}
-          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium text-white/50">Deductions</span>
-              <button
-                type="button"
-                onClick={() => setIsDeductionModalOpen(true)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10 hover:bg-[#FF5A1F]/20 hover:text-[#FF5A1F] hover:border-[#FF5A1F]/40 transition-colors cursor-pointer"
-                title="Add deduction"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="mt-3">
-              <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
-                {formatINR(totalDeductions)}
-              </p>
-              {totalDeductions > 0 && (
-                <p className="text-[10px] text-emerald-400 font-medium mt-1">
-                  Net: {formatINR(Math.max(0, closingReceivable - totalDeductions))}
+          {/* Card 5: Deductions (shown when showDeductionCard is true) */}
+          {showDeductionCard && (
+            <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-white/50">Deductions</span>
+                  {deductions.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDeductionCard(false)}
+                      className="p-1 rounded text-white/30 hover:text-white/70 transition-colors"
+                      title="Hide Deductions box"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeductionProjectName('');
+                    setDeductionDate(new Date().toISOString().split('T')[0]);
+                    setDeductionAmount('');
+                    setIsDeductionModalOpen(true);
+                  }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10 hover:bg-[#FF5A1F]/20 hover:text-[#FF5A1F] hover:border-[#FF5A1F]/40 transition-colors cursor-pointer"
+                  title="Add deduction"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="mt-3">
+                <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
+                  {formatINR(totalDeductions)}
                 </p>
-              )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Deductions List (shown if any exist) */}
-        {deductions.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-[11px] text-white/40 font-mono uppercase tracking-wider">Project Deductions</p>
+        {/* Deductions List (shown if card is shown and deductions exist) */}
+        {showDeductionCard && deductions.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-white/5">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] text-white/40 font-mono uppercase tracking-wider">Project Deductions</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeductionProjectName('');
+                  setDeductionDate(new Date().toISOString().split('T')[0]);
+                  setDeductionAmount('');
+                  setIsDeductionModalOpen(true);
+                }}
+                className="text-[11px] text-[#FF5A1F] hover:underline flex items-center gap-1 font-medium cursor-pointer"
+              >
+                <Plus className="w-3 h-3" /> Add another
+              </button>
+            </div>
             <div className="space-y-1.5">
               {deductions.map((d) => (
                 <div key={d.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.025] border border-white/5 text-xs">
                   <div className="flex items-center gap-3">
-                    <MinusCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span className="text-white/80 font-medium">{d.label}</span>
+                    <MinusCircle className="w-3.5 h-3.5 text-[#FF5A1F] shrink-0" />
+                    <span className="text-white/80 font-medium">{d.projectName || d.label}</span>
                     <span className="text-white/40 font-mono">{new Date(d.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-emerald-400">− {formatINR(d.amount)}</span>
+                    <span className="font-mono font-bold text-[#FF5A1F]">− {formatINR(d.amount)}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveDeduction(d.id)}
                       className="p-1 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-colors cursor-pointer"
+                      title="Remove deduction"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1203,6 +1304,7 @@ export const AdminClientDetails: React.FC = () => {
           projects={allProjects}
           onRefreshClient={fetchClient}
           initialMonth={selectedMonth}
+          deductions={deductions}
         />
       )}
 
@@ -1213,7 +1315,6 @@ export const AdminClientDetails: React.FC = () => {
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
                 <h3 className="font-bold text-sm">Add Project Deduction</h3>
-                <p className="text-[11px] text-white/40 mt-0.5">This amount will be deducted from the final bill</p>
               </div>
               <button
                 type="button"
@@ -1226,12 +1327,13 @@ export const AdminClientDetails: React.FC = () => {
 
             <form onSubmit={handleAddDeduction} className="space-y-3">
               <div>
-                <label className="text-white/60 block mb-1">Project / Label</label>
+                <label className="text-white/60 block mb-1">Project Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Social Media Package"
-                  value={deductionLabel}
-                  onChange={(e) => setDeductionLabel(e.target.value)}
+                  placeholder="deduction label"
+                  required
+                  value={deductionProjectName}
+                  onChange={(e) => setDeductionProjectName(e.target.value)}
                   className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#FF5A1F] focus:outline-none"
                 />
               </div>

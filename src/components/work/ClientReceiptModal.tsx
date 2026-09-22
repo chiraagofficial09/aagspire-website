@@ -42,6 +42,7 @@ interface ClientReceiptModalProps {
   projects: any[];
   onRefreshClient?: () => void;
   initialMonth?: string;
+  deductions?: any[];
 }
 
 export function getNextInvoiceNumber(current?: string | number, step = 1): string {
@@ -69,6 +70,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   projects: initialProjects = [],
   onRefreshClient,
   initialMonth,
+  deductions = [],
 }) => {
   const toast = useToast();
   const [localProjects, setLocalProjects] = useState<any[]>(initialProjects);
@@ -406,7 +408,20 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     grandTotal,
     projectPaidSum > 0 ? projectPaidSum : clientPaymentsTotal
   );
-  const netBalanceDue = Math.max(0, grandTotal - totalPaid);
+
+  const activeDeductions = useMemo(() => {
+    if (deductions && deductions.length > 0) return deductions;
+    if (client?.deductions && Array.isArray(client.deductions) && client.deductions.length > 0) {
+      return client.deductions;
+    }
+    return [];
+  }, [deductions, client?.deductions]);
+
+  const totalDeductions = useMemo(() => {
+    return activeDeductions.reduce((sum: number, d: any) => sum + (parseAmount(d.amount) || 0), 0);
+  }, [activeDeductions]);
+
+  const netBalanceDue = Math.max(0, grandTotal - totalPaid - totalDeductions);
 
   const billingMonthOptions = useMemo(() => {
     const list = [{ value: 'all', label: 'All Months (All Deliverables)' }];
@@ -494,6 +509,13 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
       }
       if (Object.keys(projectDiscounts).length > 0) {
         params.append('projectDiscounts', JSON.stringify(projectDiscounts));
+      }
+      if (activeDeductions.length > 0) {
+        params.append('deductions', JSON.stringify(activeDeductions.map((d: any) => ({
+          projectName: d.projectName || d.label || 'Project',
+          amount: parseAmount(d.amount) || 0,
+          date: d.date,
+        }))));
       }
 
       const res = await api.get(`/admin/clients/${client._id}/pdf?${params.toString()}`, {
@@ -1135,6 +1157,18 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                       <span>Paid Money:</span>
                       <span className="text-white font-bold">-{formatINR(totalPaid)}</span>
                     </div>
+
+                    {activeDeductions.length > 0 && activeDeductions.map((d: any, idx: number) => {
+                      const dVal = parseAmount(d.amount) || 0;
+                      if (dVal <= 0) return null;
+                      const dName = d.projectName || d.label || 'Project';
+                      return (
+                        <div key={idx} className="flex justify-between items-center text-white/60">
+                          <span>{dName.endsWith(':') ? dName : `${dName}:`}</span>
+                          <span className="text-white font-bold">-{formatINR(dVal)}</span>
+                        </div>
+                      );
+                    })}
 
                     {/* Total Card */}
                     <div className="p-3.5 rounded-xl bg-[#1F1008] border border-[#FF5A1F]/50 flex justify-between items-center text-sm font-bold mt-3 shadow-[0_0_20px_rgba(255,90,31,0.12)]">

@@ -1,5 +1,12 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 
+export interface IClientDeduction {
+  _id?: Types.ObjectId;
+  projectName: string;
+  date: Date;
+  amount: number;
+}
+
 export interface IClient extends Document {
   clientCode: string;
   name: string;
@@ -12,6 +19,7 @@ export interface IClient extends Document {
   source?: string;
   notes?: string;
   lastInvoiceNumber?: string;
+  deductions?: IClientDeduction[];
   status: 'active' | 'inactive';
   createdBy: Types.ObjectId;
   createdAt: Date;
@@ -31,6 +39,13 @@ const ClientSchema = new Schema<IClient>(
     source: { type: String, trim: true },
     notes: { type: String },
     lastInvoiceNumber: { type: String, trim: true },
+    deductions: [
+      {
+        projectName: { type: String, required: true },
+        date: { type: Date, default: Date.now },
+        amount: { type: Number, required: true },
+      },
+    ],
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },

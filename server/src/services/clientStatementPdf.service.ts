@@ -18,6 +18,13 @@ export interface ClientStatementProjectItem {
   deadline?: string;
 }
 
+export interface ClientStatementDeductionItem {
+  projectName?: string;
+  label?: string;
+  date?: string;
+  amount: number;
+}
+
 export interface ClientStatementPdfData {
   invoiceNumber?: string;
   clientCode: string;
@@ -40,6 +47,7 @@ export interface ClientStatementPdfData {
   pendingBalance: number;
   notes?: string;
   projects: ClientStatementProjectItem[];
+  deductions?: ClientStatementDeductionItem[];
 }
 
 const allTerms = [
@@ -95,6 +103,9 @@ function calculateStatementHeight(
   if (data.taxAmount && data.taxAmount > 0) sY += 18;
   if (data.discountAmount && data.discountAmount > 0) sY += 18;
   sY += 18 + 6; // Paid Money
+  if (data.deductions && data.deductions.length > 0) {
+    sY += data.deductions.length * 18;
+  }
   sY += 34; // Balance Due Card
   sY += 3 + 12; // *T&C apply.
   y = sY + 18;
@@ -425,7 +436,22 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
     width: summaryW,
     align: 'right',
   });
-  sY += rowStep + 6;
+  sY += rowStep;
+
+  // Deductions
+  if (data.deductions && data.deductions.length > 0) {
+    data.deductions.forEach((d) => {
+      const dName = d.projectName || d.label || 'Project';
+      const labelText = dName.endsWith(':') ? dName : `${dName}:`;
+      doc.font(regularFont).fontSize(8.5).fillColor('#888888').text(labelText, summaryRightX, sY, { width: 140, align: 'left', ellipsis: true });
+      doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(`-${formatINRVal(d.amount)}`, summaryRightX, sY, {
+        width: summaryW,
+        align: 'right',
+      });
+      sY += rowStep;
+    });
+  }
+  sY += 6;
 
   // Balance Due Highlighted Container
   const balanceCardH = 34;

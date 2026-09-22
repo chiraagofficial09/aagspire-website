@@ -6,6 +6,7 @@ export interface AlertOptions {
   message: string;
   confirmText?: string;
   type?: 'alert' | 'warning' | 'info' | 'error' | 'success';
+  variant?: 'alert' | 'warning' | 'info' | 'error' | 'success';
   onOk?: () => void;
 }
 
@@ -15,6 +16,7 @@ export interface ConfirmOptions {
   confirmText?: string;
   cancelText?: string;
   type?: 'confirm' | 'danger' | 'warning' | 'info';
+  variant?: 'confirm' | 'danger' | 'warning' | 'info';
   onConfirm?: () => void;
   onCancel?: () => void;
 }
@@ -100,7 +102,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         message: opts.message || '',
         confirmText: opts.confirmText || 'Okay',
         cancelText: 'Cancel',
-        type: opts.type || 'alert',
+        type: opts.type || opts.variant || 'alert',
         resolve: () => {
           opts.onOk?.();
           resolve();
@@ -121,7 +123,7 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         message: opts.message || '',
         confirmText: opts.confirmText || 'Okay',
         cancelText: opts.cancelText || 'Cancel',
-        type: opts.type || 'confirm',
+        type: opts.type || opts.variant || 'confirm',
         resolve: (val: boolean) => {
           if (val) opts.onConfirm?.();
           else opts.onCancel?.();

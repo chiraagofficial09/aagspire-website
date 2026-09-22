@@ -630,7 +630,23 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       totalRevenue,
       round2(projects.reduce((sum, p) => sum + p.paidAmount, 0))
     );
-    const pendingBalance = Math.max(0, round2(totalRevenue - totalPaid));
+
+    // Deductions handling
+    let deductionsList: any[] = [];
+    if (req.query.deductions) {
+      try {
+        const parsed = JSON.parse(req.query.deductions as string);
+        if (Array.isArray(parsed)) deductionsList = parsed;
+      } catch {}
+    } else if (client.deductions && client.deductions.length > 0) {
+      deductionsList = client.deductions.map((d: any) => ({
+        projectName: d.projectName || d.label || 'Project Deduction',
+        date: d.date ? new Date(d.date).toLocaleDateString('en-IN') : undefined,
+        amount: Number(d.amount) || 0,
+      }));
+    }
+    const totalDeductionsAmount = round2(deductionsList.reduce((sum, d) => sum + (Number(d.amount) || 0), 0));
+    const pendingBalance = Math.max(0, round2(totalRevenue - totalPaid - totalDeductionsAmount));
 
     const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec'];
     let targetDate = monthRange ? monthRange.startOfMonth : new Date();
@@ -714,6 +730,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         pendingBalance,
         notes,
         projects,
+        deductions: deductionsList,
       },
       res
     );
