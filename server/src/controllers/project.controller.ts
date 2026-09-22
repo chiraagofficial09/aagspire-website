@@ -353,13 +353,23 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
     });
 
     // 2. Compute Commission Distribution on Net Project Value
-    const split = {
-      brokerPercent: Number(commissionSplit?.brokerPercent ?? commissionSplit?.brokerPercentage ?? 10),
-      employeePercent: Number(commissionSplit?.employeePercent ?? commissionSplit?.employeePercentage ?? 40),
-      officePercent: Number(commissionSplit?.officePercent ?? commissionSplit?.officeExpensePercentage ?? 10),
-      adminPercent: Number(commissionSplit?.adminPercent ?? commissionSplit?.adminSharePercentage ?? 35),
-      settlementPercent: Number(commissionSplit?.settlementPercent ?? commissionSplit?.settlementReservePercentage ?? 5),
-    };
+    // If no team members assigned, 100% of the share goes to Admin
+    const hasNoEmployees = !assignedEmployees || assignedEmployees.length === 0;
+    const split = (hasNoEmployees || Number(commissionSplit?.adminPercent) === 100)
+      ? {
+          brokerPercent: 0,
+          employeePercent: 0,
+          officePercent: 0,
+          adminPercent: 100,
+          settlementPercent: 0,
+        }
+      : {
+          brokerPercent: Number(commissionSplit?.brokerPercent ?? commissionSplit?.brokerPercentage ?? 10),
+          employeePercent: Number(commissionSplit?.employeePercent ?? commissionSplit?.employeePercentage ?? 40),
+          officePercent: Number(commissionSplit?.officePercent ?? commissionSplit?.officeExpensePercentage ?? 10),
+          adminPercent: Number(commissionSplit?.adminPercent ?? commissionSplit?.adminSharePercentage ?? 35),
+          settlementPercent: Number(commissionSplit?.settlementPercent ?? commissionSplit?.settlementReservePercentage ?? 5),
+        };
 
     const commissionAmounts = calculateCommissionAmounts(numValue, split, discountPercent);
 
@@ -795,6 +805,27 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
         await ProjectEmployee.deleteMany({
           projectId: project._id,
         });
+
+        // If no employees assigned, 100% of share automatically goes to Admin
+        const split100Admin = {
+          brokerPercent: 0,
+          employeePercent: 0,
+          officePercent: 0,
+          adminPercent: 100,
+          settlementPercent: 0,
+        };
+        const updatedAmounts = calculateCommissionAmounts(currentGross, split100Admin, currentDiscPercent);
+        let commission = await ProjectCommission.findOne({ projectId: project._id });
+        if (commission) {
+          Object.assign(commission, updatedAmounts);
+          await commission.save();
+        } else {
+          await ProjectCommission.create({
+            projectId: project._id,
+            ...updatedAmounts,
+            createdBy: req.user!._id,
+          });
+        }
       }
     }
 

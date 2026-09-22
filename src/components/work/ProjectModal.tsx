@@ -59,8 +59,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       return Boolean(emp?.isStar);
     });
 
-    if (starSelected) {
-      if (!hasStarEmployee) {
+    if (vals.length === 0) {
+      if (!hasStarEmployee && formData.assignedEmployees.length > 0) {
         setSavedNonStarSplit(commissionSplit);
       }
       setCommissionSplit({
@@ -70,7 +70,18 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         adminPercent: 100,
         settlementPercent: 0,
       });
-    } else if (hasStarEmployee) {
+    } else if (starSelected) {
+      if (!hasStarEmployee && formData.assignedEmployees.length > 0) {
+        setSavedNonStarSplit(commissionSplit);
+      }
+      setCommissionSplit({
+        brokerPercent: 0,
+        employeePercent: 0,
+        officePercent: 0,
+        adminPercent: 100,
+        settlementPercent: 0,
+      });
+    } else {
       setCommissionSplit(savedNonStarSplit || {
         brokerPercent: 10,
         employeePercent: 40,
@@ -126,7 +137,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         return Boolean(emp?.isStar);
       });
 
-      if (starSelected) {
+      if (assignedEmployees.length === 0 || starSelected) {
         setCommissionSplit({
           brokerPercent: 0,
           employeePercent: 0,
@@ -136,13 +147,15 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         });
       } else {
         const comm = project.commission || {};
-        setCommissionSplit({
+        const loadedSplit = {
           brokerPercent: Number(comm.brokerPercent ?? comm.brokerPercentage ?? 10),
           employeePercent: Number(comm.employeePercent ?? comm.employeePercentage ?? 40),
           officePercent: Number(comm.officePercent ?? comm.officeExpensePercentage ?? 10),
           adminPercent: Number(comm.adminPercent ?? comm.adminSharePercentage ?? 35),
           settlementPercent: Number(comm.settlementPercent ?? comm.settlementReservePercentage ?? 5),
-        });
+        };
+        setCommissionSplit(loadedSplit);
+        setSavedNonStarSplit(loadedSplit);
       }
     } else {
       setFormData({
@@ -156,12 +169,21 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         description: '',
       });
 
-      // 1. Instant load from local storage
+      // No employees assigned initially: 100% Admin
+      setCommissionSplit({
+        brokerPercent: 0,
+        employeePercent: 0,
+        officePercent: 0,
+        adminPercent: 100,
+        settlementPercent: 0,
+      });
+
+      // 1. Instant load presets into savedNonStarSplit from local storage
       const cached = localStorage.getItem('default_project_commission_split');
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
-          setCommissionSplit({
+          setSavedNonStarSplit({
             brokerPercent: Number(parsed.brokerPercent ?? parsed.broker ?? 10),
             employeePercent: Number(parsed.employeePercent ?? parsed.employee ?? 40),
             officePercent: Number(parsed.officePercent ?? parsed.officeExpense ?? 10),
@@ -169,10 +191,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             settlementPercent: Number(parsed.settlementPercent ?? parsed.settlementReserve ?? 5),
           });
         } catch (_) {
-          setCommissionSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
+          setSavedNonStarSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
         }
       } else {
-        setCommissionSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
+        setSavedNonStarSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
       }
 
       // 2. Fetch server default preset to ensure perfect synchronization
@@ -187,7 +209,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               adminPercent: Number(p.adminPercent ?? 35),
               settlementPercent: Number(p.settlementPercent ?? 5),
             };
-            setCommissionSplit(updated);
+            setSavedNonStarSplit(updated);
             localStorage.setItem('default_project_commission_split', JSON.stringify(updated));
           }
         })
@@ -217,7 +239,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       return;
     }
 
-    const splitToUse = hasStarEmployee
+    const is100Admin = hasStarEmployee || formData.assignedEmployees.length === 0;
+    const splitToUse = is100Admin
       ? {
           brokerPercent: 0,
           employeePercent: 0,
@@ -418,7 +441,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
             />
           </div>
 
-          {/* Project-Specific 5-Tier Commission Split Configuration or Star Notice */}
+          {/* Project-Specific 5-Tier Commission Split Configuration, Star Notice, or No Employees Notice */}
           {hasStarEmployee ? (
             <div className="p-4 rounded-xl bg-gradient-to-r from-[#FF5A1F]/10 via-[#0a0b10] to-[#FF5A1F]/5 border border-[#FF5A1F]/25 text-xs animate-fade-in space-y-2">
               <div className="flex items-center justify-between">
@@ -440,6 +463,29 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               </div>
               <p className="text-[11px] text-zinc-400 pl-8">
                 Star team member selected. The commission split box is hidden, and 100% project share is assigned directly to Admin.
+              </p>
+            </div>
+          ) : formData.assignedEmployees.length === 0 ? (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-[#FF5A1F]/10 via-[#0a0b10] to-[#FF5A1F]/5 border border-[#FF5A1F]/25 text-xs animate-fade-in space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-[#FF5A1F]/20 border border-[#FF5A1F]/30 flex items-center justify-center text-[#FF5A1F]">
+                    <Users className="w-3.5 h-3.5 text-[#FF5A1F]" />
+                  </div>
+                  <div>
+                    <span className="font-semibold text-white text-xs">No Team Member Assigned</span>
+                    <span className="ml-2 text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#FF5A1F]/20 text-[#FF5A1F] font-bold border border-[#FF5A1F]/30">
+                      100% Admin Share
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[11px] font-mono text-[#FF5A1F] font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#FF5A1F]" />
+                  <span>100.0% / 100%</span>
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 pl-8">
+                No team member assigned to this project. The commission split box is hidden, and 100% project share is assigned directly to Admin.
               </p>
             </div>
           ) : (
