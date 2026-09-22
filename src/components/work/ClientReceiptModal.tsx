@@ -92,12 +92,55 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   const [taxPercent, setTaxPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [projectDiscounts, setProjectDiscounts] = useState<Record<string, number>>({});
+  const [projectSubProjects, setProjectSubProjects] = useState<Record<string, string[]>>(() => {
+    const initial: Record<string, string[]> = {};
+    (initialProjects || []).forEach((p: any) => {
+      if (Array.isArray(p.subProjects) && p.subProjects.length > 0) {
+        initial[p._id] = p.subProjects;
+      } else if (p.description && typeof p.description === 'string' && p.description.trim()) {
+        initial[p._id] = p.description.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+      }
+    });
+    return initial;
+  });
+  const [subProjectInputs, setSubProjectInputs] = useState<Record<string, string>>({});
 
   const handleProjectDiscountChange = (projectId: string, val: number) => {
     setProjectDiscounts((prev) => ({
       ...prev,
       [projectId]: Math.max(0, val),
     }));
+  };
+
+  const handleAddSubProject = (projectId: string) => {
+    const raw = (subProjectInputs[projectId] || '').trim();
+    if (!raw) return;
+    const lines = raw.split('\n').map((s) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+    if (lines.length === 0) return;
+    const updated = [...(projectSubProjects[projectId] || []), ...lines];
+    setProjectSubProjects((prev) => ({
+      ...prev,
+      [projectId]: updated,
+    }));
+    setSubProjectInputs((prev) => ({ ...prev, [projectId]: '' }));
+
+    // Persist description to project in background
+    api.put(`/admin/projects/${projectId}`, { description: updated.join('\n') }).catch((err) => {
+      console.error('Failed to auto-save project description:', err);
+    });
+  };
+
+  const handleRemoveSubProject = (projectId: string, index: number) => {
+    const updated = (projectSubProjects[projectId] || []).filter((_, i) => i !== index);
+    setProjectSubProjects((prev) => ({
+      ...prev,
+      [projectId]: updated,
+    }));
+
+    // Persist description to project in background
+    api.put(`/admin/projects/${projectId}`, { description: updated.join('\n') }).catch((err) => {
+      console.error('Failed to auto-save project description:', err);
+    });
   };
 
   // Quick inline project creation form
@@ -517,6 +560,9 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
           date: d.date,
         }))));
       }
+      if (Object.keys(projectSubProjects).length > 0) {
+        params.append('projectDescriptions', JSON.stringify(projectSubProjects));
+      }
 
       const res = await api.get(`/admin/clients/${client._id}/pdf?${params.toString()}`, {
         responseType: 'blob',
@@ -805,23 +851,87 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                           </div>
                         </div>
 
-                        {/* Manual Discount for this project */}
+                        {/* Manual Discount & Sub-projects for this project */}
                         {isSelected && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="mt-3 pt-2.5 border-t border-white/10 flex items-center gap-2 text-xs"
+                            className="mt-3 pt-2.5 border-t border-white/10 space-y-3 text-xs"
                           >
-                            <span className="text-white/60 font-medium text-[11.5px]">Add Discount (₹):</span>
-                            <div className="relative">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40 font-mono text-xs">₹</span>
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="0"
-                                value={currentDiscount || ''}
-                                onChange={(e) => handleProjectDiscountChange(p._id, Number(e.target.value))}
-                                className="w-28 pl-6 pr-2.5 py-1 bg-black/80 border border-white/15 rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                              />
+                            <div className="flex items-center gap-2">
+                              <span className="text-white/60 font-medium text-[11.5px]">Add Discount (₹):</span>
+                              <div className="relative">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40 font-mono text-xs">₹</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  value={currentDiscount || ''}
+                                  onChange={(e) => handleProjectDiscountChange(p._id, Number(e.target.value))}
+                                  className="w-28 pl-6 pr-2.5 py-1 bg-black/80 border border-white/15 rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Sub-projects / Description section */}
+                            <div className="pt-2 border-t border-white/5 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-white/60 font-medium text-[11.5px]">
+                                  Sub-projects / Description:
+                                </span>
+                                {(projectSubProjects[p._id] || []).length > 0 && (
+                                  <span className="text-[10px] font-mono text-[#FF5A1F] font-bold px-1.5 py-0.5 rounded bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+                                    {(projectSubProjects[p._id] || []).length} added
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="Type sub-project / task (e.g. Logo Design) and press Enter..."
+                                  value={subProjectInputs[p._id] || ''}
+                                  onChange={(e) => setSubProjectInputs((prev) => ({ ...prev, [p._id]: e.target.value }))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddSubProject(p._id);
+                                    }
+                                  }}
+                                  className="flex-1 px-3 py-1.5 bg-black/80 border border-white/15 rounded-lg text-white text-xs focus:border-[#FF5A1F] focus:outline-none placeholder:text-white/30"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddSubProject(p._id)}
+                                  className="px-3 py-1.5 rounded-lg bg-[#FF5A1F]/20 text-[#FF5A1F] hover:bg-[#FF5A1F] hover:text-white border border-[#FF5A1F]/30 text-xs font-semibold transition-all cursor-pointer shrink-0"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+
+                              {/* Added sub-projects list with orange bullets */}
+                              {(projectSubProjects[p._id] || []).length > 0 && (
+                                <div className="space-y-1 pt-0.5">
+                                  {(projectSubProjects[p._id] || []).map((sub, sIdx) => (
+                                    <div
+                                      key={sIdx}
+                                      className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/5 text-xs group"
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                                        <span className="text-[#FF5A1F] font-black text-sm select-none leading-none">•</span>
+                                        <span className="text-white/85 text-[11.5px] truncate">{sub}</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveSubProject(p._id, sIdx)}
+                                        className="text-white/30 hover:text-rose-400 p-0.5 rounded transition-colors cursor-pointer shrink-0"
+                                        title="Remove sub-project"
+                                      >
+                                        <X className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
@@ -1101,17 +1211,29 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                           const pTotal = targetTotal;
                           return (
                             <tr key={p._id} className="hover:bg-white/[0.01]">
-                              <td className="py-3 px-3 text-[#71717A]">{idx + 1}</td>
-                              <td className="py-3 px-3 font-semibold text-white">
-                                {p.projectName || p.title}
+                              <td className="py-3 px-3 text-[#71717A] align-top">{idx + 1}</td>
+                              <td className="py-3 px-3 align-top">
+                                <div className="font-semibold text-white">
+                                  {p.projectName || p.title}
+                                </div>
+                                {(projectSubProjects[p._id] || []).length > 0 && (
+                                  <ul className="mt-1.5 space-y-1">
+                                    {(projectSubProjects[p._id] || []).map((sub: string, sIdx: number) => (
+                                      <li key={sIdx} className="flex items-start gap-1.5 text-[11px] text-zinc-300 leading-tight">
+                                        <span className="text-[#FF5A1F] font-bold text-xs select-none leading-none">•</span>
+                                        <span>{sub}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
                               </td>
-                              <td className="py-3 pl-6 pr-3 sm:pl-8 sm:pr-3 font-bold text-white w-28 sm:w-32 text-left">
+                              <td className="py-3 pl-6 pr-3 sm:pl-8 sm:pr-3 font-bold text-white w-28 sm:w-32 text-left align-top">
                                 {formatINR(pPrice)}
                               </td>
-                              <td className="py-3 pl-8 pr-3 sm:pl-10 sm:pr-3 text-zinc-300 w-28 sm:w-32 text-left">
+                              <td className="py-3 pl-8 pr-3 sm:pl-10 sm:pr-3 text-zinc-300 w-28 sm:w-32 text-left align-top">
                                 {pDiscount > 0 ? `-${formatINR(pDiscount)}` : '₹0'}
                               </td>
-                              <td className="py-3 pl-12 pr-2 sm:pl-16 sm:pr-3 font-bold text-white w-32 sm:w-36 text-left">
+                              <td className="py-3 pl-12 pr-2 sm:pl-16 sm:pr-3 font-bold text-white w-32 sm:w-36 text-left align-top">
                                 {formatINR(pTotal)}
                               </td>
                             </tr>

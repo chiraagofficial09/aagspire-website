@@ -16,6 +16,7 @@ export interface ClientStatementProjectItem {
   balance: number;
   startDate?: string;
   deadline?: string;
+  subProjects?: string[];
 }
 
 export interface ClientStatementDeductionItem {
@@ -50,7 +51,7 @@ export interface ClientStatementPdfData {
   deductions?: ClientStatementDeductionItem[];
 }
 
-const allTerms = [
+const allTerms: string[] = [
   'All prices listed are average estimates and may vary based on project complexity, scope of work, and client requirements.',
   '2 revisions are included in the base price. Additional revisions will be chargeable.',
   'A 50% deposit is required to initiate the project.',
@@ -94,7 +95,10 @@ function calculateStatementHeight(
 
   y += 22; // Table header
   const items = data.projects && data.projects.length > 0 ? data.projects : [];
-  y += items.length * 32;
+  items.forEach((proj) => {
+    const subCount = proj.subProjects?.length || 0;
+    y += 32 + (subCount * 13);
+  });
   if (items.length === 0) y += 34;
   y += 12 + 16;
 
@@ -337,7 +341,9 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
 
   items.forEach((proj, idx) => {
     cursorY += 10;
-    const rowH = 26;
+    const subList = proj.subProjects || [];
+    const extraH = subList.length * 13;
+    const rowH = 26 + extraH;
 
     // Row bottom separator line
     doc.strokeColor('#161616').lineWidth(0.5).moveTo(contentX, cursorY + rowH - 4).lineTo(contentX + contentW, cursorY + rowH - 4).stroke();
@@ -349,6 +355,18 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
     // Project Name
     doc.font(boldFont).fillColor('#FFFFFF').fontSize(8.5);
     doc.text(proj.projectName || proj.projectCode, colX_Project, cursorY + 3, { width: colX_Price - colX_Project - 10, ellipsis: true });
+
+    // Sub-projects with orange bullet points
+    if (subList.length > 0) {
+      let subY = cursorY + 16;
+      subList.forEach((sub) => {
+        doc.font(boldFont).fillColor('#FF5A1F').fontSize(9);
+        doc.text('•', colX_Project + 2, subY - 0.5);
+        doc.font(regularFont).fillColor('#D4D4D8').fontSize(7.5);
+        doc.text(sub, colX_Project + 10, subY, { width: colX_Price - colX_Project - 20, ellipsis: true });
+        subY += 13;
+      });
+    }
 
     // Price (₹) - Right side position, left aligned values
     const pVal = proj.grossProjectValue ?? proj.projectValue;

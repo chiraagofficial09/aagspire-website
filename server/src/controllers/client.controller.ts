@@ -568,6 +568,16 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       }
     }
 
+    let customDescriptions: Record<string, string[]> = {};
+    const rawProjectDescriptions = (req.query.projectDescriptions as string) || req.body?.projectDescriptions;
+    if (rawProjectDescriptions) {
+      try {
+        customDescriptions = typeof rawProjectDescriptions === 'string' ? JSON.parse(rawProjectDescriptions) : rawProjectDescriptions;
+      } catch (e) {
+        customDescriptions = {};
+      }
+    }
+
     // Allocate client payments across projects
     const projectPaymentsMap = new Map<string, number>();
     for (const pm of rawPayments) {
@@ -605,6 +615,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         ? Number(customDiscounts[pIdStr]) || 0
         : (p.discountAmount ? fromDecimal(p.discountAmount) : 0);
       const grossPrice = round2(val + manualDiscount);
+      const manualSubProjects = customDescriptions[pIdStr] || (p.description ? p.description.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean) : []);
       return {
         projectCode: p.projectCode,
         projectName: p.projectName,
@@ -617,6 +628,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         balance: Math.max(0, round2(val - paid)),
         startDate: p.startDate ? new Date(p.startDate).toLocaleDateString('en-IN') : undefined,
         deadline: p.deadline ? new Date(p.deadline).toLocaleDateString('en-IN') : undefined,
+        subProjects: manualSubProjects,
       };
     });
 
