@@ -320,8 +320,8 @@ export const AdminEmployeeDetails: React.FC = () => {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-[#FF5A1F] tracking-tight">{employee.fullName || employee.name}</h1>
               {employee.isStar && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.25)]">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/40 shadow-[0_0_12px_rgba(255,90,31,0.25)]">
+                  <Star className="w-3.5 h-3.5 fill-[#FF5A1F] text-[#FF5A1F]" />
                   <span>Star Member</span>
                 </span>
               )}
@@ -688,9 +688,9 @@ export const AdminEmployeeDetails: React.FC = () => {
               </div>
 
               {/* Star Member Toggle */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-[#FF5A1F]/5 border border-[#FF5A1F]/20">
                 <div className="flex items-center gap-2">
-                  <Star className={`w-4 h-4 ${editForm.isStar ? 'text-amber-400 fill-amber-400' : 'text-white/40'}`} />
+                  <Star className={`w-4 h-4 ${editForm.isStar ? 'text-[#FF5A1F] fill-[#FF5A1F]' : 'text-white/40'}`} />
                   <div>
                     <div className="text-xs font-semibold text-white">Star Team Member</div>
                     <div className="text-[11px] text-white/50">Assigning this member gives 100% project commission to Admin</div>
@@ -700,7 +700,7 @@ export const AdminEmployeeDetails: React.FC = () => {
                   type="button"
                   onClick={() => setEditForm((prev) => ({ ...prev, isStar: !prev.isStar }))}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
-                    editForm.isStar ? 'bg-amber-500' : 'bg-white/20'
+                    editForm.isStar ? 'bg-[#FF5A1F]' : 'bg-white/20'
                   }`}
                 >
                   <span

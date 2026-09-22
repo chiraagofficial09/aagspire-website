@@ -420,21 +420,21 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
           {/* Project-Specific 5-Tier Commission Split Configuration or Star Notice */}
           {hasStarEmployee ? (
-            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-[#0a0b10] to-amber-500/5 border border-amber-500/25 text-xs animate-fade-in space-y-2">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-[#FF5A1F]/10 via-[#0a0b10] to-[#FF5A1F]/5 border border-[#FF5A1F]/25 text-xs animate-fade-in space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-300">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <div className="w-6 h-6 rounded-lg bg-[#FF5A1F]/20 border border-[#FF5A1F]/30 flex items-center justify-center text-[#FF5A1F]">
+                    <Star className="w-3.5 h-3.5 fill-[#FF5A1F] text-[#FF5A1F]" />
                   </div>
                   <div>
                     <span className="font-semibold text-white text-xs">Star Team Member Assigned</span>
-                    <span className="ml-2 text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+                    <span className="ml-2 text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#FF5A1F]/20 text-[#FF5A1F] font-bold border border-[#FF5A1F]/30">
                       100% Admin Share
                     </span>
                   </div>
                 </div>
-                <span className="text-[11px] font-mono text-amber-300 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[11px] font-mono text-[#FF5A1F] font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#FF5A1F]" />
                   <span>100.0% / 100%</span>
                 </span>
               </div>

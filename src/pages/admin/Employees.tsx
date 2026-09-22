@@ -250,8 +250,8 @@ export const AdminEmployees: React.FC = () => {
                             <div className="font-semibold text-white text-sm flex items-center gap-1.5">
                               <span>{displayName}</span>
                               {emp.isStar && (
-                                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                                  <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold bg-[#FF5A1F]/15 text-[#FF5A1F] border border-[#FF5A1F]/30 flex items-center gap-1">
+                                  <Star className="w-2.5 h-2.5 fill-[#FF5A1F] text-[#FF5A1F]" />
                                   STAR
                                 </span>
                               )}
@@ -441,9 +441,9 @@ export const AdminEmployees: React.FC = () => {
 
               {/* Star Employee Toggle - Only available when editing team member */}
               {editingEmployee && (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-[#0e0f16] border border-white/[0.06]">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-[#FF5A1F]/5 border border-[#FF5A1F]/20">
                   <div className="flex items-center gap-2.5">
-                    <Star className={`w-4 h-4 ${formData.isStar ? 'fill-amber-400 text-amber-400' : 'text-zinc-500'}`} />
+                    <Star className={`w-4 h-4 ${formData.isStar ? 'fill-[#FF5A1F] text-[#FF5A1F]' : 'text-zinc-500'}`} />
                     <div>
                       <span className="font-semibold text-white block text-xs">Star Team Member</span>
                       <span className="text-[11px] text-zinc-500 block">
@@ -455,7 +455,7 @@ export const AdminEmployees: React.FC = () => {
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, isStar: !prev.isStar }))}
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
-                      formData.isStar ? 'bg-amber-500' : 'bg-zinc-700'
+                      formData.isStar ? 'bg-[#FF5A1F]' : 'bg-zinc-700'
                     }`}
                   >
                     <span
