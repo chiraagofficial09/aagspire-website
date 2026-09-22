@@ -6,10 +6,8 @@ import {
   Pencil,
   Trash2,
   MoreVertical,
-  Sliders,
   Calendar,
   CheckCircle2,
-  Clock,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
@@ -298,7 +296,7 @@ export const AdminProjects: React.FC = () => {
               {prj.assignedEmployees.map((emp: any) => (
                 <span
                   key={emp._id || emp}
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.08] text-xs text-zinc-200"
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-zinc-200"
                   title={`${emp.fullName || emp.name} (${emp.employeeCode || 'EMP'})`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
@@ -341,7 +339,7 @@ export const AdminProjects: React.FC = () => {
                     setActiveMenuId(null);
                   } else {
                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                    const menuHeight = 160;
+                    const menuHeight = 85;
                     const menuWidth = 168;
                     const spaceBelow = window.innerHeight - rect.bottom;
                     const shouldFlipUp = spaceBelow < menuHeight && rect.top >= menuHeight;
@@ -574,22 +572,6 @@ export const AdminProjects: React.FC = () => {
               <Pencil className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
               <span>Edit Project</span>
             </button>
-            <Link
-              to={`/admin/commissions`}
-              onClick={() => setActiveMenuId(null)}
-              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-[#FF5A1F] hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer whitespace-nowrap"
-            >
-              <Sliders className="w-3.5 h-3.5 text-[#FF5A1F] shrink-0" />
-              <span>Commission Split</span>
-            </Link>
-            <Link
-              to="/admin/work-logs"
-              onClick={() => setActiveMenuId(null)}
-              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-[#FF5A1F] hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer whitespace-nowrap"
-            >
-              <Clock className="w-3.5 h-3.5 text-[#FF5A1F] shrink-0" />
-              <span>Work Logs</span>
-            </Link>
             <button
               onClick={() => handleDelete(activePrj._id || activePrj.id, activePrj.projectName || activePrj.title)}
               className="w-full text-left px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer whitespace-nowrap"
