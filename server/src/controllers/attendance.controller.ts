@@ -143,15 +143,15 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
         .filter((p) => p && (p.projectId || p._id))
         .map((p) => ({
           projectId: String(p.projectId || p._id),
-          status: p.status === 'completed' ? 'completed' : 'in_progress',
+          status: (p.status === 'delivered' || p.status === 'completed') ? 'delivered' : (p.status || 'in_process'),
         }));
     } else if (Array.isArray(projectIds) && projectIds.length > 0) {
       incomingProjects = projectIds.map((id: string) => ({
         projectId: String(id),
-        status: 'in_progress',
+        status: 'in_process',
       }));
     } else if (projectId && mongoose.Types.ObjectId.isValid(projectId)) {
-      incomingProjects = [{ projectId: String(projectId), status: 'in_progress' }];
+      incomingProjects = [{ projectId: String(projectId), status: 'in_process' }];
     }
 
     const updatedProjectsSummary: { id: any; name: string; code?: string; status: string }[] = [];
@@ -162,19 +162,19 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
       if (proj) {
         const oldStatus = proj.status;
         // Update project status
-        if (item.status === 'completed') {
-          proj.status = 'completed';
+        if (item.status === 'delivered' || item.status === 'completed') {
+          proj.status = 'delivered';
           proj.deliveredAt = new Date();
           await proj.save();
 
           await WorkLog.updateMany(
             { 'projectsWorked.projectId': proj._id },
-            { $set: { 'projectsWorked.$[elem].status': 'completed' } },
+            { $set: { 'projectsWorked.$[elem].status': 'delivered' } },
             { arrayFilters: [{ 'elem.projectId': proj._id }] }
           ).catch(() => {});
-        } else if (item.status === 'in_progress') {
-          if (proj.status !== 'completed' && proj.status !== 'delivered') {
-            proj.status = 'in_progress';
+        } else if (['start_process', 'in_process', 'in_changes'].includes(item.status || '')) {
+          if (proj.status !== 'delivered') {
+            proj.status = item.status as any;
             await proj.save();
           }
         }
@@ -194,7 +194,7 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
           id: proj._id,
           name: proj.projectName,
           code: proj.projectCode,
-          status: item.status === 'completed' ? 'completed' : 'in_progress',
+          status: (item.status === 'delivered' || item.status === 'completed') ? 'delivered' : (item.status || 'in_process'),
         });
       }
     }
@@ -207,15 +207,15 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
     if (updatedProjectsSummary.length === 1) {
       const p = updatedProjectsSummary[0];
       singleTaskName = p.name;
-      singleDescription = p.status === 'completed' ? 'Project completed.' : 'Ongoing project work (in progress).';
+      singleDescription = p.status === 'delivered' ? 'Project delivered.' : 'Ongoing project work (in process).';
       primaryProjectId = p.id;
     } else if (updatedProjectsSummary.length > 1) {
       singleTaskName = `Daily Shift Work (${updatedProjectsSummary.length} Projects)`;
-      const completedList = updatedProjectsSummary.filter((p) => p.status === 'completed').map((p) => p.name);
-      const inProgressList = updatedProjectsSummary.filter((p) => p.status !== 'completed').map((p) => p.name);
+      const deliveredList = updatedProjectsSummary.filter((p) => p.status === 'delivered').map((p) => p.name);
+      const inProcessList = updatedProjectsSummary.filter((p) => p.status !== 'delivered').map((p) => p.name);
       const parts: string[] = [];
-      if (completedList.length > 0) parts.push(`Completed: ${completedList.join(', ')}`);
-      if (inProgressList.length > 0) parts.push(`In Progress: ${inProgressList.join(', ')}`);
+      if (deliveredList.length > 0) parts.push(`Delivered: ${deliveredList.join(', ')}`);
+      if (inProcessList.length > 0) parts.push(`In Process: ${inProcessList.join(', ')}`);
       singleDescription = parts.join(' | ');
       primaryProjectId = undefined;
     }

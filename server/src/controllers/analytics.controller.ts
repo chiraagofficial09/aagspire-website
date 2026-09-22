@@ -190,7 +190,7 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
     });
 
     const activeProjects = enrichedAssignedProjects.filter((p) =>
-      ['confirmed', 'in_progress', 'review'].includes(p.status)
+      ['start_process', 'in_process', 'in_changes'].includes(p.status)
     );
     const completedProjects = enrichedAssignedProjects.filter((p) =>
       ['completed', 'delivered'].includes(p.status)

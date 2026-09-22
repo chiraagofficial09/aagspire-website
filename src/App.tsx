@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/work/ProtectedRoute';
 import { ToastProvider } from './components/work/Toast';
+import { AlertProvider } from './context/AlertContext';
 import { NotificationProvider } from './context/NotificationContext';
 
 // Public site components (eager loaded for instant first render)
@@ -47,7 +48,6 @@ const AdminWorkLogs = lazy(() => import('./pages/admin/WorkLogs').then((m) => ({
 const AdminAttendance = lazy(() => import('./pages/admin/Attendance').then((m) => ({ default: m.AdminAttendance })));
 const AdminPayments = lazy(() => import('./pages/admin/Payments').then((m) => ({ default: m.AdminPayments })));
 const AdminCommissions = lazy(() => import('./pages/admin/Commissions').then((m) => ({ default: m.AdminCommissions })));
-const AdminReceipts = lazy(() => import('./pages/admin/Receipts').then((m) => ({ default: m.AdminReceipts })));
 const AdminOfficeExpenses = lazy(() => import('./pages/admin/OfficeExpenses').then((m) => ({ default: m.AdminOfficeExpenses })));
 const AdminSettings = lazy(() => import('./pages/admin/Settings').then((m) => ({ default: m.AdminSettings })));
 
@@ -57,7 +57,6 @@ const EmployeeProjects = lazy(() => import('./pages/employee/Projects').then((m)
 const EmployeeProjectDetails = lazy(() => import('./pages/employee/ProjectDetails').then((m) => ({ default: m.EmployeeProjectDetails })));
 const EmployeeWork = lazy(() => import('./pages/employee/Work').then((m) => ({ default: m.EmployeeWork })));
 const EmployeeAttendance = lazy(() => import('./pages/employee/Attendance').then((m) => ({ default: m.EmployeeAttendance })));
-const EmployeeReceipts = lazy(() => import('./pages/employee/Receipts').then((m) => ({ default: m.EmployeeReceipts })));
 const EmployeeProfile = lazy(() => import('./pages/employee/Profile').then((m) => ({ default: m.EmployeeProfile })));
 
 const queryClient = new QueryClient();
@@ -137,7 +136,8 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <ToastProvider>
-            <NotificationProvider>
+            <AlertProvider>
+              <NotificationProvider>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Public Landing Page */}
@@ -192,7 +192,7 @@ export default function App() {
                     <Route path="commissions" element={<AdminCommissions />} />
                     <Route path="expenses" element={<AdminOfficeExpenses />} />
                     <Route path="settlements" element={<Navigate to="/admin/dashboard" replace />} />
-                    <Route path="receipts" element={<AdminReceipts />} />
+                    <Route path="receipts" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="analytics" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="reports" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="settings" element={<AdminSettings />} />
@@ -218,7 +218,7 @@ export default function App() {
                     <Route path="earnings" element={<Navigate to="/employee/dashboard" replace />} />
                     <Route path="commissions" element={<Navigate to="/employee/dashboard" replace />} />
                     <Route path="settlements" element={<Navigate to="/employee/dashboard" replace />} />
-                    <Route path="receipts" element={<EmployeeReceipts />} />
+                    <Route path="receipts" element={<Navigate to="/employee/dashboard" replace />} />
                     <Route path="reports" element={<Navigate to="/employee/receipts" replace />} />
                     <Route path="profile" element={<EmployeeProfile />} />
                   </Route>
@@ -228,8 +228,9 @@ export default function App() {
                 </Routes>
               </Suspense>
             </NotificationProvider>
-          </ToastProvider>
-        </AuthProvider>
+          </AlertProvider>
+        </ToastProvider>
+      </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );

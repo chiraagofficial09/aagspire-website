@@ -10,12 +10,14 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
+import { useAlert } from '../../context/AlertContext';
 import { formatINR } from '../../utils/formatters';
 import { EmptyState } from '../../components/work/EmptyState';
 import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
 
 export const AdminClients: React.FC = () => {
   const toast = useToast();
+  const { showConfirm } = useAlert();
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -87,14 +89,22 @@ export const AdminClients: React.FC = () => {
     fetchClients(selectedMonth);
   }, [selectedMonth]);
 
+  // Close popup menu on outside click or scroll
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setActiveMenuId(null);
       }
     };
+    const handleScroll = () => {
+      setActiveMenuId(null);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
   }, []);
 
   const openCreateModal = () => {
@@ -153,7 +163,14 @@ export const AdminClients: React.FC = () => {
 
   const handleDelete = async (id: string, name: string) => {
     setActiveMenuId(null);
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Client',
+      message: `Are you sure you want to delete "${name}"?`,
+      confirmText: 'Okay',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/admin/clients/${id}`);
       toast.success('Client deleted successfully');
@@ -179,7 +196,7 @@ export const AdminClients: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Clients</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">Clients</h1>
           <p className="text-xs text-zinc-400 mt-1">Manage client accounts, contract values, and payment balances.</p>
         </div>
         <button
@@ -215,37 +232,19 @@ export const AdminClients: React.FC = () => {
         </div>
       </div>
 
-      {/* Active Month Filter Notification Banner */}
-      {selectedMonth !== 'all' && (
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
-            <span className="text-zinc-300">
-              Showing client statistics for <span className="font-semibold text-white">{selectedMonthLabel}</span>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSelectedMonth('all')}
-            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
-          >
-            Show All Months
-          </button>
-        </div>
-      )}
 
       {/* Table */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left text-xs min-w-[620px]">
+          <table className="w-full text-left text-xs min-w-[860px]">
             <thead>
               <tr className="border-b border-white/[0.06]">
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CLIENT</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CONTACT</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TOTAL</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PAID</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">PENDING</th>
-                <th className="py-4 px-6 text-right"></th>
+                <th className="py-4 pl-6 pr-4 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[240px] max-w-[300px]">CLIENT</th>
+                <th className="py-4 pl-8 pr-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[210px]">CONTACT</th>
+                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[120px]">TOTAL</th>
+                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[120px]">PAID</th>
+                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[120px]">PENDING</th>
+                <th className="py-4 pl-4 pr-6 text-right w-[110px]"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
@@ -279,10 +278,15 @@ export const AdminClients: React.FC = () => {
 
                   return (
                     <tr key={client._id} className="hover:bg-white/[0.015] transition-colors">
-                      <td className="py-4 px-6">
-                        <div className="font-semibold text-white text-sm">{displayName}</div>
+                      <td className="py-4 pl-6 pr-4 min-w-[240px] max-w-[300px]">
+                        <div
+                          className="font-semibold text-white text-sm line-clamp-2 leading-snug break-words"
+                          title={displayName}
+                        >
+                          {displayName}
+                        </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 pl-8 pr-6 min-w-[210px]">
                         <div>
                           {client.contactPerson ? (
                             <>
@@ -305,29 +309,29 @@ export const AdminClients: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="text-sm font-semibold font-mono text-white">
+                      <td className="py-4 px-6 min-w-[120px]">
+                        <span className="text-sm font-semibold font-mono text-[#FF5A1F]">
                           {formatINR(totalContract)}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-6 min-w-[120px]">
                         <span className="text-sm font-semibold font-mono text-white/80">
                           {formatINR(totalPaid)}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className={`text-sm font-semibold font-mono ${balanceDue > 0 ? 'text-[#FF5A1F]' : 'text-emerald-400'}`}>
+                      <td className="py-4 px-6 min-w-[120px]">
+                        <span className="text-sm font-semibold font-mono text-white">
                           {formatINR(balanceDue)}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-right">
+                      <td className="py-4 pl-4 pr-6 text-right w-[110px]">
                         <div className="flex items-center justify-end gap-2 relative">
                           <Link
                             to={`/admin/clients/${client._id}`}
-                            className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 text-xs font-medium transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all"
                           >
                             <span>View</span>
-                            <span className="text-zinc-400">→</span>
+                            <span className="text-white/90">→</span>
                           </Link>
 
                           <div className="relative">
@@ -337,9 +341,18 @@ export const AdminClients: React.FC = () => {
                                   setActiveMenuId(null);
                                 } else {
                                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  const menuHeight = 90;
+                                  const menuWidth = 144;
+                                  const spaceBelow = window.innerHeight - rect.bottom;
+                                  const shouldFlipUp = spaceBelow < menuHeight && rect.top >= menuHeight;
+                                  const topPos = shouldFlipUp
+                                    ? Math.max(8, rect.top - menuHeight - 4)
+                                    : Math.min(window.innerHeight - menuHeight - 8, rect.bottom + 4);
+                                  const leftPos = Math.max(8, Math.min(window.innerWidth - menuWidth - 8, rect.right - menuWidth));
+
                                   setMenuPos({
-                                    top: rect.bottom + 4,
-                                    left: Math.max(8, Math.min(window.innerWidth - 136, rect.right - 128)),
+                                    top: topPos,
+                                    left: leftPos,
                                   });
                                   setActiveMenuId(client._id);
                                 }
@@ -378,7 +391,7 @@ export const AdminClients: React.FC = () => {
         return (
           <div
             ref={menuRef}
-            className="fixed w-32 bg-[#12131a] border border-white/[0.08] rounded-xl shadow-xl py-1 z-50"
+            className="fixed w-36 bg-[#12131a] border border-white/[0.08] rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100"
             style={{ top: menuPos.top, left: menuPos.left }}
           >
             <button
@@ -447,23 +460,23 @@ export const AdminClients: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Email *</label>
+                  <label className="text-zinc-400 block mb-1.5 font-medium">Phone *</label>
                   <input
-                    type="email"
+                    type="tel"
                     required
-                    placeholder="contact@brand.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="+91 98765 00000"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-[#12131a] border border-white/[0.08] rounded-xl text-white placeholder-zinc-600 focus:border-[#FF5A1F] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-zinc-400 block mb-1.5 font-medium">Phone</label>
+                  <label className="text-zinc-400 block mb-1.5 font-medium">Email</label>
                   <input
-                    type="tel"
-                    placeholder="+91 98765 00000"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    type="email"
+                    placeholder="contact@brand.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-[#12131a] border border-white/[0.08] rounded-xl text-white placeholder-zinc-600 focus:border-[#FF5A1F] focus:outline-none"
                   />
                 </div>

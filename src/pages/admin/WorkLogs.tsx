@@ -20,9 +20,11 @@ import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomCalendarDropdown } from '../../components/work/CustomCalendarDropdown';
 import { EmptyState } from '../../components/work/EmptyState';
 import { WorkLogCard, extractProjectsFromLog, ExtractedProject } from '../../components/work/WorkLogCard';
+import { useAlert } from '../../context/AlertContext';
 
 export const AdminWorkLogs: React.FC = () => {
   const toast = useToast();
+  const { showConfirm } = useAlert();
   const [workLogs, setWorkLogs] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export const AdminWorkLogs: React.FC = () => {
     });
 
     return [
-      { value: 'all', label: 'All employees' },
+      { value: 'all', label: 'All team members' },
       ...Array.from(map.entries()).map(([value, info]) => ({
         value,
         label: info.label,
@@ -109,9 +111,27 @@ export const AdminWorkLogs: React.FC = () => {
     }
   };
 
+  const handleDeleteWorkLog = async (id: string) => {
+    const confirmed = await showConfirm({
+      title: 'Delete Work Log',
+      message: 'Are you sure you want to delete this work log? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await api.delete(`/admin/work-logs/${id}`);
+      toast.success('Work log deleted successfully');
+      fetchWorkLogs();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to delete work log');
+    }
+  };
+
   const handleToggleProjectStatus = async (
     projectId: string | undefined,
-    targetStatus: 'completed' | 'in_progress'
+    targetStatus: 'delivered' | 'in_process'
   ) => {
     if (!projectId) {
       toast.error('No project linked to this deliverable');
@@ -121,9 +141,9 @@ export const AdminWorkLogs: React.FC = () => {
       setUpdatingProjectId(projectId);
       await api.patch(`/admin/projects/${projectId}`, { status: targetStatus });
       toast.success(
-        targetStatus === 'completed'
-          ? 'Project marked as completed!'
-          : 'Project reopened (in progress)'
+        targetStatus === 'delivered'
+          ? 'Project marked as delivered!'
+          : 'Project status updated to In Process'
       );
       fetchWorkLogs();
     } catch (err: any) {
@@ -189,7 +209,7 @@ export const AdminWorkLogs: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Work logs</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">Work logs</h1>
         <p className="text-xs text-zinc-400 mt-1">Review shift timesheets and monitor project deliverables.</p>
       </div>
 
@@ -246,6 +266,7 @@ export const AdminWorkLogs: React.FC = () => {
               log={log}
               showEmployee={true}
               onStatusUpdate={handleUpdateStatus}
+              onDelete={handleDeleteWorkLog}
             />
           ))}
         </div>

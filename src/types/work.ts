@@ -54,13 +54,10 @@ export interface ClientProfile {
 }
 
 export type ProjectStatus =
-  | 'lead'
-  | 'confirmed'
-  | 'in_progress'
-  | 'review'
-  | 'completed'
-  | 'delivered'
-  | 'cancelled';
+  | 'start_process'
+  | 'in_process'
+  | 'in_changes'
+  | 'delivered';
 
 export interface ProjectItem {
   _id: string;

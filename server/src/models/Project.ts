@@ -1,13 +1,10 @@
 import mongoose, { Document, Schema, Types } from 'mongoose';
 
 export type ProjectStatus =
-  | 'lead'
-  | 'confirmed'
-  | 'in_progress'
-  | 'review'
-  | 'completed'
-  | 'delivered'
-  | 'cancelled';
+  | 'start_process'
+  | 'in_process'
+  | 'in_changes'
+  | 'delivered';
 
 export interface IProject extends Document {
   projectCode: string;
@@ -41,8 +38,8 @@ const ProjectSchema = new Schema<IProject>(
     deliveredAt: { type: Date },
     status: {
       type: String,
-      enum: ['lead', 'confirmed', 'in_progress', 'review', 'completed', 'delivered', 'cancelled'],
-      default: 'confirmed',
+      enum: ['start_process', 'in_process', 'in_changes', 'delivered'],
+      default: 'start_process',
       index: true,
     },
     assignedEmployees: [{ type: Schema.Types.ObjectId, ref: 'Employee' }],

@@ -24,11 +24,21 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   const getBadgeStyle = (): { bg: string; text: string; dot: string; border: string; label: string } => {
     switch (normalized) {
-      // Primary / Active / Production states -> Website Ember Brand Color
+      // ── NEW 4 PROJECT STATUSES (All strictly Orange) ───────────────
+      case 'start_process':
+        return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'Start Process' };
+      case 'in_process':
+        return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'In Process' };
+      case 'in_changes':
+        return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'In Changes' };
+      case 'delivered':
+        return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'Delivered' };
+
+      // ── OTHER STATUS TYPES (non-project) ────────────────────────────
       case 'active':
         return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'Active' };
       case 'in_progress':
-        return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'In Progress' };
+        return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'In Process' };
       case 'urgent':
       case 'high':
         return { bg: 'bg-[#FF5A1F]/15', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/30', label: normalized === 'urgent' ? 'Urgent' : 'High' };
@@ -37,9 +47,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'changes_requested':
         return { bg: 'bg-[#FF5A1F]/10', text: 'text-[#FF5A1F]', dot: 'bg-[#FF5A1F]', border: 'border-[#FF5A1F]/25', label: 'Changes Requested' };
 
-      // Completed / Settled / Delivered / Approved states -> Crisp Luxury White + Subtle Ember Accent
       case 'completed':
-      case 'delivered':
       case 'approved':
       case 'paid':
       case 'present':
@@ -48,10 +56,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
           text: 'text-white',
           dot: 'bg-[#FF5A1F]',
           border: 'border-white/15',
-          label: normalized === 'paid' ? 'Paid' : normalized === 'approved' ? 'Approved' : normalized === 'present' ? 'Present' : normalized === 'delivered' ? 'Delivered' : 'Completed',
+          label: normalized === 'paid' ? 'Paid' : normalized === 'approved' ? 'Approved' : normalized === 'present' ? 'Present' : 'Completed',
         };
 
-      // Review / Draft / Staged states -> Sleek Clean Monochrome
       case 'review':
         return { bg: 'bg-white/5', text: 'text-zinc-200', dot: 'bg-white/60', border: 'border-white/10', label: 'In Review' };
       case 'confirmed':
@@ -67,7 +74,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
       case 'holiday':
         return { bg: 'bg-white/5', text: 'text-zinc-300', dot: 'bg-zinc-400', border: 'border-white/10', label: 'Holiday' };
 
-      // Errors / Rejections / Failures -> Muted Red
       case 'cancelled':
       case 'rejected':
       case 'failed':
@@ -80,9 +86,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
           label: normalized === 'absent' ? 'Absent' : normalized === 'rejected' ? 'Rejected' : normalized === 'cancelled' ? 'Cancelled' : 'Failed',
         };
 
-      // Roles & Priority Levels
       case 'employee':
-        return { bg: 'bg-white/5', text: 'text-zinc-300', dot: 'bg-white/40', border: 'border-white/10', label: 'Employee' };
+        return { bg: 'bg-white/5', text: 'text-zinc-300', dot: 'bg-white/40', border: 'border-white/10', label: 'Team Member' };
       case 'medium':
         return { bg: 'bg-white/5', text: 'text-zinc-300', dot: 'bg-zinc-400', border: 'border-white/10', label: 'Medium' };
       case 'low':

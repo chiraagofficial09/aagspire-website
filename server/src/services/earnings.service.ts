@@ -256,7 +256,7 @@ export async function calculateEmployeeEarnings(
       payableBalance: payableForProject,
       netPayable: payableForProject,
       pendingCommission: pendingForProject,
-      status: project.status || 'in_progress',
+      status: project.status || 'in_process',
       roleInProject: alloc.roleInProject || 'Creator',
       earnedAmount: earned,
     });

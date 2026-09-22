@@ -13,9 +13,11 @@ import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { EmptyState } from '../../components/work/EmptyState';
 import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
+import { useAlert } from '../../context/AlertContext';
 
 export const AdminPayments: React.FC = () => {
   const toast = useToast();
+  const { showConfirm } = useAlert();
   const [payments, setPayments] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,33 +94,33 @@ export const AdminPayments: React.FC = () => {
   const selClient = clients.find((c) => String(c._id) === String(formData.clientId));
   const contractVal = selClient
     ? Number(
-        selClient.totalContractValue ??
-        selClient.totalBusinessValue ??
-        selClient.financials?.totalContractValue ??
-        selClient.financials?.totalBusinessValue ??
-        0
-      )
+      selClient.totalContractValue ??
+      selClient.totalBusinessValue ??
+      selClient.financials?.totalContractValue ??
+      selClient.financials?.totalBusinessValue ??
+      0
+    )
     : 0;
   const receivedVal = selClient
     ? Number(
-        selClient.totalPaid ??
-        selClient.totalPaymentsReceived ??
-        selClient.financials?.totalPaid ??
-        selClient.financials?.totalPaymentsReceived ??
-        0
-      )
+      selClient.totalPaid ??
+      selClient.totalPaymentsReceived ??
+      selClient.financials?.totalPaid ??
+      selClient.financials?.totalPaymentsReceived ??
+      0
+    )
     : 0;
   const remainingDue = selClient
     ? Math.max(
-        0,
-        Math.round(
-          (selClient.outstanding !== undefined
-            ? selClient.outstanding
-            : selClient.pendingPayment !== undefined
+      0,
+      Math.round(
+        (selClient.outstanding !== undefined
+          ? selClient.outstanding
+          : selClient.pendingPayment !== undefined
             ? selClient.pendingPayment
             : contractVal - receivedVal) * 100
-        ) / 100
-      )
+      ) / 100
+    )
     : 0;
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -170,7 +172,14 @@ export const AdminPayments: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this payment record? This action will adjust outstanding balances.')) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Payment',
+      message: 'Delete this payment record? This will adjust outstanding balances and cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/admin/payments/${id}`);
       toast.success('Payment deleted successfully');
@@ -196,7 +205,7 @@ export const AdminPayments: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Payments</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">Payments</h1>
           <p className="text-xs text-zinc-400 mt-1">Track client payments and invoice transactions.</p>
         </div>
         <button
@@ -231,31 +240,13 @@ export const AdminPayments: React.FC = () => {
           />
           <div className="flex items-center justify-between sm:justify-start gap-2 px-3.5 py-2.5 rounded-xl bg-[#0d0e14] border border-white/[0.08]">
             <span className="text-xs text-zinc-500 uppercase tracking-wider">Total:</span>
-            <span className="text-xs font-semibold text-white font-mono">
+            <span className="text-xs font-semibold text-[#FF5A1F] font-mono">
               {formatINR(totalCollected)}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Active Month Filter Notification Banner */}
-      {selectedMonth !== 'all' && (
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
-            <span className="text-zinc-300">
-              Showing payments for <span className="font-semibold text-white">{selectedMonthLabel}</span>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSelectedMonth('all')}
-            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
-          >
-            Show All Months
-          </button>
-        </div>
-      )}
 
       {/* Table */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
@@ -288,7 +279,7 @@ export const AdminPayments: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="text-sm font-semibold text-white font-mono">
+                      <span className="text-sm font-semibold text-[#FF5A1F] font-mono">
                         {formatINR(p.amount || 0)}
                       </span>
                     </td>
@@ -382,8 +373,8 @@ export const AdminPayments: React.FC = () => {
                       c.outstanding !== undefined
                         ? c.outstanding
                         : c.pendingPayment !== undefined
-                        ? c.pendingPayment
-                        : Math.max(0, cVal - rPaid)
+                          ? c.pendingPayment
+                          : Math.max(0, cVal - rPaid)
                     );
                     const displayName = c.companyName || c.name || 'Unnamed Client';
                     return {
@@ -439,9 +430,8 @@ export const AdminPayments: React.FC = () => {
                   placeholder={selClient ? (remainingDue > 0 ? `Max allowed: ${remainingDue}` : '0') : "e.g. 50000"}
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className={`w-full px-3.5 py-2.5 bg-[#12131a] border rounded-xl text-white font-mono focus:outline-none ${
-                    selClient && contractVal > 0 && Number(formData.amount) > remainingDue ? 'border-red-500 focus:border-red-500' : 'border-white/[0.08] focus:border-[#FF5A1F]'
-                  }`}
+                  className={`w-full px-3.5 py-2.5 bg-[#12131a] border rounded-xl text-white font-mono focus:outline-none ${selClient && contractVal > 0 && Number(formData.amount) > remainingDue ? 'border-red-500 focus:border-red-500' : 'border-white/[0.08] focus:border-[#FF5A1F]'
+                    }`}
                 />
                 {selClient && contractVal > 0 && Number(formData.amount) > remainingDue && (
                   <p className="text-[11px] text-red-400 mt-1 font-medium">

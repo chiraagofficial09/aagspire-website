@@ -400,7 +400,7 @@ export async function calculateFinancialMetrics(options: {
   );
 
   const activeProjectsCount = currentMonthProjects.filter((p) =>
-    ['confirmed', 'in_progress', 'review'].includes(p.status)
+    ['start_process', 'in_process', 'in_changes'].includes(p.status)
   ).length;
 
   return {
@@ -529,7 +529,7 @@ export async function calculateEmployeeFinanceMetrics(
       sDate <= endDate &&
       (!dDate || dDate >= startDate) &&
       (!delDate || delDate >= startDate) &&
-      p.status !== 'cancelled'
+      (p.status as any) !== 'cancelled'
     );
 
     return isCreatedInMonth || isStartedInMonth || isActiveInMonth;
@@ -538,7 +538,7 @@ export async function calculateEmployeeFinanceMetrics(
   const relevantProjects =
     matchedProjects.length > 0
       ? matchedProjects
-      : allProjects.filter((p) => p.status !== 'cancelled');
+      : allProjects.filter((p) => (p.status as any) !== 'cancelled');
 
   for (const p of relevantProjects) {
     const pId = p._id.toString();
@@ -631,7 +631,7 @@ export async function calculateSettlementReserveMetrics(
       sDate <= endDate &&
       (!dDate || dDate >= startDate) &&
       (!delDate || delDate >= startDate) &&
-      p.status !== 'cancelled'
+      (p.status as any) !== 'cancelled'
     );
 
     return isCreatedInMonth || isStartedInMonth || isActiveInMonth;
@@ -640,7 +640,7 @@ export async function calculateSettlementReserveMetrics(
   const relevantProjects =
     matchedReserveProjects.length > 0
       ? matchedReserveProjects
-      : allProjects.filter((p) => p.status !== 'cancelled');
+      : allProjects.filter((p) => (p.status as any) !== 'cancelled');
 
   let settlementReserveExpected = 0;
   let settlementReserveAccrued = 0;

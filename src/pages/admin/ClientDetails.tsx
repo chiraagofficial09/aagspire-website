@@ -18,6 +18,8 @@ import {
   Wallet,
   Tag,
   Target,
+  Plus,
+  MinusCircle,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
@@ -26,6 +28,8 @@ import { ClientReceiptModal } from '../../components/work/ClientReceiptModal';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
+import { useAlert } from '../../context/AlertContext';
+import { StatusBadge } from '../../components/work/StatusBadge';
 
 const getProjectNetValue = (p: any): number => parseAmount(p?.projectValue ?? p?.totalAmount ?? p);
 const getPaymentAmount = (pm: any): number => parseAmount(pm?.amount ?? pm);
@@ -34,6 +38,7 @@ export const AdminClientDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
+  const { showConfirm } = useAlert();
   const [client, setClient] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -43,6 +48,39 @@ export const AdminClientDetails: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
 
+  // Deductions state (local, client-side entries)
+  interface DeductionEntry {
+    id: string;
+    label: string;
+    date: string;
+    amount: number;
+  }
+  const [deductions, setDeductions] = useState<DeductionEntry[]>([]);
+  const [isDeductionModalOpen, setIsDeductionModalOpen] = useState(false);
+  const [deductionLabel, setDeductionLabel] = useState('');
+  const [deductionDate, setDeductionDate] = useState(new Date().toISOString().split('T')[0]);
+  const [deductionAmount, setDeductionAmount] = useState('');
+
+  const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
+
+  const handleAddDeduction = (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(deductionAmount);
+    if (!amt || amt <= 0) return;
+    setDeductions(prev => [
+      ...prev,
+      { id: Date.now().toString(), label: deductionLabel || 'Project Deduction', date: deductionDate, amount: amt },
+    ]);
+    setDeductionLabel('');
+    setDeductionDate(new Date().toISOString().split('T')[0]);
+    setDeductionAmount('');
+    setIsDeductionModalOpen(false);
+  };
+
+  const handleRemoveDeduction = (id: string) => {
+    setDeductions(prev => prev.filter(d => d.id !== id));
+  };
+
   // Month-wise billing state
   const now = useMemo(() => new Date(), []);
   const currentMonthKey = useMemo(
@@ -50,6 +88,7 @@ export const AdminClientDetails: React.FC = () => {
     [now]
   );
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
+  const [selectedStatCard, setSelectedStatCard] = useState<number | null>(null);
 
   // Dropdown states
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
@@ -136,7 +175,14 @@ export const AdminClientDetails: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete "${client.companyName || client.name}"?`)) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Client',
+      message: `Are you sure you want to delete "${client.companyName || client.name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/admin/clients/${id}`);
       toast.success('Client deleted successfully');
@@ -380,7 +426,14 @@ export const AdminClientDetails: React.FC = () => {
   };
 
   const handleDeletePayment = async (paymentId: string) => {
-    if (!window.confirm('Are you sure you want to delete this payment record?')) return;
+    const confirmed = await showConfirm({
+      title: 'Delete Payment',
+      message: 'Are you sure you want to delete this payment record? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/admin/payments/${paymentId}`);
       toast.success('Payment record deleted successfully.');
@@ -426,7 +479,7 @@ export const AdminClientDetails: React.FC = () => {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl font-bold text-[#FF5A1F] tracking-tight">
               {client.name || client.companyName}
             </h1>
             <p className="text-xs text-white/50 font-normal mt-0.5">
@@ -535,30 +588,6 @@ export const AdminClientDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* Active Month Filter Notification Banner */}
-      {!isAllMonths && (
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
-            <span className="text-zinc-300">
-              Filtered for <span className="font-semibold text-white">{selectedMonthLabel}</span>
-            </span>
-            <span className="text-zinc-600 hidden sm:inline">&bull;</span>
-            <span className="text-zinc-400 hidden sm:inline">
-              {filteredProjects.length} {filteredProjects.length === 1 ? 'deal active' : 'deals active'} &bull; {filteredPayments.length} {filteredPayments.length === 1 ? 'payment' : 'payments'} in this month
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSelectedMonth('all')}
-            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
-          >
-            Show All Months
-          </button>
-        </div>
-      )}
-
-
       {/* Notice if Unapplied Cash or Excess Cash exists */}
       {(unappliedCash > 0 || excessCash > 0) && (
         <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-between gap-3 text-xs">
@@ -579,113 +608,133 @@ export const AdminClientDetails: React.FC = () => {
       {/* Financial Overview Card with 4 CONNECTED EQUATION CARDS */}
       <div className="rounded-2xl bg-[#0c0d12] border border-white/[0.06] p-6 sm:p-7 space-y-6">
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 lg:gap-3.5">
-          {/* Card 1: New Projects / Total Contract Value */}
-          <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
+          {/* Card 1: Total */}
+          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium text-white/50">
-                {isAllMonths ? 'Total Contract Value' : 'New Projects'}
-              </span>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
+              <span className="text-[11px] font-medium text-white/50">Total</span>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10">
                 <Layers className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-xl font-bold text-white tracking-tight">
+              <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
                 {formatINR(newProjectValue)}
               </p>
             </div>
           </div>
 
-       
-
-          {/* Card 2: Previous Month Due */}
-          <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
+          {/* Card 2: Done */}
+          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium text-white/50">Previous Month Due</span>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 text-white/70 border border-white/10">
+              <span className="text-[11px] font-medium text-white/50">Previous Month Pending</span>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10">
                 <Clock className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-xl font-bold text-white tracking-tight">
+              <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
                 {formatINR(openingReceivable)}
               </p>
             </div>
           </div>
 
-
-          {/* Card 3: Money Received This Month / Total Received */}
-          <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
+          {/* Card 3: Done */}
+          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium text-white/50">
-                {isAllMonths ? 'Total Received' : 'Money Received This Month'}
-              </span>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 text-white/70 border border-white/10">
+              <span className="text-[11px] font-medium text-white/50">Money Received This Month</span>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10">
                 <Wallet className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-xl font-bold text-white tracking-tight">
+              <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
                 {formatINR(cashCollected)}
               </p>
             </div>
           </div>
 
-          {/* Card 4: Remaining Due */}
-          <div className="flex-1 p-4 rounded-xl bg-white/[0.02] border border-white/5 transition-all duration-200 flex flex-col justify-between">
+          {/* Card 4: Pending */}
+          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium text-white/50">Remaining Due</span>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/5 text-white/70 border border-white/10">
+              <span className="text-[11px] font-medium text-white/50">Pending</span>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10">
                 <Tag className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="mt-3">
-              <p className="text-xl font-bold tracking-tight">
+              <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
                 {formatINR(closingReceivable)}
               </p>
             </div>
           </div>
+
+          {/* Card 5: Deductions */}
+          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium text-white/50">Deductions</span>
+              <button
+                type="button"
+                onClick={() => setIsDeductionModalOpen(true)}
+                className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10 hover:bg-[#FF5A1F]/20 hover:text-[#FF5A1F] hover:border-[#FF5A1F]/40 transition-colors cursor-pointer"
+                title="Add deduction"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="mt-3">
+              <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
+                {formatINR(totalDeductions)}
+              </p>
+              {totalDeductions > 0 && (
+                <p className="text-[10px] text-emerald-400 font-medium mt-1">
+                  Net: {formatINR(Math.max(0, closingReceivable - totalDeductions))}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Payment Progress Bar */}
-        <div className="space-y-2 pt-2 border-t border-white/5">
-          <div className="w-full bg-[#181920] h-2.5 rounded-full overflow-hidden">
-            <div
-              className="bg-[#FF5A1F] h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${allTimeContractVal > 0 ? Math.min(100, Math.round((allTimePaidVal / allTimeContractVal) * 100)) : 0}%`,
-              }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-xs text-white/50 font-normal">
-            <span>
-              {allTimeContractVal > 0
-                ? `${Math.min(100, Math.round((allTimePaidVal / allTimeContractVal) * 100))}% overall payment received (${formatINR(allTimePaidVal)} of ${formatINR(allTimeContractVal)})`
-                : 'No projects found'}
-            </span>
-            {!isAllMonths && (
-              <div className="flex items-center gap-2">
-                <span className="text-zinc-400">
-                  Filtered by <span className="text-white font-medium">{selectedMonthLabel}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMonth('all')}
-                  className="text-[#FF5A1F] hover:underline cursor-pointer"
-                >
-                  (Reset to all)
-                </button>
+        {/* Deductions List (shown if any exist) */}
+        {deductions.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] text-white/40 font-mono uppercase tracking-wider">Project Deductions</p>
+            <div className="space-y-1.5">
+              {deductions.map((d) => (
+                <div key={d.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.025] border border-white/5 text-xs">
+                  <div className="flex items-center gap-3">
+                    <MinusCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="text-white/80 font-medium">{d.label}</span>
+                    <span className="text-white/40 font-mono">{new Date(d.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono font-bold text-emerald-400">− {formatINR(d.amount)}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDeduction(d.id)}
+                      className="p-1 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-colors cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end pt-1">
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-white/50">Net Receivable after deductions:</span>
+                <span className="font-bold text-[#FF5A1F] text-sm">{formatINR(Math.max(0, closingReceivable - totalDeductions))}</span>
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Projects Card */}
       <div className="rounded-2xl bg-[#0c0d12] border border-white/[0.06] p-6 space-y-5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-white tracking-tight">Projects</h2>
+          <div className="flex items-center gap-2.5">
+            <span className="w-1 h-4 rounded-full bg-[#FF5A1F] shrink-0" />
+            <h2 className="text-lg font-bold text-[#FF5A1F] tracking-tight">Projects</h2>
             <span className="px-2.5 py-0.5 rounded-full bg-[#181920] border border-white/5 text-xs font-mono text-zinc-400">
               {filteredProjects.length}
             </span>
@@ -725,9 +774,7 @@ export const AdminClientDetails: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3.5 px-3">
-                      <span className="inline-flex items-center px-3 py-1 rounded-lg bg-[#181920] border border-white/5 text-xs text-zinc-300 font-medium capitalize">
-                        {p.status || 'Signed'}
-                      </span>
+                      <StatusBadge status={p.status || 'start_process'} type="project" />
                     </td>
                     <td className="py-3.5 px-3 font-mono font-medium text-white text-sm text-right sm:text-left">
                       {formatINR(p.projectValue ?? p.totalAmount)}
@@ -735,10 +782,10 @@ export const AdminClientDetails: React.FC = () => {
                     <td className="py-3.5 px-3 text-right">
                       <Link
                         to={`/admin/projects/${p._id}`}
-                        className="text-[#FF5A1F] hover:underline font-medium inline-flex items-center gap-1 text-xs"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all"
                       >
-                        <span>View details</span>
-                        <span>&rarr;</span>
+                        <span>View</span>
+                        <span className="text-white/90">&rarr;</span>
                       </Link>
                     </td>
                   </tr>
@@ -772,7 +819,10 @@ export const AdminClientDetails: React.FC = () => {
       <div className="rounded-2xl bg-[#0c0d12] border border-white/[0.06] p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-bold text-white tracking-tight">Payment history</h2>
+            <div className="flex items-center gap-2.5">
+              <span className="w-1 h-4 rounded-full bg-[#FF5A1F] shrink-0" />
+              <h2 className="text-lg font-bold text-[#FF5A1F] tracking-tight">Payment history</h2>
+            </div>
             <p className="text-xs text-white/50 font-normal mt-0.5">
               {isAllMonths ? (
                 <>
@@ -803,8 +853,6 @@ export const AdminClientDetails: React.FC = () => {
                 <th className="py-3 px-3 font-medium">DATE</th>
                 <th className="py-3 px-3 font-medium">AMOUNT</th>
                 <th className="py-3 px-3 font-medium">METHOD</th>
-                <th className="py-3 px-3 font-medium">REFERENCE</th>
-                <th className="py-3 px-3 font-medium">PROJECT</th>
                 <th className="py-3 px-3 font-medium">NOTES</th>
                 <th className="py-3 px-3 font-medium text-right">ACTION</th>
               </tr>
@@ -830,27 +878,11 @@ export const AdminClientDetails: React.FC = () => {
                       <td className="py-3.5 px-3 font-mono text-white/80">
                         {formattedDate}
                       </td>
-                      <td className="py-3.5 px-3 font-mono font-bold text-white">
+                      <td className="py-3.5 px-3 font-mono font-bold text-[#FF5A1F]">
                         {formatINR(p.amount || 0)}
                       </td>
                       <td className="py-3.5 px-3 text-white/70">
                         {methodDisplay}
-                      </td>
-                      <td className="py-3.5 px-3 font-mono text-white/50">
-                        {p.transactionReference || '—'}
-                      </td>
-                      <td className="py-3.5 px-3">
-                        {projId ? (
-                          <Link
-                            to={`/admin/projects/${projId}`}
-                            className="text-[#FF5A1F] hover:underline font-medium inline-flex items-center gap-1"
-                          >
-                            <span>{projTitle || 'View Project'}</span>
-                            <ArrowUpRight className="w-3 h-3" />
-                          </Link>
-                        ) : (
-                          <span className="text-white/40 font-mono italic">—</span>
-                        )}
                       </td>
                       <td className="py-3.5 px-3 text-white/70 truncate max-w-[160px]">
                         {p.notes || '—'}
@@ -889,7 +921,7 @@ export const AdminClientDetails: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-white/40 font-mono">
+                  <td colSpan={5} className="py-8 text-center text-white/40 font-mono">
                     {isAllMonths ? (
                       'No client payments recorded yet. Click "Record Payment" to add one.'
                     ) : (
@@ -951,21 +983,23 @@ export const AdminClientDetails: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-white/60 block mb-1">Email *</label>
+                  <label className="text-white/60 block mb-1">Phone *</label>
                   <input
-                    type="email"
+                    type="tel"
                     required
-                    value={editForm.email}
-                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    placeholder="+91 98765 00000"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                     className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#FF5A1F] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-white/60 block mb-1">Phone</label>
+                  <label className="text-white/60 block mb-1">Email</label>
                   <input
-                    type="tel"
-                    value={editForm.phone}
-                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    type="email"
+                    placeholder="contact@brand.com"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                     className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#FF5A1F] focus:outline-none"
                   />
                 </div>
@@ -1170,6 +1204,83 @@ export const AdminClientDetails: React.FC = () => {
           onRefreshClient={fetchClient}
           initialMonth={selectedMonth}
         />
+      )}
+
+      {/* Add Deduction Modal */}
+      {isDeductionModalOpen && (
+        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="premium-modal animate-modal-scale relative w-full max-w-sm p-5 sm:p-6 space-y-4 text-white text-xs my-auto shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <h3 className="font-bold text-sm">Add Project Deduction</h3>
+                <p className="text-[11px] text-white/40 mt-0.5">This amount will be deducted from the final bill</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDeductionModalOpen(false)}
+                className="p-1 rounded bg-white/5 text-white/60 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddDeduction} className="space-y-3">
+              <div>
+                <label className="text-white/60 block mb-1">Project / Label</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Social Media Package"
+                  value={deductionLabel}
+                  onChange={(e) => setDeductionLabel(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#FF5A1F] focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-white/60 block mb-1">Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={deductionDate}
+                    onChange={(e) => setDeductionDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#FF5A1F] focus:outline-none"
+                    style={{ colorScheme: 'dark' }}
+                  />
+                </div>
+                <div>
+                  <label className="text-white/60 block mb-1">Amount (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    step="any"
+                    placeholder="0"
+                    value={deductionAmount}
+                    onChange={(e) => setDeductionAmount(e.target.value)}
+                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white font-mono focus:border-[#FF5A1F] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsDeductionModalOpen(false)}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white font-medium cursor-pointer shadow-sm"
+                >
+                  Add Deduction
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

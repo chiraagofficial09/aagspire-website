@@ -49,7 +49,7 @@ export const AdminSettings: React.FC = () => {
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">Settings</h1>
         <p className="text-xs text-zinc-400 mt-1">Manage workspace metadata and admin credentials.</p>
       </div>
 

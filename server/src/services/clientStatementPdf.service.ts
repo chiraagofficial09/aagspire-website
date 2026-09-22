@@ -81,12 +81,12 @@ function calculateStatementHeight(
 
   const hasContact = Boolean(data.contactPerson);
   const hasGstin = Boolean(data.gstNumber);
-  const billedCardH = (hasContact || hasGstin) ? 72 : 64;
+  const billedCardH = (hasContact && hasGstin) ? 72 : (hasContact || hasGstin) ? 68 : 64;
   y += billedCardH + 20;
 
   y += 22; // Table header
   const items = data.projects && data.projects.length > 0 ? data.projects : [];
-  y += items.slice(0, 12).length * 32;
+  y += items.length * 32;
   if (items.length === 0) y += 34;
   y += 12 + 16;
 
@@ -244,7 +244,7 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   cursorY += headerGap;
   const hasContact = Boolean(data.contactPerson);
   const hasGstin = Boolean(data.gstNumber);
-  const billedCardH = (hasContact || hasGstin) ? 72 : 64;
+  const billedCardH = (hasContact && hasGstin) ? 72 : (hasContact || hasGstin) ? 68 : 64;
 
   doc.roundedRect(contentX, cursorY, contentW, billedCardH, 8).fill('#111111');
   doc.roundedRect(contentX, cursorY, contentW, billedCardH, 8).strokeColor('#202020').lineWidth(0.8).stroke();
@@ -263,10 +263,10 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   }
 
   // Right side: Metadata (Invoice No, Date, GSTIN shifted right and vertically centered)
-  const col2W = 180;
+  const col2W = 195;
   const col2X = contentX + contentW - col2W - 18;
-  const rightRowGap = 16;
-  const rightItemCount = hasGstin ? 3 : 2;
+  const rightItemCount = 2 + (hasGstin ? 1 : 0);
+  const rightRowGap = 15;
   const rightTotalH = (rightItemCount - 1) * rightRowGap + 10;
   let rowMetaY = cursorY + Math.round((billedCardH - rightTotalH) / 2);
 
@@ -323,10 +323,8 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
 
   // Table Rows
   const items = data.projects && data.projects.length > 0 ? data.projects : [];
-  const maxRows = 12;
-  const displayItems = items.slice(0, maxRows);
 
-  displayItems.forEach((proj, idx) => {
+  items.forEach((proj, idx) => {
     cursorY += 10;
     const rowH = 26;
 
@@ -387,26 +385,25 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   // 5. Summary Totals Section (Matching web preview modal: left-aligned labels, right-aligned values)
   const summaryW = 240;
   const summaryRightX = contentX + contentW - summaryW;
-  const sumLabelX = summaryRightX + 14; // Perfectly aligned with Balance Due: label inside card
-  const sumValW = summaryW - 14;
+  const cardInnerPad = 12;
 
   let sY = cursorY;
   const rowStep = 18;
 
   // Combined Subtotal
   const subtotalVal = data.subtotal ?? data.totalRevenue;
-  doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Combined Subtotal:', sumLabelX, sY, { width: 140, align: 'left' });
+  doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Combined Subtotal:', summaryRightX, sY, { width: 140, align: 'left' });
   doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(formatINRVal(subtotalVal), summaryRightX, sY, {
-    width: sumValW,
+    width: summaryW,
     align: 'right',
   });
   sY += rowStep;
 
   // GST (if applicable)
   if (data.taxAmount && data.taxAmount > 0) {
-    doc.font(regularFont).fontSize(8.5).fillColor('#888888').text(`GST (${data.taxPercent || 0}%):`, sumLabelX, sY, { width: 140, align: 'left' });
+    doc.font(regularFont).fontSize(8.5).fillColor('#888888').text(`GST (${data.taxPercent || 0}%):`, summaryRightX, sY, { width: 140, align: 'left' });
     doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(`+${formatINRVal(data.taxAmount)}`, summaryRightX, sY, {
-      width: sumValW,
+      width: summaryW,
       align: 'right',
     });
     sY += rowStep;
@@ -414,18 +411,18 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
 
   // Extra Special Discount (if applicable)
   if (data.discountAmount && data.discountAmount > 0) {
-    doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Extra Special Discount:', sumLabelX, sY, { width: 140, align: 'left' });
+    doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Extra Special Discount:', summaryRightX, sY, { width: 140, align: 'left' });
     doc.fillColor('#D4D4D8').font(boldFont).fontSize(9.5).text(`-${formatINRVal(data.discountAmount)}`, summaryRightX, sY, {
-      width: sumValW,
+      width: summaryW,
       align: 'right',
     });
     sY += rowStep;
   }
 
   // Paid Money
-  doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Paid Money:', sumLabelX, sY, { width: 140, align: 'left' });
+  doc.font(regularFont).fontSize(8.5).fillColor('#888888').text('Paid Money:', summaryRightX, sY, { width: 140, align: 'left' });
   doc.fillColor('#FFFFFF').font(boldFont).fontSize(9.5).text(`-${formatINRVal(data.totalPaid)}`, summaryRightX, sY, {
-    width: sumValW,
+    width: summaryW,
     align: 'right',
   });
   sY += rowStep + 6;
@@ -439,25 +436,25 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   balBorderGrad.stop(0, '#FF5A1F');
   balBorderGrad.stop(1, '#FFA05C');
 
-  const balTextGrad = doc.linearGradient(balCardX + balCardW - 120, sY + 4, balCardX + balCardW - 14, sY + 4);
+  const balTextGrad = doc.linearGradient(balCardX + balCardW - 120, sY + 4, balCardX + balCardW - cardInnerPad, sY + 4);
   balTextGrad.stop(0, '#FF5A1F');
   balTextGrad.stop(1, '#FFA05C');
 
   doc.roundedRect(balCardX, sY - 4, balCardW, balanceCardH, 8).fill('#1F1008');
   doc.roundedRect(balCardX, sY - 4, balCardW, balanceCardH, 8).strokeColor(balBorderGrad).lineWidth(1.1).stroke();
 
-  doc.font(boldFont).fontSize(9.5).fillColor('#FFFFFF').text('Balance Due:', sumLabelX, sY + 7, { width: 120, align: 'left' });
+  doc.font(boldFont).fontSize(9.5).fillColor('#FFFFFF').text('Total:', balCardX + cardInnerPad, sY + 7, { width: 120, align: 'left' });
   doc.fillColor(balTextGrad).fontSize(12.5).font(boldFont).text(
     formatINRVal(data.pendingBalance),
     balCardX,
     sY + 5,
-    { width: balCardW - 14, align: 'right' }
+    { width: balCardW - cardInnerPad, align: 'right' }
   );
 
   // *T&C apply. directly below Balance Due card
   const tncY = sY + balanceCardH + 3;
-  doc.font(regularFont).fontSize(8).fillColor('#71717A').text('*T&C apply.', balCardX, tncY, {
-    width: balCardW - 2,
+  doc.font(regularFont).fontSize(8).fillColor('#71717A').text('*T&C apply.', summaryRightX, tncY, {
+    width: summaryW,
     align: 'right',
   });
 

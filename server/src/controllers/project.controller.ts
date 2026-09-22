@@ -292,7 +292,7 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
     const startDate = req.body.startDate;
     const deadline = req.body.deadline || req.body.endDate;
     const statusRaw = req.body.status;
-    const status = statusRaw === 'signed' ? 'confirmed' : (statusRaw || 'confirmed');
+    const status = statusRaw || 'start_process';
     const assignedEmployees = req.body.assignedEmployees;
     const commissionSplit = req.body.commissionSplit;
     const employeeShares = req.body.employeeShares;
@@ -351,7 +351,7 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
       discountAmount: toDecimal(discountAmount),
       startDate: startDate ? new Date(startDate) : undefined,
       deadline: deadline ? new Date(deadline) : undefined,
-      status: status || 'confirmed',
+      status: status || 'start_process',
       assignedEmployees: (assignedEmployees || []).map((id: string) => new Types.ObjectId(id)),
       createdBy: req.user!._id,
     });
@@ -664,9 +664,9 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
     const newDeadline = req.body.deadline || req.body.endDate;
     if (newDeadline !== undefined) project.deadline = newDeadline ? new Date(newDeadline) : undefined;
     if (req.body.status) {
-      const newStatus = req.body.status === 'signed' ? 'confirmed' : req.body.status;
-      const wasFinished = project.status === 'delivered' || project.status === 'completed';
-      const isNowFinished = newStatus === 'delivered' || newStatus === 'completed';
+      const newStatus = req.body.status;
+      const wasFinished = project.status === 'delivered' || (project.status as any) === 'completed';
+      const isNowFinished = newStatus === 'delivered' || (newStatus as any) === 'completed';
       if (isNowFinished && !wasFinished) {
         project.deliveredAt = new Date();
       } else if (!isNowFinished) {
@@ -800,7 +800,7 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
     await project.save();
 
     if (req.body.status) {
-      const effectiveStatus = req.body.status === 'completed' ? 'completed' : 'in_progress';
+      const effectiveStatus = (req.body.status === 'delivered' || req.body.status === 'completed') ? 'delivered' : (req.body.status || 'in_process');
       await WorkLog.updateMany(
         { 'projectsWorked.projectId': project._id },
         { $set: { 'projectsWorked.$[elem].status': effectiveStatus } },
@@ -965,13 +965,10 @@ export async function updateProjectStatusByEmployee(req: AuthenticatedRequest, r
     const { status } = req.body;
 
     const allowedStatuses = [
-      'lead',
-      'confirmed',
-      'in_progress',
-      'review',
-      'completed',
+      'start_process',
+      'in_process',
+      'in_changes',
       'delivered',
-      'cancelled',
     ];
 
     if (!status || !allowedStatuses.includes(status)) {
@@ -1013,8 +1010,8 @@ export async function updateProjectStatusByEmployee(req: AuthenticatedRequest, r
 
     const oldStatus = project.status;
     project.status = status;
-    const wasFinished = oldStatus === 'delivered' || oldStatus === 'completed';
-    const isNowFinished = status === 'delivered' || status === 'completed';
+    const wasFinished = oldStatus === 'delivered' || (oldStatus as any) === 'completed';
+    const isNowFinished = status === 'delivered' || (status as any) === 'completed';
     if (isNowFinished && !wasFinished) {
       project.deliveredAt = new Date();
     } else if (!isNowFinished) {
@@ -1023,7 +1020,7 @@ export async function updateProjectStatusByEmployee(req: AuthenticatedRequest, r
     await project.save();
 
     // Keep WorkLog projectsWorked status in sync
-    const effectiveStatus = status === 'completed' ? 'completed' : 'in_progress';
+    const effectiveStatus = (status === 'delivered' || status === 'completed') ? 'delivered' : status;
     await WorkLog.updateMany(
       { 'projectsWorked.projectId': project._id },
       { $set: { 'projectsWorked.$[elem].status': effectiveStatus } },

@@ -105,7 +105,7 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
         ...client.toObject(),
         totalProjects: projects.length,
         projectsCount: projects.length,
-        activeProjects: projects.filter((p) => ['in_progress', 'review'].includes(p.status)).length,
+        activeProjects: projects.filter((p) => ['start_process', 'in_process', 'in_changes'].includes(p.status)).length,
         totalBusinessValue: totalValue,
         totalContractValue: totalValue,
         totalPaid,
@@ -315,8 +315,8 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
         pendingPayment,
         outstanding: pendingPayment,
         totalProjects: projects.length,
-        activeProjects: projects.filter((p) => ['in_progress', 'review'].includes(p.status)).length,
-        completedProjects: projects.filter((p) => ['completed', 'delivered'].includes(p.status)).length,
+        activeProjects: projects.filter((p) => ['start_process', 'in_process', 'in_changes'].includes(p.status)).length,
+        completedProjects: projects.filter((p) => ['delivered', 'completed'].includes(p.status)).length,
         // Month-filtered primary cards metrics
         newProjectValue: financialMetrics.newProjectValue,
         cashCollected: financialMetrics.cashCollected,
@@ -469,29 +469,70 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       year: 'numeric',
     });
 
-    const monthRange = getMonthDateRange(monthQuery);
-    if (monthRange) {
-      const { startOfMonth, endOfMonth } = monthRange;
-      billingMonthLabel = startOfMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      billingPeriodLabel = `${startOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${endOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
-      // When sending invoice to client at end of month, invoice date is set to end of that month
-      statementDate = endOfMonth.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
+    const monthTokens = monthQuery
+      ? monthQuery.split(',').map((s) => s.trim()).filter((s) => /^\d{4}-\d{2}$/.test(s))
+      : [];
 
-      if (selectedIds.length === 0) {
-        rawProjects = rawProjects.filter((p) => {
-          const pDate = new Date(p.startDate || p.createdAt || 0);
-          return pDate >= startOfMonth && pDate <= endOfMonth;
+    let monthRange: { startOfMonth: Date; endOfMonth: Date } | null = null;
+
+    if (monthTokens.length === 1) {
+      monthRange = getMonthDateRange(monthTokens[0]);
+      if (monthRange) {
+        const { startOfMonth, endOfMonth } = monthRange;
+        billingMonthLabel = startOfMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        billingPeriodLabel = `${startOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${endOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+        statementDate = endOfMonth.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        });
+
+        if (selectedIds.length === 0) {
+          rawProjects = rawProjects.filter((p) => {
+            const pDate = new Date(p.startDate || p.createdAt || 0);
+            return pDate >= startOfMonth && pDate <= endOfMonth;
+          });
+        }
+
+        rawPayments = rawPayments.filter((pm) => {
+          const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
+          return pmDate <= endOfMonth;
         });
       }
+    } else if (monthTokens.length > 1) {
+      monthTokens.sort();
+      const firstRange = getMonthDateRange(monthTokens[0]);
+      const lastRange = getMonthDateRange(monthTokens[monthTokens.length - 1]);
+      if (firstRange && lastRange) {
+        monthRange = {
+          startOfMonth: firstRange.startOfMonth,
+          endOfMonth: lastRange.endOfMonth,
+        };
+        const firstLabel = firstRange.startOfMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        const lastLabel = lastRange.startOfMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        billingMonthLabel = `${firstLabel} – ${lastLabel}`;
+        billingPeriodLabel = `${firstRange.startOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${lastRange.endOfMonth.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+        statementDate = lastRange.endOfMonth.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        });
 
-      rawPayments = rawPayments.filter((pm) => {
-        const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
-        return pmDate <= endOfMonth;
-      });
+        if (selectedIds.length === 0) {
+          rawProjects = rawProjects.filter((p) => {
+            const pDate = new Date(p.startDate || p.createdAt || 0);
+            return monthTokens.some((token) => {
+              const r = getMonthDateRange(token);
+              return r && pDate >= r.startOfMonth && pDate <= r.endOfMonth;
+            });
+          });
+        }
+
+        rawPayments = rawPayments.filter((pm) => {
+          const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
+          return pmDate <= lastRange.endOfMonth;
+        });
+      }
     }
 
     const customDateParam = (req.query.invoiceDate as string) || (req.body?.invoiceDate as string);
@@ -597,9 +638,17 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       const parsed = new Date(customDateParam.includes('T') ? customDateParam : `${customDateParam}T00:00:00`);
       if (!isNaN(parsed.getTime())) targetDate = parsed;
     }
-    const monthSlug = monthNames[targetDate.getMonth()];
-    const yearSlug = targetDate.getFullYear();
-    const fileName = `Aagspire_invoice_${monthSlug}_${yearSlug}.pdf`;
+    let fileName = '';
+    if (monthTokens.length > 1 && monthRange) {
+      const firstSlug = monthNames[monthRange.startOfMonth.getMonth()];
+      const lastSlug = monthNames[monthRange.endOfMonth.getMonth()];
+      const yearSlug = monthRange.endOfMonth.getFullYear();
+      fileName = `Aagspire_invoice_${firstSlug}_${lastSlug}_${yearSlug}.pdf`;
+    } else {
+      const monthSlug = monthNames[targetDate.getMonth()];
+      const yearSlug = targetDate.getFullYear();
+      fileName = `Aagspire_invoice_${monthSlug}_${yearSlug}.pdf`;
+    }
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
@@ -654,6 +703,8 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         address: client.address,
         gstNumber: client.gstNumber,
         statementDate,
+        billingMonth: billingMonthLabel,
+        billingPeriod: billingPeriodLabel,
         subtotal,
         taxPercent,
         taxAmount,

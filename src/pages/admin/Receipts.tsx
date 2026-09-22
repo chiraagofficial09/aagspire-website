@@ -68,7 +68,7 @@ export const AdminReceipts: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Receipts</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">Receipts</h1>
         <p className="text-xs text-zinc-400 mt-1">Verifiable payment vouchers and transaction receipts.</p>
       </div>
 
@@ -135,10 +135,10 @@ export const AdminReceipts: React.FC = () => {
                             setActiveReceipt(r);
                             setIsModalOpen(true);
                           }}
-                          className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
                           title="View Voucher"
                         >
-                          <Eye className="w-3.5 h-3.5 text-zinc-400" />
+                          <Eye className="w-3.5 h-3.5 text-white/90" />
                           <span>View</span>
                         </button>
                         <button

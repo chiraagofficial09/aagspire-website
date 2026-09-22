@@ -232,7 +232,7 @@ export const AdminCommissions: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F] flex items-center gap-2.5">
             <Sliders className="w-6 h-6 text-[#FF5A1F]" />
             <span>Commission Split Hub</span>
           </h1>
@@ -440,9 +440,7 @@ export const AdminCommissions: React.FC = () => {
               <FolderKanban className="w-4 h-4 text-[#FF5A1F]" />
               <span>Project Commission Split Matrix</span>
             </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              Side-by-side view showing every project's unique split. Each project is calculated independently.
-            </p>
+          
           </div>
           <span className="text-xs font-mono text-zinc-400 bg-white/[0.03] border border-white/[0.08] px-2.5 py-1 rounded-lg">
             {projects.length} Total Projects
@@ -455,7 +453,7 @@ export const AdminCommissions: React.FC = () => {
               <tr className="border-b border-white/[0.06] text-zinc-400 font-mono text-[10px] uppercase">
                 <th className="py-3 px-4 font-semibold">Project</th>
                 <th className="py-3 px-4 font-semibold">Contract Value</th>
-                <th className="py-3 px-4 font-semibold text-[#FF5A1F]">Employee Share</th>
+                <th className="py-3 px-4 font-semibold text-[#FF5A1F]">Team Share</th>
                 <th className="py-3 px-4 font-semibold text-white">Admin Share</th>
                 <th className="py-3 px-4 font-semibold text-zinc-300">Office Expense</th>
                 <th className="py-3 px-4 font-semibold text-zinc-400">Broker Fee</th>

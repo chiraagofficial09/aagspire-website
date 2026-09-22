@@ -171,30 +171,15 @@ export const EmployeeDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Month Filter Active Status Banner */}
-      {selectedMonth !== 'all' && (
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#FF5A1F]/10 border border-[#FF5A1F]/25 text-xs">
-          <span className="text-zinc-300">
-            Showing performance &amp; commission for <span className="font-semibold text-white">{selectedMonthLabel}</span>
-          </span>
-          <button
-            onClick={() => setSelectedMonth('all')}
-            className="text-xs font-semibold text-[#FF5A1F] hover:text-[#ff7543] underline transition-colors cursor-pointer"
-          >
-            Show All Months
-          </button>
-        </div>
-      )}
-
       {/* Daily Attendance Card Widget */}
       <ClockWidget onStatusChange={fetchDashboard} />
 
       {/* 3 KPI Metric Cards: Total, Paid, Pending */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
         {/* Card 1: TOTAL */}
-        <div className="rounded-2xl bg-[#0e1017] border border-[#FF5A1F]/40 p-5 relative overflow-hidden shadow-[0_0_25px_rgba(255,90,31,0.06)]">
+        <div className="rounded-2xl bg-[#0e1017] border border-white/[0.06] p-5 relative">
           <div className="flex items-center justify-between">
-            <div className="w-10 h-10 rounded-xl bg-[#FF5A1F]/15 text-[#FF5A1F] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.04] text-zinc-400 flex items-center justify-center">
               <Coins className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-mono text-zinc-500 uppercase">{assignedProjectsCount} projects</span>
@@ -203,7 +188,7 @@ export const EmployeeDashboard: React.FC = () => {
             TOTAL
           </span>
           <div className="mt-1">
-            <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-sans">
+            <span className="text-2xl sm:text-3xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
               {formatINR(totalCommission)}
             </span>
           </div>
@@ -221,7 +206,7 @@ export const EmployeeDashboard: React.FC = () => {
             PAID
           </span>
           <div className="mt-1">
-            <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-sans">
+            <span className="text-2xl sm:text-3xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
               {formatINR(totalPaid)}
             </span>
           </div>
@@ -320,7 +305,7 @@ export const EmployeeDashboard: React.FC = () => {
                     </div>
 
                     <div className="col-span-3 flex justify-center">
-                      <StatusBadge status={prj.status || item.status || 'in_progress'} type="project" />
+                      <StatusBadge status={prj.status || item.status || 'start_process'} type="project" />
                     </div>
 
                     <div className="col-span-1 flex justify-end">
@@ -412,11 +397,7 @@ export const EmployeeDashboard: React.FC = () => {
       </div>
 
       {/* Page Footer matching mockup */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-white/[0.04] text-xs text-zinc-500">
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-0.5 bg-[#FF5A1F]" />
-          <span>Work Create Grow</span>
-        </div>
+      <div className="flex items-center justify-end pt-6 border-t border-white/[0.04] text-xs text-zinc-500">
         <span>&copy; {new Date().getFullYear()} Aagspire. All rights reserved.</span>
       </div>
     </div>

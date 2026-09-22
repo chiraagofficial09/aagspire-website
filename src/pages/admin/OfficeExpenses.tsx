@@ -13,6 +13,7 @@ import { formatINR } from '../../utils/formatters';
 import { useToast } from '../../components/work/Toast';
 import { EmptyState } from '../../components/work/EmptyState';
 import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
+import { useAlert } from '../../context/AlertContext';
 
 interface ExpenseItem {
   _id: string;
@@ -32,6 +33,7 @@ interface MonthBreakdownItem {
 
 export const AdminOfficeExpenses: React.FC = () => {
   const toast = useToast();
+  const { showConfirm } = useAlert();
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [overallTotal, setOverallTotal] = useState<number>(0);
   const [thisMonthTotal, setThisMonthTotal] = useState<number>(0);
@@ -152,9 +154,14 @@ export const AdminOfficeExpenses: React.FC = () => {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete expense "${name}"?`)) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Delete Expense',
+      message: `Are you sure you want to delete expense "${name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/admin/expenses/${id}`);
       toast.success('Office expense deleted successfully');
@@ -215,7 +222,7 @@ export const AdminOfficeExpenses: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Office Expenses</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">Office Expenses</h1>
           <p className="text-xs text-zinc-400 mt-1">
             Track, record, and calculate operational and office expenses.
           </p>
@@ -271,25 +278,6 @@ export const AdminOfficeExpenses: React.FC = () => {
           />
         </div>
       </div>
-
-      {/* Active Month Filter Notification Banner */}
-      {selectedMonth !== 'all' && (
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
-            <span className="text-zinc-300">
-              Showing expenses for <span className="font-semibold text-white">{selectedMonthLabel}</span>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSelectedMonth('all')}
-            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
-          >
-            Show All Months
-          </button>
-        </div>
-      )}
 
       {/* Expenses Table (Strictly Orange, White, and Black) */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">

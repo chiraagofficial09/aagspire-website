@@ -118,7 +118,7 @@ export async function createWorkLog(req: AuthenticatedRequest, res: Response): P
           projectId: project._id,
           projectName: project.projectName,
           projectCode: project.projectCode,
-          status: 'in_progress',
+          status: project.status || 'in_process',
         },
       ],
       workDate: workDate ? new Date(workDate) : new Date(),

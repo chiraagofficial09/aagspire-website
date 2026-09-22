@@ -8,13 +8,15 @@ import {
   XCircle,
   MessageSquare,
   MoreHorizontal,
+  Trash2,
 } from 'lucide-react';
 
 export interface ExtractedProject {
   projectId?: string;
   name: string;
   code?: string;
-  status: 'completed' | 'in_progress';
+  status: 'delivered' | 'in_process';
+  rawStatus?: string;
 }
 
 export function extractProjectsFromLog(log: any): ExtractedProject[] {
@@ -22,37 +24,40 @@ export function extractProjectsFromLog(log: any): ExtractedProject[] {
   if (Array.isArray(log.projectsWorked) && log.projectsWorked.length > 0) {
     return log.projectsWorked.map((p: any) => {
       const prjObj = p.projectId && typeof p.projectId === 'object' ? p.projectId : null;
-      const rawStatus = prjObj?.status || p.status || 'in_progress';
-      const isDone = rawStatus === 'completed' || rawStatus === 'delivered';
+      const rawStatus = prjObj?.status || p.status || 'in_process';
+      const isDone = rawStatus === 'delivered' || rawStatus === 'completed';
       return {
         projectId: prjObj?._id || p.projectId || undefined,
         name: p.projectName || prjObj?.projectName || 'Project Deliverable',
         code: p.projectCode || prjObj?.projectCode || '',
-        status: isDone ? 'completed' : 'in_progress',
+        status: isDone ? 'delivered' : 'in_process',
+        rawStatus,
       };
     });
   }
 
   // 2. Parse from description if containing structured summary
   const desc = String(log.description || '');
-  if (desc.includes('Completed:') || desc.includes('In Progress:')) {
+  if (desc.includes('Delivered:') || desc.includes('Completed:') || desc.includes('In Process:') || desc.includes('In Progress:')) {
     const list: ExtractedProject[] = [];
     desc.split('|').forEach((part) => {
       const trimmed = part.trim();
-      if (trimmed.startsWith('Completed:')) {
+      if (trimmed.startsWith('Delivered:') || trimmed.startsWith('Completed:')) {
         trimmed
+          .replace('Delivered:', '')
           .replace('Completed:', '')
           .split(',')
           .map((n) => n.trim())
           .filter(Boolean)
-          .forEach((name) => list.push({ name, status: 'completed' }));
-      } else if (trimmed.startsWith('In Progress:')) {
+          .forEach((name) => list.push({ name, status: 'delivered', rawStatus: 'delivered' }));
+      } else if (trimmed.startsWith('In Process:') || trimmed.startsWith('In Progress:')) {
         trimmed
+          .replace('In Process:', '')
           .replace('In Progress:', '')
           .split(',')
           .map((n) => n.trim())
           .filter(Boolean)
-          .forEach((name) => list.push({ name, status: 'in_progress' }));
+          .forEach((name) => list.push({ name, status: 'in_process', rawStatus: 'in_process' }));
       }
     });
     if (list.length > 0) return list;
@@ -61,16 +66,18 @@ export function extractProjectsFromLog(log: any): ExtractedProject[] {
   // 3. Fallback to primary projectId
   if (log.projectId) {
     const prj = typeof log.projectId === 'object' ? log.projectId : null;
+    const rawStatus = prj?.status || (log.status === 'approved' ? 'delivered' : 'in_process');
     const isDone =
-      prj?.status === 'completed' ||
-      prj?.status === 'delivered' ||
+      rawStatus === 'delivered' ||
+      rawStatus === 'completed' ||
       log.status === 'approved';
     return [
       {
         projectId: prj?._id || log.projectId,
         name: prj?.projectName || log.taskName || 'Assigned Project',
         code: prj?.projectCode || '',
-        status: isDone ? 'completed' : 'in_progress',
+        status: isDone ? 'delivered' : 'in_process',
+        rawStatus,
       },
     ];
   }
@@ -79,7 +86,8 @@ export function extractProjectsFromLog(log: any): ExtractedProject[] {
   return [
     {
       name: log.taskName || 'Daily Shift Work',
-      status: log.status === 'approved' ? 'completed' : 'in_progress',
+      status: log.status === 'approved' ? 'delivered' : 'in_process',
+      rawStatus: log.status === 'approved' ? 'delivered' : 'in_process',
     },
   ];
 }
@@ -124,12 +132,14 @@ export interface WorkLogCardProps {
     logId: string,
     status: 'approved' | 'rejected' | 'changes_requested'
   ) => void | Promise<void>;
+  onDelete?: (logId: string) => void | Promise<void>;
 }
 
 export const WorkLogCard: React.FC<WorkLogCardProps> = ({
   log,
   showEmployee = false,
   onStatusUpdate,
+  onDelete,
 }) => {
   const deliverables = extractProjectsFromLog(log);
   const empName =
@@ -212,10 +222,10 @@ export const WorkLogCard: React.FC<WorkLogCardProps> = ({
             </span>
           </div>
 
-          {/* Circular Verification Action Buttons */}
-          {onStatusUpdate && (
+          {/* Circular Verification Action Buttons & Delete Button */}
+          {(onStatusUpdate || onDelete) && (
             <div className="flex items-center gap-1.5 pl-1">
-              {log.status !== 'approved' && (
+              {onStatusUpdate && log.status !== 'approved' && (
                 <button
                   onClick={() => onStatusUpdate(logId, 'approved')}
                   title="Approve Timesheet"
@@ -224,7 +234,7 @@ export const WorkLogCard: React.FC<WorkLogCardProps> = ({
                   <CheckCircle2 className="w-4 h-4" />
                 </button>
               )}
-              {log.status !== 'rejected' && (
+              {onStatusUpdate && log.status !== 'rejected' && (
                 <button
                   onClick={() => onStatusUpdate(logId, 'rejected')}
                   title="Reject Timesheet"
@@ -233,13 +243,22 @@ export const WorkLogCard: React.FC<WorkLogCardProps> = ({
                   <XCircle className="w-4 h-4" />
                 </button>
               )}
-              {log.status !== 'changes_requested' && (
+              {onStatusUpdate && log.status !== 'changes_requested' && (
                 <button
                   onClick={() => onStatusUpdate(logId, 'changes_requested')}
                   title="Request Revision"
                   className="w-8 h-8 rounded-full bg-[#131926] hover:bg-white/[0.08] text-zinc-400 hover:text-white border border-white/[0.08] flex items-center justify-center transition-colors cursor-pointer"
                 >
                   <MessageSquare className="w-4 h-4" />
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => onDelete(logId)}
+                  title="Delete Work Log"
+                  className="w-8 h-8 rounded-full bg-[#131926] hover:bg-red-500/15 text-zinc-400 hover:text-red-400 border border-white/[0.08] hover:border-red-500/30 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -281,15 +300,15 @@ export const WorkLogCard: React.FC<WorkLogCardProps> = ({
 
                   {/* STATUS (Pill badge with colored dot) */}
                   <td className="py-3 px-3 text-right">
-                    {isCompleted ? (
+                    {item.status === 'delivered' ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
-                        Completed
+                        Delivered
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25 capitalize">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
-                        Pending
+                        {item.rawStatus ? item.rawStatus.replace('_', ' ') : 'In Process'}
                       </span>
                     )}
                   </td>

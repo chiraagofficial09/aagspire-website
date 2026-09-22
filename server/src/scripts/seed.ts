@@ -653,6 +653,15 @@ async function seedComprehensiveDatabase() {
 
     const assignedEmps = pCfg.assignedIndices.map((idx) => employees[idx]._id);
 
+    const normalizeStatus = (s: string) => {
+      if (s === 'delivered' || s === 'completed') return 'delivered';
+      if (s === 'in_progress') return 'in_process';
+      if (s === 'review') return 'in_changes';
+      if (s === 'confirmed' || s === 'lead') return 'start_process';
+      return s;
+    };
+    const seedStatus = normalizeStatus(pCfg.status);
+
     const project = await Project.create({
       projectCode,
       clientId: client._id,
@@ -661,7 +670,8 @@ async function seedComprehensiveDatabase() {
       projectValue: toDecimal(pCfg.value),
       startDate: new Date(pCfg.start),
       deadline: new Date(pCfg.deadline),
-      status: pCfg.status,
+      status: seedStatus,
+      deliveredAt: seedStatus === 'delivered' ? new Date(pCfg.deadline) : undefined,
       assignedEmployees: assignedEmps,
       createdBy: admin._id,
       createdAt: new Date(pCfg.start),

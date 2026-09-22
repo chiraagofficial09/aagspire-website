@@ -1,11 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Plus,
-} from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { api } from '../../services/api';
-import { StatusBadge } from '../../components/work/StatusBadge';
 import { formatINR } from '../../utils/formatters';
 import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';
@@ -16,7 +12,6 @@ export const EmployeeProjectDetails: React.FC = () => {
   const [project, setProject] = useState<any>(null);
   const [assignment, setAssignment] = useState<any>(null);
   const [employeeCommission, setEmployeeCommission] = useState<any>(null);
-  const [workLogs, setWorkLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -28,7 +23,6 @@ export const EmployeeProjectDetails: React.FC = () => {
       setProject(payload?.project || payload);
       setAssignment(payload?.assignment || null);
       setEmployeeCommission(payload?.employeeCommission || null);
-      setWorkLogs(payload?.workLogs || []);
     } catch (err) {
       console.error('Error fetching project details', err);
     } finally {
@@ -69,11 +63,6 @@ export const EmployeeProjectDetails: React.FC = () => {
     employeeCommission?.expectedCommission ??
     assignment?.allocatedCommission ??
     0;
-  const poolPaid = employeeCommission?.paidCommission ?? 0;
-  const poolPending =
-    employeeCommission?.pendingCommission ??
-    Math.max(0, poolTotal - poolPaid);
-  const poolEarned = employeeCommission?.earnedCommission ?? 0;
   const sharePercent = employeeCommission?.sharePercent ?? assignment?.sharePercent ?? assignment?.sharePercentage;
 
   return (
@@ -108,10 +97,9 @@ export const EmployeeProjectDetails: React.FC = () => {
               onChange={handleStatusChange}
               disabled={updatingStatus}
               options={[
-                { value: 'confirmed', label: 'Confirmed' },
-                { value: 'in_progress', label: 'In Progress' },
-                { value: 'review', label: 'In Review' },
-                { value: 'completed', label: 'Completed' },
+                { value: 'start_process', label: 'Start Process' },
+                { value: 'in_process', label: 'In Process' },
+                { value: 'in_changes', label: 'In Changes' },
                 { value: 'delivered', label: 'Delivered' },
               ]}
             />
@@ -119,85 +107,20 @@ export const EmployeeProjectDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* Your Commission Pool — own share only */}
+      {/* Your Commission Pool — Total only */}
       <div className="space-y-3">
         <h2 className="text-xs font-bold text-white/60 uppercase tracking-wider font-mono">Your Commission Pool</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-          <div className="premium-card p-4 rounded-2xl space-y-1 border-[#FF5A1F]/20">
+        <div className="inline-block">
+          <div className="premium-card p-5 rounded-2xl space-y-1 border-[#FF5A1F]/20 min-w-[180px]">
             <span className="text-[10px] font-bold font-mono text-white/60 uppercase tracking-wider block">TOTAL</span>
-            <p className="text-xl sm:text-2xl font-extrabold font-mono text-white tracking-tight">
+            <p className="text-2xl sm:text-3xl font-extrabold font-mono text-[#FF5A1F] tracking-tight">
               {formatINR(poolTotal)}
             </p>
-            <span className="text-[10px] text-zinc-500 block">Total commission</span>
-          </div>
-
-          <div className="premium-card p-4 rounded-2xl space-y-1">
-            <span className="text-[10px] font-bold font-mono text-white/60 uppercase tracking-wider block">PAID</span>
-            <p className="text-xl sm:text-2xl font-extrabold font-mono text-white tracking-tight">
-              {formatINR(poolPaid)}
-            </p>
-            <span className="text-[10px] text-zinc-500 block">Paid to you</span>
-          </div>
-
-          <div className="premium-card p-4 rounded-2xl space-y-1">
-            <span className="text-[10px] font-bold font-mono text-white/60 uppercase tracking-wider block">PENDING</span>
-            <p className="text-xl sm:text-2xl font-extrabold font-mono text-[#FF5A1F] tracking-tight">
-              {formatINR(poolPending)}
-            </p>
-            <span className="text-[10px] text-zinc-500 block">Pending balance</span>
+            <span className="text-[10px] text-zinc-500 block">Your total commission</span>
           </div>
         </div>
       </div>
 
-      {/* Brief */}
-      <div className="premium-card p-6 rounded-2xl space-y-3">
-        <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono border-b border-white/10 pb-2">Creative Brief & Scope</h2>
-        <p className="text-xs text-white/70 leading-relaxed whitespace-pre-wrap">
-          {project.description || 'No specific creative guidelines attached.'}
-        </p>
-      </div>
-
-      {/* Timesheet Logs on this project */}
-      <div className="premium-card p-6 rounded-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-            My Production Logs ({workLogs.length})
-          </h2>
-          <Link
-            to="/employee/work"
-            className="btn-premium btn-primary inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Log Hours</span>
-          </Link>
-        </div>
-
-        <div className="space-y-2.5">
-          {workLogs.length > 0 ? (
-            workLogs.map((log: any) => (
-              <div
-                key={log._id}
-                className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between hover:border-white/15 transition-all"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-xs text-white">{log.taskName}</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-white/70">
-                      {log.hoursWorked}h
-                    </span>
-                  </div>
-                  {log.description && <p className="text-[11px] text-white/40 mt-1">{log.description}</p>}
-                </div>
-                <StatusBadge status={log.status} type="workLog" />
-              </div>
-            ))
-          ) : (
-            <div className="py-6 text-center text-white/40 font-mono text-xs">
-              No timesheets recorded for this project yet.
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };

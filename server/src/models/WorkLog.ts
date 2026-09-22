@@ -36,7 +36,7 @@ const WorkLogSchema = new Schema<IWorkLog>(
         projectId: { type: Schema.Types.ObjectId, ref: 'Project' },
         projectName: { type: String },
         projectCode: { type: String },
-        status: { type: String, default: 'in_progress' },
+        status: { type: String, default: 'in_process' },
       },
     ],
     workDate: { type: Date, default: Date.now, index: true },

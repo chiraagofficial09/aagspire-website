@@ -10,7 +10,6 @@ import {
   CalendarCheck,
   CreditCard, 
   Percent,
-  ReceiptText,
   WalletCards,
   Settings,
   Clock,
@@ -98,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
           <>
             {/* Primary Navigation */}
             <NavItem item={{ label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Employees', path: '/admin/employees', icon: Users }} onNavigate={() => setMobileOpen(false)} />
+            <NavItem item={{ label: 'Team Members', path: '/admin/employees', icon: Users }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Clients', path: '/admin/clients', icon: Building2 }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Projects', path: '/admin/projects', icon: Briefcase }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Work logs', path: '/admin/work-logs', icon: FileCheck2 }} onNavigate={() => setMobileOpen(false)} />
@@ -109,7 +108,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
             <NavItem item={{ label: 'Payments', path: '/admin/payments', icon: CreditCard }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Commission', path: '/admin/commissions', icon: Percent }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Office Expenses', path: '/admin/expenses', icon: WalletCards }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Receipts', path: '/admin/receipts', icon: ReceiptText }} onNavigate={() => setMobileOpen(false)} />
 
             {/* SYSTEM */}
             <div className="pt-2">
@@ -123,7 +121,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
             <NavItem item={{ label: 'My Projects', path: '/employee/projects', icon: Folder }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Work Logs', path: '/employee/work', icon: Clock }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Attendance', path: '/employee/attendance', icon: Calendar }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Receipts', path: '/employee/receipts', icon: ReceiptText }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Profile', path: '/employee/profile', icon: User }} onNavigate={() => setMobileOpen(false)} />
           </>
         )}

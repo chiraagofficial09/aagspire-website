@@ -34,7 +34,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     assignedEmployees: [] as string[],
     startDate: '',
     endDate: '',
-    status: 'in_progress',
+    status: 'start_process',
     description: '',
   });
 
@@ -80,7 +80,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         assignedEmployees,
         startDate,
         endDate,
-        status: project.status || 'in_progress',
+        status: project.status || 'start_process',
         description: project.description || '',
       });
 
@@ -100,7 +100,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         assignedEmployees: [],
         startDate: new Date().toISOString().slice(0, 10),
         endDate: '',
-        status: 'in_progress',
+        status: 'start_process',
         description: '',
       });
 
@@ -297,13 +297,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 <span>Assign Team / Staff</span>
               </label>
               <span className="text-[11px] text-zinc-500">
-                Select one or more employees
+                Select one or more team members
               </span>
             </div>
             <MultiSelect
               values={formData.assignedEmployees}
               onChange={(vals) => setFormData({ ...formData, assignedEmployees: vals })}
-              placeholder="Select employees to assign..."
+              placeholder="Select team members to assign..."
               options={employees.map((emp) => ({
                 value: emp._id,
                 label: emp.fullName || emp.name,
@@ -335,14 +335,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 value={formData.status}
                 onChange={(val) => setFormData({ ...formData, status: val })}
                 options={[
-                  { value: 'confirmed', label: 'Confirmed' },
-                  { value: 'in_progress', label: 'In Progress' },
-                  { value: 'review', label: 'In Review' },
-                  { value: 'completed', label: 'Completed' },
+                  { value: 'start_process', label: 'Start Process' },
+                  { value: 'in_process', label: 'In Process' },
+                  { value: 'in_changes', label: 'In Changes' },
                   { value: 'delivered', label: 'Delivered' },
-                  { value: 'signed', label: 'Signed' },
-                  { value: 'lead', label: 'Lead' },
-                  { value: 'cancelled', label: 'Cancelled' },
                 ]}
               />
             </div>

@@ -4,6 +4,7 @@ import { LucideIcon } from 'lucide-react';
 interface StatCardProps {
   title: string;
   value: string | number;
+  valueColor?: string;
   /** Descriptive subtext below the value */
   subtext?: string;
   /** Change/trend label (e.g. "+12% vs last month") */
@@ -17,6 +18,7 @@ interface StatCardProps {
 export const StatCard: React.FC<StatCardProps> = ({
   title,
   value,
+  valueColor,
   subtext,
   change,
   changeType,
@@ -74,7 +76,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         </div>
       </div>
 
-      <div className={`text-xl md:text-2xl font-extrabold tracking-tight tabular-nums ${style.valueColor}`}>
+      <div className={`text-xl md:text-2xl font-extrabold tracking-tight tabular-nums ${valueColor || style.valueColor}`}>
         {value}
       </div>
 

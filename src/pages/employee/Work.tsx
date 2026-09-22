@@ -21,11 +21,12 @@ import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { EmptyState } from '../../components/work/EmptyState';
 
-interface ExtractedProject {
+export interface ExtractedProject {
   projectId?: string;
   name: string;
   code?: string;
-  status: 'completed' | 'in_progress';
+  status: 'delivered' | 'in_process';
+  rawStatus?: string;
 }
 
 function extractProjectsFromLog(log: any): ExtractedProject[] {
@@ -33,37 +34,40 @@ function extractProjectsFromLog(log: any): ExtractedProject[] {
   if (Array.isArray(log.projectsWorked) && log.projectsWorked.length > 0) {
     return log.projectsWorked.map((p: any) => {
       const prjObj = p.projectId && typeof p.projectId === 'object' ? p.projectId : null;
-      const rawStatus = prjObj?.status || p.status || 'in_progress';
-      const isDone = rawStatus === 'completed' || rawStatus === 'delivered';
+      const rawStatus = prjObj?.status || p.status || 'in_process';
+      const isDone = rawStatus === 'delivered' || rawStatus === 'completed';
       return {
         projectId: prjObj?._id || p.projectId || undefined,
         name: p.projectName || prjObj?.projectName || 'Project Deliverable',
         code: p.projectCode || prjObj?.projectCode || '',
-        status: isDone ? 'completed' : 'in_progress',
+        status: isDone ? 'delivered' : 'in_process',
+        rawStatus,
       };
     });
   }
 
   // 2. Parse from description if containing structured summary
   const desc = String(log.description || '');
-  if (desc.includes('Completed:') || desc.includes('In Progress:')) {
+  if (desc.includes('Delivered:') || desc.includes('Completed:') || desc.includes('In Process:') || desc.includes('In Progress:')) {
     const list: ExtractedProject[] = [];
     desc.split('|').forEach((part) => {
       const trimmed = part.trim();
-      if (trimmed.startsWith('Completed:')) {
+      if (trimmed.startsWith('Delivered:') || trimmed.startsWith('Completed:')) {
         trimmed
+          .replace('Delivered:', '')
           .replace('Completed:', '')
           .split(',')
           .map((n) => n.trim())
           .filter(Boolean)
-          .forEach((name) => list.push({ name, status: 'completed' }));
-      } else if (trimmed.startsWith('In Progress:')) {
+          .forEach((name) => list.push({ name, status: 'delivered', rawStatus: 'delivered' }));
+      } else if (trimmed.startsWith('In Process:') || trimmed.startsWith('In Progress:')) {
         trimmed
+          .replace('In Process:', '')
           .replace('In Progress:', '')
           .split(',')
           .map((n) => n.trim())
           .filter(Boolean)
-          .forEach((name) => list.push({ name, status: 'in_progress' }));
+          .forEach((name) => list.push({ name, status: 'in_process', rawStatus: 'in_process' }));
       }
     });
     if (list.length > 0) return list;
@@ -72,13 +76,15 @@ function extractProjectsFromLog(log: any): ExtractedProject[] {
   // 3. Fallback to primary projectId
   if (log.projectId) {
     const prj = typeof log.projectId === 'object' ? log.projectId : null;
-    const isDone = prj?.status === 'completed' || prj?.status === 'delivered' || log.status === 'approved';
+    const rawStatus = prj?.status || (log.status === 'approved' ? 'delivered' : 'in_process');
+    const isDone = rawStatus === 'delivered' || rawStatus === 'completed' || log.status === 'approved';
     return [
       {
         projectId: prj?._id || log.projectId,
         name: prj?.projectName || log.taskName || 'Assigned Project',
         code: prj?.projectCode || '',
-        status: isDone ? 'completed' : 'in_progress',
+        status: isDone ? 'delivered' : 'in_process',
+        rawStatus,
       },
     ];
   }
@@ -87,7 +93,8 @@ function extractProjectsFromLog(log: any): ExtractedProject[] {
   return [
     {
       name: log.taskName || 'Daily Shift Work',
-      status: log.status === 'approved' ? 'completed' : 'in_progress',
+      status: log.status === 'approved' ? 'delivered' : 'in_process',
+      rawStatus: log.status === 'approved' ? 'delivered' : 'in_process',
     },
   ];
 }
@@ -185,7 +192,7 @@ export const EmployeeWork: React.FC = () => {
 
   const handleToggleProjectStatus = async (
     projectId: string | undefined,
-    targetStatus: 'completed' | 'in_progress'
+    targetStatus: 'delivered' | 'in_process'
   ) => {
     if (!projectId) {
       toast.error('No project linked to this deliverable');
@@ -195,9 +202,9 @@ export const EmployeeWork: React.FC = () => {
       setUpdatingProjectId(projectId);
       await api.patch(`/employee/projects/${projectId}/status`, { status: targetStatus });
       toast.success(
-        targetStatus === 'completed'
-          ? 'Project marked as completed!'
-          : 'Project reopened (in progress)'
+        targetStatus === 'delivered'
+          ? 'Project marked as delivered!'
+          : 'Project status updated to In Process'
       );
       fetchAll();
     } catch (err: any) {
@@ -231,7 +238,7 @@ export const EmployeeWork: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Work logs</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">Work logs</h1>
           <p className="text-xs text-zinc-400 mt-1">
             Log billable creative hours, deliverable sessions, and track project status.
           </p>
@@ -374,15 +381,15 @@ export const EmployeeWork: React.FC = () => {
 
                             {/* STATUS (Pill badge with colored dot) */}
                             <td className="py-3 px-3 text-right">
-                              {isCompleted ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#0a231c] text-emerald-400 border border-emerald-500/30">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                  Completed
-                                </span>
-                              ) : (
+                              {item.status === 'delivered' ? (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25">
                                   <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
-                                  Pending
+                                  Delivered
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25 capitalize">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
+                                  {item.rawStatus ? item.rawStatus.replace('_', ' ') : 'In Process'}
                                 </span>
                               )}
                             </td>

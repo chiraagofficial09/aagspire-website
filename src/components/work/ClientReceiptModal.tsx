@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Download,
-  Printer,
   CheckSquare,
   Square,
   Receipt,
@@ -88,7 +87,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
 
   // Always default to 'select' tab when opening from "Combine Projects" so user sees checkboxes
   const [activeTab, setActiveTab] = useState<'select' | 'preview'>('select');
-  const [taxPercent, setTaxPercent] = useState<number>(18);
+  const [taxPercent, setTaxPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [projectDiscounts, setProjectDiscounts] = useState<Record<string, number>>({});
 
@@ -111,11 +110,35 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
     [now]
   );
-  const [billingMonth, setBillingMonth] = useState<string>(initialMonth || currentMonthKey);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>(() =>
+    initialMonth ? [initialMonth] : [currentMonthKey]
+  );
 
   useEffect(() => {
-    if (initialMonth) setBillingMonth(initialMonth);
+    if (initialMonth) setSelectedMonths([initialMonth]);
   }, [initialMonth]);
+
+  const toggleMonth = (val: string) => {
+    if (val === 'all') {
+      setSelectedMonths(['all']);
+      return;
+    }
+    setSelectedMonths((prev) => {
+      const withoutAll = prev.filter((m) => m !== 'all');
+      if (withoutAll.includes(val)) {
+        const next = withoutAll.filter((m) => m !== val);
+        return next.length > 0 ? next : [currentMonthKey];
+      }
+      return [...withoutAll, val];
+    });
+  };
+
+  const removeMonth = (val: string) => {
+    setSelectedMonths((prev) => {
+      const next = prev.filter((m) => m !== val);
+      return next.length > 0 ? next : [currentMonthKey];
+    });
+  };
 
   const getInitialInvoiceNo = (code?: string, lastNo?: string): string => {
     if (lastNo && lastNo.trim()) {
@@ -250,21 +273,26 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     });
   }, [localProjects, client]);
 
-  // Filter projects to only show this month's project which month is selected
+  // Filter projects to only show deliverables from selected months (or all)
   const displayedProjects = useMemo(() => {
-    if (!billingMonth || billingMonth === 'all') return enrichedProjects;
-    const [y, m] = billingMonth.split('-').map(Number);
-    if (!y || !m) return enrichedProjects;
-    const startOfMonth = new Date(y, m - 1, 1, 0, 0, 0, 0);
-    const endOfMonth = new Date(y, m, 0, 23, 59, 59, 999);
+    if (selectedMonths.includes('all') || selectedMonths.length === 0) return enrichedProjects;
+
+    const ranges = selectedMonths.map((key) => {
+      const [y, m] = key.split('-').map(Number);
+      return {
+        start: new Date(y, m - 1, 1, 0, 0, 0, 0),
+        end: new Date(y, m, 0, 23, 59, 59, 999),
+      };
+    });
 
     return enrichedProjects.filter((p) => {
       const pDate = new Date(p.startDate || p.createdAt || 0);
-      return !isNaN(pDate.getTime()) && pDate >= startOfMonth && pDate <= endOfMonth;
+      if (isNaN(pDate.getTime())) return false;
+      return ranges.some((r) => pDate >= r.start && pDate <= r.end);
     });
-  }, [enrichedProjects, billingMonth]);
+  }, [enrichedProjects, selectedMonths]);
 
-  // Keep selected IDs synced with displayed projects when billing month changes
+  // Keep selected IDs synced with displayed projects when billing months change
   useEffect(() => {
     setSelectedProjectIds(displayedProjects.map((p) => p._id));
   }, [displayedProjects]);
@@ -302,7 +330,9 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
 
     try {
       setSavingProject(true);
-      const [y, m] = (billingMonth && billingMonth !== 'all') ? billingMonth.split('-').map(Number) : [0, 0];
+      const [y, m] = (!selectedMonths.includes('all') && selectedMonths.length > 0)
+        ? selectedMonths[0].split('-').map(Number)
+        : [0, 0];
       const quickAddDate = (y && m)
         ? new Date(y, m, 0).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
@@ -311,7 +341,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
         projectName: newProjectName.trim(),
         projectValue: val,
         clientId: client._id,
-        status: 'in_progress',
+        status: 'start_process',
         startDate: quickAddDate,
       });
 
@@ -326,7 +356,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
           paidAmount: 0,
           balance: val,
           totalAmount: val,
-          status: newProj.status || 'in_progress',
+          status: newProj.status || 'start_process',
           startDate: quickAddDate,
           createdAt: quickAddDate,
         };
@@ -407,17 +437,43 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   }, [now, localProjects]);
 
   const billingMonthInfo = useMemo(() => {
-    if (!billingMonth || billingMonth === 'all') return null;
-    const [y, m] = billingMonth.split('-').map(Number);
-    if (!y || !m) return null;
-    const start = new Date(y, m - 1, 1);
-    const end = new Date(y, m, 0);
+    if (selectedMonths.includes('all') || selectedMonths.length === 0) return null;
+
+    const monthOptionsMap = new Map(billingMonthOptions.map((o) => [o.value, o.label]));
+
+    if (selectedMonths.length === 1) {
+      const [y, m] = selectedMonths[0].split('-').map(Number);
+      if (!y || !m) return null;
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0);
+      return {
+        label: monthOptionsMap.get(selectedMonths[0]) || start.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+        count: 1,
+        isMultiple: false,
+        period: `${start.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${end.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+      };
+    }
+
+    const sorted = [...selectedMonths].sort();
+    const [firstY, firstM] = sorted[0].split('-').map(Number);
+    const [lastY, lastM] = sorted[sorted.length - 1].split('-').map(Number);
+    const firstStart = new Date(firstY, firstM - 1, 1);
+    const lastEnd = new Date(lastY, lastM, 0);
+
+    const labels = sorted
+      .map((k) => {
+        const [y, m] = k.split('-').map(Number);
+        return new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      })
+      .join(', ');
+
     return {
-      label: start.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
-      endDate: end.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-      period: `${start.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${end.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+      label: labels,
+      count: selectedMonths.length,
+      isMultiple: true,
+      period: `${firstStart.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} – ${lastEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
     };
-  }, [billingMonth]);
+  }, [selectedMonths, billingMonthOptions]);
 
   const handleDownloadPdf = async () => {
     if (selectedProjects.length === 0) {
@@ -433,7 +489,9 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
       if (invoiceDate) params.append('invoiceDate', invoiceDate);
       if (taxPercent) params.append('taxPercent', taxPercent.toString());
       if (discountAmount) params.append('discountAmount', discountAmount.toString());
-      if (billingMonth && billingMonth !== 'all') params.append('month', billingMonth);
+      if (!selectedMonths.includes('all') && selectedMonths.length > 0) {
+        params.append('month', selectedMonths.join(','));
+      }
       if (Object.keys(projectDiscounts).length > 0) {
         params.append('projectDiscounts', JSON.stringify(projectDiscounts));
       }
@@ -447,8 +505,9 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
       link.href = url;
       const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec'];
       let targetDate = new Date();
-      if (billingMonth && billingMonth !== 'all') {
-        const [y, m] = billingMonth.split('-').map(Number);
+      if (!selectedMonths.includes('all') && selectedMonths.length > 0) {
+        const sorted = [...selectedMonths].sort();
+        const [y, m] = sorted[sorted.length - 1].split('-').map(Number);
         if (y && m) targetDate = new Date(y, m - 1, 1);
       } else if (invoiceDate) {
         const parsed = new Date(invoiceDate.includes('T') ? invoiceDate : `${invoiceDate}T00:00:00`);
@@ -482,10 +541,6 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     } finally {
       setDownloading(false);
     }
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   return (
@@ -565,52 +620,109 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
           {activeTab === 'select' ? (
             <div className="space-y-6">
               {/* Billing Month Selector Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#FF5A1F]/10 via-[#12131a] to-[#12131a] border border-[#FF5A1F]/25 p-3.5 rounded-xl shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/30 flex items-center justify-center shrink-0">
-                    <Calendar className="w-4 h-4" />
+              <div className="bg-gradient-to-r from-[#FF5A1F]/10 via-[#12131a] to-[#12131a] border border-[#FF5A1F]/25 p-3.5 sm:p-4 rounded-xl shadow-sm space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/30 flex items-center justify-center shrink-0">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-white block">
+                          Invoice Billing Months
+                        </span>
+                        {!selectedMonths.includes('all') && selectedMonths.length > 1 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FF5A1F] text-white">
+                            {selectedMonths.length} Months Combined
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs font-semibold text-white block">
-                      Invoice Billing Month
-                    </span>
-                    <span className="text-[11px] text-white/50">
-                      {billingMonthInfo
-                        ? `Only showing project deliverables for ${billingMonthInfo.label}`
-                        : 'Showing project deliverables across all months'}
-                    </span>
+
+                  <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                    <div className="w-56">
+                      <CustomSelect<string>
+                        value=""
+                        onChange={(val) => {
+                          if (val === 'all') {
+                            setSelectedMonths(['all']);
+                          } else if (val) {
+                            toggleMonth(val);
+                          }
+                        }}
+                        options={[
+                          { value: 'all', label: 'All Months (All Deliverables)' },
+                          ...billingMonthOptions
+                            .filter((o) => o.value !== 'all')
+                            .map((opt) => ({
+                              ...opt,
+                              label: selectedMonths.includes(opt.value)
+                                ? `✓ ${opt.label}`
+                                : `+ ${opt.label}`,
+                            })),
+                        ]}
+                        placeholder="+ Add / Select Month"
+                      />
+                    </div>
+                    {!selectedMonths.includes('all') ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMonths(['all'])}
+                        className="px-3 py-2 rounded-xl text-xs font-mono bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer shrink-0 border border-white/10"
+                      >
+                        Show All
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMonths([currentMonthKey])}
+                        className="px-3 py-2 rounded-xl text-xs font-mono bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer shrink-0 border border-white/10"
+                      >
+                        Current Month
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="w-60">
-                    <CustomSelect<string>
-                      value={billingMonth}
-                      onChange={(val) => setBillingMonth(val)}
-                      options={billingMonthOptions}
-                      placeholder="Select Month"
-                    />
+                {/* Selected Month Chips / Badges */}
+                {!selectedMonths.includes('all') && selectedMonths.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-white/[0.06]">
+                    <span className="text-[11px] text-white/40 font-medium">Included Months:</span>
+                    {selectedMonths.map((mKey) => {
+                      const opt = billingMonthOptions.find((o) => o.value === mKey);
+                      const [y, m] = mKey.split('-').map(Number);
+                      const label = opt ? opt.label : `${m}/${y}`;
+                      return (
+                        <span
+                          key={mKey}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#FF5A1F]/15 border border-[#FF5A1F]/30 text-[#FF5A1F] text-xs font-medium shadow-sm transition-all"
+                        >
+                          <Calendar className="w-3 h-3 text-[#FF5A1F]" />
+                          <span>{label}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeMonth(mKey)}
+                            title={`Remove ${label}`}
+                            className="p-0.5 rounded hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer ml-0.5"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                    <span className="text-[11px] text-zinc-400 ml-1">
+                      (Select more months from dropdown to combine 2-3 months into 1 bill)
+                    </span>
                   </div>
-                  {billingMonth !== 'all' && (
-                    <button
-                      type="button"
-                      onClick={() => setBillingMonth('all')}
-                      className="px-3 py-2 rounded-xl text-xs font-mono bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer shrink-0 border border-white/10"
-                    >
-                      Show All
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* Controls bar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] border border-white/5 p-3.5 rounded-xl">
                 <div>
                   <span className="text-xs text-white/80 font-medium block">
-                    Choose which project deliverables to combine into one invoice:
-                  </span>
-                  <span className="text-[11px] text-white/40">
-                    Selected items will be consolidated into a single downloadable PDF statement.
+                    Choose Projects to Combine into one Invoice
                   </span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
@@ -638,22 +750,10 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                   displayedProjects.map((p) => {
                     const isSelected = selectedProjectIds.includes(p._id);
                     const pVal = parseAmount(p.projectValue ?? p.totalAmount);
-                    const pPaid = parseAmount(p.paidAmount ?? p.paymentsReceived);
-                    const pBal = Math.max(0, pVal - pPaid);
-                    const pDateStr = p.startDate || p.createdAt;
-                    const formattedDate = pDateStr
-                      ? new Date(pDateStr).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })
-                      : null;
-
                     const currentDiscount =
                       projectDiscounts[p._id] !== undefined
                         ? projectDiscounts[p._id]
                         : (parseAmount(p.discountAmount) || 0);
-                    const grossPrice = pVal + currentDiscount;
 
                     return (
                       <div
@@ -675,69 +775,31 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                               <p className="text-sm font-semibold text-white">
                                 {p.projectName || p.title}
                               </p>
-                              <p className="text-[11px] font-mono text-white/40 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                                <span>
-                                  Status:{' '}
-                                  <span className="capitalize text-white/70">
-                                    {p.status?.replace('_', ' ')}
-                                  </span>
-                                </span>
-                                <span>&bull;</span>
-                                <span>Code: {p.projectCode || '—'}</span>
-                                {formattedDate && (
-                                  <>
-                                    <span>&bull;</span>
-                                    <span className="text-[#FF5A1F]/80">Date: {formattedDate}</span>
-                                  </>
-                                )}
-                              </p>
                             </div>
                           </div>
 
                           <div className="text-right font-mono">
                             <p className="text-sm font-bold text-white">{formatINR(pVal)}</p>
-                            <p className="text-[10px] text-white/40 mt-0.5">
-                              Paid: <span className="text-white font-medium">{formatINR(pPaid)}</span>{' '}
-                              &bull; Due:{' '}
-                              <span className="text-zinc-300 font-medium">{formatINR(pBal)}</span>
-                            </p>
                           </div>
                         </div>
 
-                        {/* Manual Discount & Live Markup Preview for this project */}
+                        {/* Manual Discount for this project */}
                         {isSelected && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            className="mt-3 pt-2.5 border-t border-white/10 flex flex-wrap items-center justify-between gap-2.5 text-xs"
+                            className="mt-3 pt-2.5 border-t border-white/10 flex items-center gap-2 text-xs"
                           >
-                            <div className="flex items-center gap-2">
-                              <span className="text-white/60 font-medium text-[11.5px]">Add Discount (₹):</span>
-                              <div className="relative">
-                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40 font-mono text-xs">₹</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  value={currentDiscount || ''}
-                                  onChange={(e) => handleProjectDiscountChange(p._id, Number(e.target.value))}
-                                  className="w-28 pl-6 pr-2.5 py-1 bg-black/80 border border-white/15 rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Live calculation badges: Price, Discount, Total */}
-                            <div className="flex items-center gap-2 font-mono text-[11px] bg-white/[0.03] px-2.5 py-1 rounded-lg border border-white/5">
-                              <span className="text-white/50">
-                                Price: <strong className="text-white font-bold">{formatINR(grossPrice)}</strong>
-                              </span>
-                              <span className="text-white/30">•</span>
-                              <span className="text-white/50">
-                                Disc: <strong className="text-[#FF5A1F] font-bold">{currentDiscount > 0 ? `-${formatINR(currentDiscount)}` : '₹0'}</strong>
-                              </span>
-                              <span className="text-white/30">•</span>
-                              <span className="text-white/50">
-                                Total: <strong className="text-emerald-400 font-bold">{formatINR(pVal)}</strong>
-                              </span>
+                            <span className="text-white/60 font-medium text-[11.5px]">Add Discount (₹):</span>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40 font-mono text-xs">₹</span>
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="0"
+                                value={currentDiscount || ''}
+                                onChange={(e) => handleProjectDiscountChange(p._id, Number(e.target.value))}
+                                className="w-28 pl-6 pr-2.5 py-1 bg-black/80 border border-white/15 rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                              />
                             </div>
                           </div>
                         )}
@@ -754,10 +816,10 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                       .
                     </p>
                     <div className="flex items-center justify-center gap-3">
-                      {billingMonth !== 'all' && (
+                      {!selectedMonths.includes('all') && (
                         <button
                           type="button"
-                          onClick={() => setBillingMonth('all')}
+                          onClick={() => setSelectedMonths(['all'])}
                           className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white font-sans text-xs transition-colors cursor-pointer border border-white/10"
                         >
                           Show All Months
@@ -774,6 +836,9 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                   </div>
                 )}
               </div>
+
+
+
 
               {/* Add Another Project to this Client (Quick Add to Combine) */}
               <div className="p-4 rounded-xl bg-[#111218] border border-white/[0.08] space-y-3">
@@ -975,6 +1040,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                         </div>
                       </div>
 
+
                       {client.gstNumber && (
                         <div className="flex justify-between items-center">
                           <span className="text-[#71717A]">GSTIN:</span>
@@ -1070,9 +1136,9 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                       <span className="text-white font-bold">-{formatINR(totalPaid)}</span>
                     </div>
 
-                    {/* Balance Due Card */}
+                    {/* Total Card */}
                     <div className="p-3.5 rounded-xl bg-[#1F1008] border border-[#FF5A1F]/50 flex justify-between items-center text-sm font-bold mt-3 shadow-[0_0_20px_rgba(255,90,31,0.12)]">
-                      <span className="text-white">Balance Due:</span>
+                      <span className="text-white">Total:</span>
                       <span className="text-base font-black bg-gradient-to-r from-[#FF5A1F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F]">{formatINR(netBalanceDue)}</span>
                     </div>
 
@@ -1167,7 +1233,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-white/[0.08] bg-[#090a0f] shrink-0">
           <div className="text-xs text-white/50">
             {selectedProjects.length} deliverables combined &bull; Total Value:{' '}
-            <span className="text-white font-bold">{formatINR(grandTotal)}</span> &bull; Balance Due:{' '}
+            <span className="text-white font-bold">{formatINR(grandTotal)}</span> &bull; Total:{' '}
             <span className="bg-gradient-to-r from-[#FF5A1F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F] font-bold">{formatINR(netBalanceDue)}</span>
           </div>
 
@@ -1193,14 +1259,6 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                   <span>Back to Select</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition-colors cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print</span>
-                </button>
 
                 <button
                   type="button"

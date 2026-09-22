@@ -70,7 +70,7 @@ export const EmployeeProjects: React.FC = () => {
   const handleStatusChange = async (projectId: string, newStatus: string) => {
     // Optimistic UI update
     const nowIso = new Date().toISOString();
-    const isFinished = newStatus === 'delivered' || newStatus === 'completed';
+    const isFinished = newStatus === 'delivered';
     const deliveredAtVal = isFinished ? nowIso : undefined;
     setProjects((prev) =>
       prev.map((item) => {
@@ -123,15 +123,15 @@ export const EmployeeProjects: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const isCompletedOrDelivered = (status: string) => {
+  const isDelivered = (status: string) => {
     const s = (status || '').toLowerCase();
-    return s === 'completed' || s === 'delivered';
+    return s === 'delivered';
   };
 
   // 1. Pending & In Progress Projects (always at top)
   const pendingProjects = useMemo(() => {
     return filtered
-      .filter((item) => !isCompletedOrDelivered((item.projectId || item).status))
+      .filter((item) => !isDelivered((item.projectId || item).status))
       .sort((a, b) => {
         const prjA = a.projectId || a;
         const prjB = b.projectId || b;
@@ -142,7 +142,7 @@ export const EmployeeProjects: React.FC = () => {
   // 2. Completed Projects grouped into Date Boxes
   const completedGroups = useMemo(() => {
     const completed = filtered.filter((item) =>
-      isCompletedOrDelivered((item.projectId || item).status)
+      isDelivered((item.projectId || item).status)
     );
     const groups = new Map<string, any[]>();
 
@@ -217,8 +217,8 @@ export const EmployeeProjects: React.FC = () => {
     [completedGroups]
   );
 
-  const shouldShowPendingSection = statusFilter === 'all' || !isCompletedOrDelivered(statusFilter);
-  const shouldShowCompletedSection = statusFilter === 'all' || isCompletedOrDelivered(statusFilter);
+  const shouldShowPendingSection = statusFilter === 'all' || !isDelivered(statusFilter);
+  const shouldShowCompletedSection = statusFilter === 'all' || isDelivered(statusFilter);
 
   // Helper to render an employee project row
   const renderProjectRow = (item: any, rowNumber: number) => {
@@ -248,10 +248,9 @@ export const EmployeeProjects: React.FC = () => {
               value={prj.status}
               onChange={(val) => handleStatusChange(prj._id, val)}
               options={[
-                { value: 'confirmed', label: 'Confirmed' },
-                { value: 'in_progress', label: 'In Progress' },
-                { value: 'review', label: 'In Review' },
-                { value: 'completed', label: 'Completed' },
+                { value: 'start_process', label: 'Start Process' },
+                { value: 'in_process', label: 'In Process' },
+                { value: 'in_changes', label: 'In Changes' },
                 { value: 'delivered', label: 'Delivered' },
               ]}
             />
@@ -260,10 +259,10 @@ export const EmployeeProjects: React.FC = () => {
         <td className="py-3.5 px-5 text-right w-24">
           <Link
             to={`/employee/projects/${prj._id}`}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 text-xs font-medium transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all"
           >
             <span>View</span>
-            <span className="text-zinc-400">→</span>
+            <span className="text-white/90">→</span>
           </Link>
         </td>
       </tr>
@@ -306,34 +305,14 @@ export const EmployeeProjects: React.FC = () => {
             className="w-full sm:w-44"
             options={[
               { value: 'all', label: 'All statuses' },
-              { value: 'confirmed', label: 'Confirmed' },
-              { value: 'in_progress', label: 'In progress' },
-              { value: 'review', label: 'In review' },
-              { value: 'completed', label: 'Completed' },
+              { value: 'start_process', label: 'Start Process' },
+              { value: 'in_process', label: 'In Process' },
+              { value: 'in_changes', label: 'In Changes' },
               { value: 'delivered', label: 'Delivered' },
             ]}
           />
         </div>
       </div>
-
-      {/* Active Month Filter Notification Banner */}
-      {selectedMonth !== 'all' && (
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
-            <span className="text-zinc-300">
-              Showing projects for <span className="font-semibold text-white">{selectedMonthLabel}</span>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSelectedMonth('all')}
-            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
-          >
-            Show All Months
-          </button>
-        </div>
-      )}
 
       {/* Main Content Area */}
       {loading ? (
@@ -364,7 +343,7 @@ export const EmployeeProjects: React.FC = () => {
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#FF5A1F] animate-pulse" />
-                  <h2 className="text-sm font-semibold text-white">Pending & In Progress Projects</h2>
+                  <h2 className="text-sm font-semibold text-white">Pending & In Process Projects</h2>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FF5A1F]/10 border border-[#FF5A1F]/20 text-[#FF5A1F]">
                     {pendingProjects.length}
                   </span>
@@ -394,7 +373,7 @@ export const EmployeeProjects: React.FC = () => {
                 </div>
               ) : (
                 <div className="p-6 text-center text-xs text-zinc-500 bg-[#08090d] border border-white/[0.06] rounded-2xl">
-                  No pending or in-progress projects in this filter.
+                  No pending or in-process projects in this filter.
                 </div>
               )}
             </div>
@@ -406,7 +385,7 @@ export const EmployeeProjects: React.FC = () => {
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-[#FF5A1F]" />
-                  <h2 className="text-sm font-semibold text-white">Completed Projects</h2>
+                  <h2 className="text-sm font-semibold text-white">Delivered Projects</h2>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FF5A1F]/10 border border-[#FF5A1F]/20 text-[#FF5A1F]">
                     {completedTotalCount}
                   </span>
@@ -430,7 +409,7 @@ export const EmployeeProjects: React.FC = () => {
                           </div>
                         </div>
                         <span className="text-xs text-zinc-400 font-medium">
-                          {group.projects.length} {group.projects.length === 1 ? 'project completed' : 'projects completed'}
+                          {group.projects.length} {group.projects.length === 1 ? 'project delivered' : 'projects delivered'}
                         </span>
                       </div>
 
@@ -457,7 +436,7 @@ export const EmployeeProjects: React.FC = () => {
                 </div>
               ) : (
                 <div className="p-6 text-center text-xs text-zinc-500 bg-[#08090d] border border-white/[0.06] rounded-2xl">
-                  No completed projects found in this filter.
+                  No delivered projects found in this filter.
                 </div>
               )}
             </div>

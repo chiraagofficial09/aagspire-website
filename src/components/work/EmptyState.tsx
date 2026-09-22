@@ -50,7 +50,7 @@ const typeConfig: Record<
   employees: {
     icon: Users,
     title: 'No team members',
-    description: 'Add your first employee to begin managing staff, payroll, and commission allocations.',
+    description: 'Add your first team member to begin managing staff, payroll, and commission allocations.',
   },
   clients: {
     icon: Building2,

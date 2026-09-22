@@ -270,7 +270,7 @@ export const AdminDashboard: React.FC = () => {
     name: p.projectName || p.title || 'Untitled Project',
     client: p.clientId?.companyName || p.clientId?.name || 'Direct Client',
     value: parseAmount(p.projectValue ?? p.totalAmount ?? p.value),
-    status: p.status || 'in_progress',
+    status: p.status || 'start_process',
   }));
 
   // Real Pending Approvals from Database
@@ -399,14 +399,11 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
             <div className="mt-3">
-              <div className={`text-xl sm:text-2xl font-extrabold tracking-tight ${headingColor}`}>
+              <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FF5A1F]">
                 {formatINR(newProjectValue)}
               </div>
-             
             </div>
           </div>
-
-        
 
           {/* Card 2: Previous Month Due */}
           <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
@@ -417,14 +414,11 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
             <div className="mt-3">
-              <div className={`text-xl sm:text-2xl font-extrabold tracking-tight ${headingColor}`}>
+              <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FF5A1F]">
                 {formatINR(openingReceivable)}
               </div>
-             
             </div>
           </div>
-
-      
 
           {/* Card 3: Money Received This Month */}
           <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
@@ -435,29 +429,24 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
             <div className="mt-3">
-              <div className={`text-xl sm:text-2xl font-extrabold tracking-tight ${headingColor}`}>
+              <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FF5A1F]">
                 {formatINR(cashCollected)}
               </div>
-             
             </div>
           </div>
-
-          {/* Operator: = */}
-        
 
           {/* Card 4: Remaining Due */}
           <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
             <div className="flex items-center justify-between">
               <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Pending</span>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-ember/10 text-ember border border-ember/20">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
                 <Tag className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-xl sm:text-2xl font-extrabold tracking-tight">
+              <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FF5A1F]">
                 {formatINR(closingReceivable)}
               </div>
-            
             </div>
           </div>
         </div>
@@ -466,7 +455,7 @@ export const AdminDashboard: React.FC = () => {
       {/* 2.5 ALLOCATION SHARE CARDS: 5-TIER PROJECT-VALUE-WEIGHTED COMMISSION SPLIT */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 mt-4 sm:mt-5">
         {/* Card 1: EMPLOYEE SHARE */}
-        <div className={`rounded-2xl ${isLight ? 'bg-white border border-[#FF5A1F]/40 shadow-[0_4px_25px_rgba(255,90,31,0.08)]' : 'bg-[#0e1017] border border-[#FF5A1F]/40 shadow-[0_0_25px_rgba(255,90,31,0.06)]'} p-4 sm:p-5 relative overflow-hidden flex flex-col justify-between`}>
+        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
           <div className="flex items-center justify-between">
             <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">
               Team Commission
@@ -477,7 +466,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-3">
             <div>
-              <span className="text-xl sm:text-2xl font-extrabold  tracking-tight font-sans">
+              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
                 {formatINR(employeeShareAmount)}
               </span>
             </div>
@@ -497,7 +486,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-3">
             <div>
-              <span className={`text-xl sm:text-2xl font-extrabold ${headingColor} tracking-tight font-sans`}>
+              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
                 {formatINR(adminShareAmount)}
               </span>
             </div>
@@ -517,7 +506,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-3">
             <div>
-              <span className={`text-xl sm:text-2xl font-extrabold ${headingColor} tracking-tight font-sans`}>
+              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
                 {formatINR(officeExpenseAmount)}
               </span>
             </div>
@@ -537,7 +526,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-3">
             <div>
-              <span className={`text-xl sm:text-2xl font-extrabold ${headingColor} tracking-tight font-sans`}>
+              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
                 {formatINR(brokerShareAmount)}
               </span>
             </div>
@@ -557,7 +546,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-3">
             <div>
-              <span className={`text-xl sm:text-2xl font-extrabold ${headingColor} tracking-tight font-sans`}>
+              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
                 {formatINR(reserveFundAmount)}
               </span>
             </div>
@@ -566,160 +555,201 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. CHARTS ROW 1: Bookings vs Cash Collection & Receivable Reconciliation */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {/* Chart 1: Bookings vs Cash Collection */}
-        <div className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
-                Bookings vs Cash Collection
-              </h2>
-             
-            </div>
-            <div className="flex items-center gap-3 text-xs font-semibold">
-              <span className="flex items-center gap-1.5 text-ember">
-                <span className="w-2.5 h-2.5 rounded-full bg-ember" /> Bookings
-              </span>
-              <span className="flex items-center gap-1.5 text-emerald-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Cash Collected
-              </span>
-            </div>
+      {/* 3. RECENT PROJECTS & PENDING APPROVALS (2 COLUMNS) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+        {/* Left Column (7 cols): Recent Projects Table */}
+        <div className={`lg:col-span-7 p-5 sm:p-6 rounded-2xl border transition-all duration-200 space-y-4 ${cardBg}`}>
+          <div className="flex items-center justify-between">
+            <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
+              Recent Projects
+            </h2>
+            <Link to="/admin/projects" className="text-xs font-semibold text-ember hover:underline">
+              View All
+            </Link>
           </div>
 
-          <div className="h-64 sm:h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
-                <XAxis
-                  dataKey="month"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }}
-                  dy={6}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 11 }}
-                  tickFormatter={formatLakhs}
-                  domain={[0, Math.ceil(maxBarRevenue * 1.2)]}
-                />
-                <Tooltip
-                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                  contentStyle={{
-                    backgroundColor: '#181818',
-                    borderColor: '#ffffff20',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                    color: '#ffffff',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                  }}
-                  formatter={(val: any, name: any) => [
-                    formatINR(val),
-                    name === 'bookings' ? 'New Bookings' : 'Cash Collected',
-                  ]}
-                />
-                <Bar dataKey="bookings" fill="#FF5A1F" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                <Bar dataKey="collections" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={28} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left text-xs min-w-[460px]">
+              <thead className="border-b border-white/10 text-white/40 font-mono text-[11px] uppercase tracking-wider">
+                <tr>
+                  <th className="pb-2.5 pr-3 font-semibold">PROJECT NAME</th>
+                  <th className="pb-2.5 px-3 font-semibold">CLIENT</th>
+                  <th className="pb-2.5 px-3 font-semibold">VALUE</th>
+                  <th className="pb-2.5 pl-3 font-semibold text-right">STATUS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {recentProjects.length > 0 ? (
+                  recentProjects.map((prj: any) => (
+                    <tr key={prj.id} className="transition-colors hover:bg-white/[0.02]">
+                      <td className="py-3.5 pr-3 font-semibold truncate max-w-[170px]">
+                        <span className={headingColor}>{prj.name}</span>
+                      </td>
+                      <td className={`py-3.5 px-3 truncate max-w-[140px] ${subtextColor}`}>
+                        {prj.client}
+                      </td>
+                      <td className={`py-3.5 px-3 font-semibold font-mono ${headingColor}`}>
+                        {formatINR(prj.value)}
+                      </td>
+                      <td className="py-3.5 pl-3 text-right">
+                        <StatusBadge status={prj.status} type="project" />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-xs font-mono text-white/40">
+                      No projects recorded in database yet.{' '}
+                      <Link to="/admin/projects" className="text-ember hover:underline">
+                        Create Project &rarr;
+                      </Link>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Chart 2: Receivable Reconciliation */}
-        <div className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 ${cardBg}`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
-            <div>
+        {/* Right Column (5 cols): Pending Approvals */}
+        <div className={`lg:col-span-5 p-5 sm:p-6 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+          <div>
+            <div className="flex items-center justify-between mb-3">
               <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
-                Receivable Reconciliation
+                Pending Approvals
               </h2>
-             
+              <Link
+                to={pendingTab === 'workLogs' ? '/admin/work-logs' : '/admin/payments'}
+                className="text-xs font-semibold text-ember hover:underline"
+              >
+                View All
+              </Link>
             </div>
-            <div className="flex items-center gap-3 text-xs font-semibold">
-              <span className="flex items-center gap-1.5 text-zinc-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-zinc-400" /> Opening
-              </span>
-              <span className="flex items-center gap-1.5 text-ember">
-                <span className="w-2.5 h-2.5 rounded-full bg-ember" /> Closing
-              </span>
+
+            {/* Switchable Tabs: Work Logs vs Payments */}
+            <div className="grid grid-cols-2 p-1 rounded-xl mb-4 border bg-white/5 border-white/10">
+              <button
+                onClick={() => setPendingTab('workLogs')}
+                className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  pendingTab === 'workLogs'
+                    ? 'bg-[#FF5A1F] text-white shadow-[0_0_12px_rgba(255,90,31,0.3)]'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Work Logs ({pendingWorkLogs.length})
+              </button>
+              <button
+                onClick={() => setPendingTab('payments')}
+                className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  pendingTab === 'payments'
+                    ? 'bg-[#FF5A1F] text-white shadow-[0_0_12px_rgba(255,90,31,0.3)]'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Payments ({recentPayments.length})
+              </button>
+            </div>
+
+            {/* Pending List Items */}
+            <div className="space-y-3 min-h-[140px] flex flex-col justify-center">
+              {pendingTab === 'workLogs' ? (
+                pendingWorkLogs.length > 0 ? (
+                  pendingWorkLogs.map((item: any) => (
+                    <div
+                      key={item.id}
+                      className="p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all bg-white/[0.02] border-white/5 hover:border-white/10"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs shrink-0 text-white">
+                          {item.initials}
+                        </div>
+                        <div className="min-w-0">
+                          <div className={`text-xs font-bold truncate ${headingColor}`}>
+                            {item.name}
+                          </div>
+                          <div className={`text-[11px] truncate ${subtextColor}`}>
+                            {item.project} {item.hours ? `• ${item.hours}` : ''}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => handleApproveWorkLog(item.id)}
+                          title="Approve"
+                          className="p-1.5 rounded-lg bg-ember/15 hover:bg-ember/25 text-ember transition-colors cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleRejectWorkLog(item.id)}
+                          title="Reject"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 text-white/50 hover:text-red-400 transition-colors cursor-pointer"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-xs font-mono text-white/40">
+                    No submitted timesheets awaiting approval.
+                  </div>
+                )
+              ) : (
+                recentPayments.length > 0 ? (
+                  recentPayments.map((p: any) => (
+                    <div
+                      key={p.id}
+                      className="p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all bg-white/[0.02] border-white/5 hover:border-white/10"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-ember/15 text-ember flex items-center justify-center font-bold text-xs shrink-0">
+                          {p.initials}
+                        </div>
+                        <div className="min-w-0">
+                          <div className={`text-xs font-bold truncate ${headingColor}`}>
+                            {p.name}
+                          </div>
+                          <div className={`text-[11px] truncate ${subtextColor}`}>
+                            {p.project} &bull; <span className="font-mono font-semibold text-white">{formatINR(p.amount)}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            {p.date}
+                          </div>
+                        </div>
+                      </div>
+
+                      <Link
+                        to="/admin/payments"
+                        title="View Payment Details"
+                        className="p-1.5 rounded-lg bg-ember/10 hover:bg-ember/20 text-ember transition-colors shrink-0"
+                      >
+                        <ArrowUpRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-xs font-mono text-white/40">
+                    No client payments recorded yet.
+                  </div>
+                )
+              )}
             </div>
           </div>
 
-          <div className="h-64 sm:h-72 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorClosingRec" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF5A1F" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#FF5A1F" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="colorOpeningRec" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#A1A1AA" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#A1A1AA" stopOpacity={0.01} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
-                <XAxis
-                  dataKey="month"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }}
-                  dy={6}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 11 }}
-                  tickFormatter={formatLakhs}
-                  domain={[0, Math.ceil(maxBarRevenue * 1.2)]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#181818',
-                    borderColor: '#ffffff20',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                    color: '#ffffff',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                  }}
-                  formatter={(val: any, name: any) => [
-                    formatINR(val),
-                    name === 'closingReceivable' ? 'Closing Receivable' : 'Opening Receivable',
-                  ]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="openingReceivable"
-                  stroke="#A1A1AA"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorOpeningRec)"
-                  name="openingReceivable"
-                  activeDot={{ r: 4, stroke: '#A1A1AA', strokeWidth: 2, fill: '#fff' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="closingReceivable"
-                  stroke="#FF5A1F"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#colorClosingRec)"
-                  name="closingReceivable"
-                  activeDot={{ r: 5, stroke: '#FF5A1F', strokeWidth: 2, fill: '#fff' }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="pt-3 border-t text-[11px] font-mono text-center border-white/10 mt-3">
+            <span className={subtextColor}>
+              {pendingWorkLogs.length} pending work logs &bull; {recentPayments.length} recorded payments
+            </span>
           </div>
         </div>
       </div>
 
-      {/* 4. BOTTOM SECTION: 3 COLUMNS (Settlement Reserve / Commission Split, Recent Projects, Pending Approvals) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
-        {/* Column 1 (4 cols): Settlement Reserve & 5-Tier Project Allocation */}
-        <div className={`lg:col-span-4 p-5 sm:p-6 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+      {/* 4. BOTTOM SECTION: 3 CHARTS & COMMISSION SPLIT COLUMNS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        {/* Column 1: Commission Split (5-Tier Project Allocation) */}
+        <div className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -815,191 +845,144 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Column 2 (5 cols): Recent Projects Table */}
-        <div className={`lg:col-span-5 p-5 sm:p-6 rounded-2xl border transition-all duration-200 space-y-4 ${cardBg}`}>
-          <div className="flex items-center justify-between">
-            <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
-              Recent Projects
+        {/* Column 2: Bookings vs Cash Collection */}
+        <div className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 ${cardBg}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className={`text-sm font-bold tracking-tight ${headingColor}`}>
+              Bookings vs Cash Collection
             </h2>
-            <Link to="/admin/projects" className="text-xs font-semibold text-ember hover:underline">
-              View All
-            </Link>
+            <div className="flex items-center gap-2.5 text-[11px] font-semibold">
+              <span className="flex items-center gap-1 text-ember">
+                <span className="w-2 h-2 rounded-full bg-ember" /> Bookings
+              </span>
+              <span className="flex items-center gap-1 text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Cash Collected
+              </span>
+            </div>
           </div>
 
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-xs min-w-[460px]">
-              <thead className="border-b border-white/10 text-white/40 font-mono text-[11px] uppercase tracking-wider">
-                <tr>
-                  <th className="pb-2.5 pr-3 font-semibold">Project Name</th>
-                  <th className="pb-2.5 px-3 font-semibold">Client</th>
-                  <th className="pb-2.5 px-3 font-semibold">Value</th>
-                  <th className="pb-2.5 pl-3 font-semibold text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {recentProjects.length > 0 ? (
-                  recentProjects.map((prj: any) => (
-                    <tr key={prj.id} className="transition-colors hover:bg-white/[0.02]">
-                      <td className="py-3 pr-3 font-semibold truncate max-w-[130px]">
-                        <span className={headingColor}>{prj.name}</span>
-                      </td>
-                      <td className={`py-3 px-3 truncate max-w-[110px] ${subtextColor}`}>
-                        {prj.client}
-                      </td>
-                      <td className={`py-3 px-3 font-semibold font-mono ${headingColor}`}>
-                        {formatINR(prj.value)}
-                      </td>
-                      <td className="py-3 pl-3 text-right">
-                        <StatusBadge status={prj.status} type="project" />
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-xs font-mono text-white/40">
-                      No projects recorded in database yet.{' '}
-                      <Link to="/admin/projects" className="text-ember hover:underline">
-                        Create Project &rarr;
-                      </Link>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <div className="h-56 sm:h-64 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
+                  dy={6}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  tickFormatter={formatLakhs}
+                  domain={[0, Math.ceil(maxBarRevenue * 1.2)]}
+                />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                  contentStyle={{
+                    backgroundColor: '#181818',
+                    borderColor: '#ffffff20',
+                    borderRadius: '0.75rem',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                  }}
+                  formatter={(val: any, name: any) => [
+                    formatINR(val),
+                    name === 'bookings' ? 'New Bookings' : 'Cash Collected',
+                  ]}
+                />
+                <Bar dataKey="bookings" fill="#FF5A1F" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                <Bar dataKey="collections" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={22} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Column 3 (3.5 cols): Pending Approvals */}
-        <div className={`lg:col-span-3 p-5 sm:p-6 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
-                Pending Approvals
-              </h2>
-              <Link
-                to={pendingTab === 'workLogs' ? '/admin/work-logs' : '/admin/payments'}
-                className="text-xs font-semibold text-ember hover:underline"
-              >
-                View All
-              </Link>
-            </div>
-
-            {/* Switchable Tabs: Work Logs vs Payments */}
-            <div className="grid grid-cols-2 p-1 rounded-xl mb-3 border bg-white/5 border-white/10">
-              <button
-                onClick={() => setPendingTab('workLogs')}
-                className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  pendingTab === 'workLogs'
-                    ? 'bg-ember text-white shadow-[0_0_12px_rgba(255,90,31,0.4)]'
-                    : subtextColor
-                }`}
-              >
-                Work Logs ({pendingWorkLogs.length})
-              </button>
-              <button
-                onClick={() => setPendingTab('payments')}
-                className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  pendingTab === 'payments'
-                    ? 'bg-ember text-white shadow-[0_0_12px_rgba(255,90,31,0.4)]'
-                    : subtextColor
-                }`}
-              >
-                Payments ({recentPayments.length})
-              </button>
-            </div>
-
-            {/* Pending List Items */}
-            <div className="space-y-3 mt-3">
-              {pendingTab === 'workLogs' ? (
-                pendingWorkLogs.length > 0 ? (
-                  pendingWorkLogs.map((item: any) => (
-                    <div
-                      key={item.id}
-                      className="p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all bg-white/[0.02] border-white/5 hover:border-white/10"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs shrink-0 text-white">
-                          {item.initials}
-                        </div>
-                        <div className="min-w-0">
-                          <div className={`text-xs font-bold truncate ${headingColor}`}>
-                            {item.name}
-                          </div>
-                          <div className={`text-[11px] truncate ${subtextColor}`}>
-                            {item.project} {item.hours ? `• ${item.hours}` : ''}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => handleApproveWorkLog(item.id)}
-                          title="Approve"
-                          className="p-1.5 rounded-lg bg-ember/15 hover:bg-ember/25 text-ember transition-colors cursor-pointer"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleRejectWorkLog(item.id)}
-                          title="Reject"
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 text-white/50 hover:text-red-400 transition-colors cursor-pointer"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-8 text-center text-xs font-mono text-white/40">
-                    No submitted timesheets awaiting approval.
-                  </div>
-                )
-              ) : (
-                recentPayments.length > 0 ? (
-                  recentPayments.map((p: any) => (
-                    <div
-                      key={p.id}
-                      className="p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all bg-white/[0.02] border-white/5 hover:border-white/10"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-ember/15 text-ember flex items-center justify-center font-bold text-xs shrink-0">
-                          {p.initials}
-                        </div>
-                        <div className="min-w-0">
-                          <div className={`text-xs font-bold truncate ${headingColor}`}>
-                            {p.name}
-                          </div>
-                          <div className={`text-[11px] truncate ${subtextColor}`}>
-                            {p.project} &bull; <span className="font-mono font-semibold text-white">{formatINR(p.amount)}</span>
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                            {p.date}
-                          </div>
-                        </div>
-                      </div>
-
-                      <Link
-                        to="/admin/payments"
-                        title="View Payment Details"
-                        className="p-1.5 rounded-lg bg-ember/10 hover:bg-ember/20 text-ember transition-colors shrink-0"
-                      >
-                        <ArrowUpRight className="w-4 h-4" />
-                      </Link>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-8 text-center text-xs font-mono text-white/40">
-                    No client payments recorded yet.
-                  </div>
-                )
-              )}
+        {/* Column 3: Receivable Reconciliation */}
+        <div className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 ${cardBg}`}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className={`text-sm font-bold tracking-tight ${headingColor}`}>
+              Receivable Reconciliation
+            </h2>
+            <div className="flex items-center gap-2.5 text-[11px] font-semibold">
+              <span className="flex items-center gap-1 text-zinc-400">
+                <span className="w-2 h-2 rounded-full bg-zinc-400" /> Opening
+              </span>
+              <span className="flex items-center gap-1 text-ember">
+                <span className="w-2 h-2 rounded-full bg-ember" /> Closing
+              </span>
             </div>
           </div>
 
-          <div className="pt-3 border-t text-[11px] font-mono text-center border-white/10 mt-3">
-            <span className={subtextColor}>
-              {pendingWorkLogs.length} pending work logs &bull; {recentPayments.length} recorded payments
-            </span>
+          <div className="h-56 sm:h-64 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorClosingRec" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FF5A1F" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#FF5A1F" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="colorOpeningRec" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#A1A1AA" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#A1A1AA" stopOpacity={0.01} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
+                  dy={6}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  tickFormatter={formatLakhs}
+                  domain={[0, Math.ceil(maxBarRevenue * 1.2)]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#181818',
+                    borderColor: '#ffffff20',
+                    borderRadius: '0.75rem',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                  }}
+                  formatter={(val: any, name: any) => [
+                    formatINR(val),
+                    name === 'closingReceivable' ? 'Closing Receivable' : 'Opening Receivable',
+                  ]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="openingReceivable"
+                  stroke="#A1A1AA"
+                  strokeWidth={2}
+                  fillOpacity={1}
+                  fill="url(#colorOpeningRec)"
+                  name="openingReceivable"
+                  activeDot={{ r: 4, stroke: '#A1A1AA', strokeWidth: 2, fill: '#fff' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="closingReceivable"
+                  stroke="#FF5A1F"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#colorClosingRec)"
+                  name="closingReceivable"
+                  activeDot={{ r: 5, stroke: '#FF5A1F', strokeWidth: 2, fill: '#fff' }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

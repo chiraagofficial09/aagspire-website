@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
+import { useAlert } from '../../context/AlertContext';
 import {
   Clock,
   LogIn,
@@ -22,6 +23,7 @@ interface ClockWidgetProps {
 }
 
 export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onStatusChange }) => {
+  const { showAlert } = useAlert();
   const [loading, setLoading] = useState(true);
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [clockInAt, setClockInAt] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
   const [projects, setProjects] = useState<any[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
-  const [projectStatusMap, setProjectStatusMap] = useState<Record<string, 'in_progress' | 'completed'>>({});
+  const [projectStatusMap, setProjectStatusMap] = useState<Record<string, string>>({});
   const [projectSearch, setProjectSearch] = useState('');
 
   const fetchStatus = async () => {
@@ -76,7 +78,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
       await fetchStatus();
       onStatusChange?.();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to clock in.');
+      showAlert(err.response?.data?.message || 'Failed to clock in.');
     } finally {
       setActionLoading(false);
     }
@@ -87,15 +89,15 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
     setProjectSearch('');
     setIsModalOpen(true);
     setLoadingProjects(true);
-    api.get('/employee/projects?status=in_progress')
+    api.get('/employee/projects')
       .then((res) => {
         const rawList = res.data.data || res.data.projects || [];
-        // Strictly filter to only projects currently in_progress
-        const list = rawList.filter((p: any) => p.status === 'in_progress');
+        // Filter to all active (non-delivered) projects
+        const list = rawList.filter((p: any) => p.status !== 'delivered' && p.status !== 'completed');
         setProjects(list);
-        const map: Record<string, 'in_progress' | 'completed'> = {};
+        const map: Record<string, string> = {};
         list.forEach((p: any) => {
-          map[p._id] = 'in_progress';
+          map[p._id] = p.status || 'in_process';
         });
         setProjectStatusMap(map);
         // If employee has only 1 in-progress project, auto-select it for convenience
@@ -115,13 +117,13 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
       if (!projectStatusMap[id]) {
         setProjectStatusMap((prev) => ({
           ...prev,
-          [id]: 'in_progress',
+          [id]: 'in_process',
         }));
       }
     }
   };
 
-  const handleStatusChange = (id: string, status: 'in_progress' | 'completed', e: React.MouseEvent) => {
+  const handleStatusChange = (id: string, status: 'in_process' | 'delivered', e: React.MouseEvent) => {
     e.stopPropagation();
     if (!selectedProjectIds.includes(id)) {
       setSelectedProjectIds((prev) => [...prev, id]);
@@ -137,7 +139,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
       setActionLoading(true);
       const payloadProjects = selectedProjectIds.map((id) => ({
         projectId: id,
-        status: projectStatusMap[id] || 'in_progress',
+        status: projectStatusMap[id] || 'in_process',
       }));
 
       await api.post('/employee/attendance/clock-out', {
@@ -148,14 +150,14 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
       await fetchStatus();
       onStatusChange?.();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to clock out.');
+      showAlert(err.response?.data?.message || 'Failed to clock out.');
     } finally {
       setActionLoading(false);
     }
   };
 
   const filteredProjects = useMemo(() => {
-    const list = projects.filter((p) => p.status === 'in_progress');
+    const list = projects.filter((p) => p.status !== 'delivered' && p.status !== 'completed');
     if (!projectSearch.trim()) return list;
     const q = projectSearch.toLowerCase();
     return list.filter(
@@ -189,7 +191,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
               </div>
               <div>
                 <h3 className="text-base font-bold text-white tracking-tight">Clock Out &amp; Update Project</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">Select the in-progress project you worked on and update its status</p>
+                <p className="text-xs text-zinc-400 mt-0.5">Select the active project you worked on and update its status</p>
               </div>
             </div>
             <button
@@ -252,7 +254,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                   type="text"
                   value={projectSearch}
                   onChange={(e) => setProjectSearch(e.target.value)}
-                  placeholder="Search in-progress projects..."
+                  placeholder="Search active projects..."
                   className="w-full bg-[#08090d] border border-white/[0.08] rounded-xl pl-8 pr-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#FF5A1F]/50"
                 />
               </div>
@@ -268,7 +270,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
               ) : filteredProjects.length > 0 ? (
                 filteredProjects.map((p) => {
                   const isSelected = selectedProjectIds.includes(p._id);
-                  const currentStatus = projectStatusMap[p._id] || 'in_progress';
+                  const currentStatus = projectStatusMap[p._id] || p.status || 'in_process';
 
                   return (
                     <div
@@ -309,31 +311,31 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                         <div className="flex items-center gap-1 shrink-0 bg-black/60 p-1 rounded-lg border border-white/10 self-end sm:self-auto">
                           <button
                             type="button"
-                            onClick={(e) => handleStatusChange(p._id, 'in_progress', e)}
+                            onClick={(e) => handleStatusChange(p._id, 'in_process', e)}
                             className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
-                              currentStatus === 'in_progress'
-                                ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-sm'
+                              currentStatus !== 'delivered'
+                                ? 'bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/40 shadow-sm'
                                 : 'text-zinc-400 hover:text-white'
                             }`}
                           >
-                            In Progress
+                            In Process
                           </button>
                           <button
                             type="button"
-                            onClick={(e) => handleStatusChange(p._id, 'completed', e)}
+                            onClick={(e) => handleStatusChange(p._id, 'delivered', e)}
                             className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1 ${
-                              currentStatus === 'completed'
-                                ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                              currentStatus === 'delivered'
+                                ? 'bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/40 shadow-sm'
                                 : 'text-zinc-400 hover:text-white'
                             }`}
                           >
                             <Check className="w-3 h-3" />
-                            <span>Completed</span>
+                            <span>Delivered</span>
                           </button>
                         </div>
                       ) : (
-                        <span className="text-[10.5px] font-mono text-amber-400/90 uppercase px-2 py-0.5 rounded bg-amber-400/10 border border-amber-400/20 self-end sm:self-auto">
-                          In Progress
+                        <span className="text-[10.5px] font-mono text-[#FF5A1F] uppercase px-2 py-0.5 rounded bg-[#FF5A1F]/10 border border-[#FF5A1F]/25 self-end sm:self-auto">
+                          {p.status ? p.status.replace('_', ' ') : 'In Process'}
                         </span>
                       )}
                     </div>
@@ -341,7 +343,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                 })
               ) : (
                 <div className="py-6 text-center text-xs text-zinc-500 border border-dashed border-white/10 rounded-xl">
-                  {projectSearch ? 'No matching in-progress projects found.' : 'No active in-progress projects assigned.'}
+                  {projectSearch ? 'No matching projects found.' : 'No active projects assigned.'}
                 </div>
               )}
             </div>

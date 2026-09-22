@@ -10,11 +10,13 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
+import { useAlert } from '../../context/AlertContext';
 import { EmptyState } from '../../components/work/EmptyState';
 import { StatusBadge } from '../../components/work/StatusBadge';
 
 export const AdminEmployees: React.FC = () => {
   const toast = useToast();
+  const { showConfirm } = useAlert();
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -58,15 +60,22 @@ export const AdminEmployees: React.FC = () => {
     fetchEmployees();
   }, []);
 
-  // Close popup menu on outside click
+  // Close popup menu on outside click or scroll
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setActiveMenuId(null);
       }
     };
+    const handleScroll = () => {
+      setActiveMenuId(null);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
   }, []);
 
   const openCreateModal = () => {
@@ -125,16 +134,16 @@ export const AdminEmployees: React.FC = () => {
 
       if (editingEmployee) {
         await api.patch(`/admin/employees/${editingEmployee._id}`, payload);
-        toast.success('Employee updated successfully');
+        toast.success('Team member updated successfully');
       } else {
         await api.post('/admin/employees', payload);
-        toast.success('Employee created successfully');
+        toast.success('Team member created successfully');
       }
 
       setIsModalOpen(false);
       fetchEmployees();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to save employee');
+      toast.error(err.response?.data?.message || 'Failed to save team member');
     } finally {
       setSubmitting(false);
     }
@@ -142,15 +151,22 @@ export const AdminEmployees: React.FC = () => {
 
   const handleDelete = async (id: string, name: string) => {
     setActiveMenuId(null);
-    if (!window.confirm(`Are you sure you want to delete "${name}"? This removes their account and assignments.`)) {
+    const confirmed = await showConfirm({
+      title: 'Delete Team Member',
+      message: `Are you sure you want to delete "${name}"? This removes their account and assignments.`,
+      confirmText: 'Okay',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
     try {
       await api.delete(`/admin/employees/${id}`);
-      toast.success('Employee deleted successfully');
+      toast.success('Team member deleted successfully');
       fetchEmployees();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to delete employee');
+      toast.error(err.response?.data?.message || 'Failed to delete team member');
     }
   };
 
@@ -170,7 +186,7 @@ export const AdminEmployees: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Employees</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">Team Members</h1>
           <p className="text-xs text-zinc-400 mt-1">Manage your team members and roles.</p>
         </div>
         <button
@@ -202,7 +218,7 @@ export const AdminEmployees: React.FC = () => {
           <table className="w-full text-left text-xs min-w-[620px]">
             <thead>
               <tr className="border-b border-white/[0.06]">
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">EMPLOYEE</th>
+                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TEAM MEMBER</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">ROLE</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">EMAIL</th>
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">STATUS</th>
@@ -213,7 +229,7 @@ export const AdminEmployees: React.FC = () => {
               {loading ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-zinc-500 font-mono">
-                    Loading employees...
+                    Loading team members...
                   </td>
                 </tr>
               ) : filtered.length > 0 ? (
@@ -244,10 +260,10 @@ export const AdminEmployees: React.FC = () => {
                         <div className="flex items-center justify-end gap-2 relative">
                           <Link
                             to={`/admin/employees/${emp._id}`}
-                            className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 text-xs font-medium transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all"
                           >
                             <span>View</span>
-                            <span className="text-zinc-400">→</span>
+                            <span className="text-white/90">→</span>
                           </Link>
 
                           <div className="relative">
@@ -257,9 +273,18 @@ export const AdminEmployees: React.FC = () => {
                                   setActiveMenuId(null);
                                 } else {
                                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                  const menuHeight = 90;
+                                  const menuWidth = 144;
+                                  const spaceBelow = window.innerHeight - rect.bottom;
+                                  const shouldFlipUp = spaceBelow < menuHeight && rect.top >= menuHeight;
+                                  const topPos = shouldFlipUp
+                                    ? Math.max(8, rect.top - menuHeight - 4)
+                                    : Math.min(window.innerHeight - menuHeight - 8, rect.bottom + 4);
+                                  const leftPos = Math.max(8, Math.min(window.innerWidth - menuWidth - 8, rect.right - menuWidth));
+
                                   setMenuPos({
-                                    top: rect.bottom + 4,
-                                    left: Math.max(8, Math.min(window.innerWidth - 136, rect.right - 128)),
+                                    top: topPos,
+                                    left: leftPos,
                                   });
                                   setActiveMenuId(emp._id);
                                 }
@@ -298,7 +323,7 @@ export const AdminEmployees: React.FC = () => {
         return (
           <div
             ref={menuRef}
-            className="fixed w-32 bg-[#12131a] border border-white/[0.08] rounded-xl shadow-xl py-1 z-50"
+            className="fixed w-36 bg-[#12131a] border border-white/[0.08] rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100"
             style={{ top: menuPos.top, left: menuPos.left }}
           >
             <button
@@ -320,7 +345,7 @@ export const AdminEmployees: React.FC = () => {
       })()}
 
       <div className="text-xs text-zinc-500 px-1">
-        {filtered.length} {filtered.length === 1 ? 'employee' : 'employees'}
+        {filtered.length} {filtered.length === 1 ? 'team member' : 'team members'}
       </div>
 
       {/* Modal with all features intact */}
@@ -329,7 +354,7 @@ export const AdminEmployees: React.FC = () => {
           <div className="relative w-full max-w-lg bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-5 sm:p-8 space-y-5 text-white text-xs my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
               <h3 className="font-bold text-base tracking-tight text-white">
-                {editingEmployee ? 'Edit Employee' : 'New Employee'}
+                {editingEmployee ? 'Edit Team Member' : 'New Team Member'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}

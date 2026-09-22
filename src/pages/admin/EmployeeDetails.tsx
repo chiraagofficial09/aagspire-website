@@ -25,11 +25,13 @@ import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { MonthSelectDropdown } from '../../components/work/MonthSelectDropdown';
 import { WorkLogCard } from '../../components/work/WorkLogCard';
+import { useAlert } from '../../context/AlertContext';
 
 export const AdminEmployeeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
+  const { showConfirm } = useAlert();
   const [employee, setEmployee] = useState<any>(null);
   const [earnings, setEarnings] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
@@ -154,9 +156,14 @@ export const AdminEmployeeDetails: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`Are you sure you want to delete "${employee.fullName || employee.name}"? This removes their user account and history.`)) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Delete Team Member',
+      message: `Are you sure you want to delete "${employee.fullName || employee.name}"? This removes their user account and all history.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/admin/employees/${id}`);
       toast.success('Employee deleted successfully');
@@ -203,9 +210,14 @@ export const AdminEmployeeDetails: React.FC = () => {
   };
 
   const handleDeletePayout = async (payoutId: string) => {
-    if (!window.confirm('Are you sure you want to delete this payout record? The employee remaining balance will be restored.')) {
-      return;
-    }
+    const confirmed = await showConfirm({
+      title: 'Delete Payout Record',
+      message: 'Are you sure you want to delete this payout record? The team member remaining balance will be restored.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     try {
       await api.delete(`/admin/employees/${id}/payouts/${payoutId}`);
       toast.success('Payout record deleted successfully.');
@@ -240,6 +252,24 @@ export const AdminEmployeeDetails: React.FC = () => {
       toast.error(
         err.response?.data?.message || 'Failed to update work log status'
       );
+    }
+  };
+
+  const handleDeleteWorkLog = async (logId: string) => {
+    const confirmed = await showConfirm({
+      title: 'Delete Work Log',
+      message: 'Are you sure you want to delete this work log? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await api.delete(`/admin/work-logs/${logId}`);
+      toast.success('Work log deleted successfully');
+      fetchAll(selectedMonth);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to delete work log');
     }
   };
 
@@ -284,7 +314,7 @@ export const AdminEmployeeDetails: React.FC = () => {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">{employee.fullName || employee.name}</h1>
+            <h1 className="text-xl font-bold text-[#FF5A1F] tracking-tight">{employee.fullName || employee.name}</h1>
             <p className="text-xs text-white/50 font-mono">
               {employee.designation || 'Staff'}
             </p>
@@ -334,23 +364,19 @@ export const AdminEmployeeDetails: React.FC = () => {
         <StatCard
           title="TOTAL"
           value={formatINR(totalCommission)}
-          change="Contracted pool share"
-          changeType="positive"
+          valueColor="text-[#FF5A1F]"
           icon={Coins}
-          variant="ember"
         />
         <StatCard
           title="PAID"
           value={formatINR(totalPaid)}
-          change="Disbursed payouts"
-          changeType="neutral"
+          valueColor="text-[#FF5A1F]"
           icon={CheckCircle2}
         />
         <StatCard
           title="PENDING"
           value={formatINR(remainingBalance)}
-          change="Pending balance"
-          changeType="warning"
+          valueColor="text-[#FF5A1F]"
           icon={Clock}
         />
       </div>
@@ -396,7 +422,7 @@ export const AdminEmployeeDetails: React.FC = () => {
                   const prjName = p.projectName || p.title || 'Project';
                   const role = p.roleInProject || p.role || 'Team Member';
                   const share = p.sharePercent ?? p.sharePercentage ?? p.employeeSharePercent ?? 100;
-                  const status = p.status || 'in_progress';
+                  const status = p.status || 'start_process';
 
                   return (
                     <tr key={prjId} className="hover:bg-white/[0.02] transition-colors">
@@ -440,6 +466,7 @@ export const AdminEmployeeDetails: React.FC = () => {
                   log={log}
                   showEmployee={false}
                   onStatusUpdate={handleUpdateWorkLogStatus}
+                  onDelete={handleDeleteWorkLog}
                 />
               ))}
             </div>

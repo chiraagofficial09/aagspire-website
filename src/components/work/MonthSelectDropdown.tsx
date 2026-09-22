@@ -96,23 +96,19 @@ export const MonthSelectDropdown: React.FC<MonthSelectDropdownProps> = ({
         aria-expanded={isOpen}
         className={`w-full inline-flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl text-xs text-left cursor-pointer shadow-sm select-none border transition-all ${
           isOpen
-            ? 'border-[#FF5A1F] ring-2 ring-[#FF5A1F]/30 bg-[#151620]'
+            ? 'border-white/20 ring-1 ring-white/10 bg-[#151620]'
             : 'border-white/[0.08] hover:border-white/[0.2] bg-[#0c0d12] hover:bg-[#14151e]'
         }`}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <Calendar
-            className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-              isOpen || value !== 'all' ? 'text-[#FF5A1F]' : 'text-zinc-400'
-            }`}
-          />
-          <span className="font-semibold text-white truncate">
+          <Calendar className="w-3.5 h-3.5 shrink-0 text-zinc-400" />
+          <span className="font-semibold truncate text-white">
             {displayLabel}
           </span>
         </div>
         <ChevronDown
           className={`w-3.5 h-3.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-[#FF5A1F]' : ''
+            isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>

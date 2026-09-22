@@ -15,6 +15,7 @@ import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
 import { StatusBadge } from '../../components/work/StatusBadge';
 import { useToast } from '../../components/work/Toast';
+import { useAlert } from '../../context/AlertContext';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { ProjectModal } from '../../components/work/ProjectModal';
 import { EmptyState } from '../../components/work/EmptyState';
@@ -22,6 +23,7 @@ import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSel
 
 export const AdminProjects: React.FC = () => {
   const toast = useToast();
+  const { showConfirm } = useAlert();
   const [projects, setProjects] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -92,15 +94,22 @@ export const AdminProjects: React.FC = () => {
     fetchAll(selectedMonth);
   }, [selectedMonth]);
 
-  // Close popup menu on outside click
+  // Close popup menu on outside click or scroll
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setActiveMenuId(null);
       }
     };
+    const handleScroll = () => {
+      setActiveMenuId(null);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
   }, []);
 
   const openCreateModal = () => {
@@ -116,7 +125,14 @@ export const AdminProjects: React.FC = () => {
 
   const handleDelete = async (id: string, name: string) => {
     setActiveMenuId(null);
-    if (!window.confirm(`Are you sure you want to delete "${name}"? All associated commissions, payments, and team links will be removed.`)) {
+    const confirmed = await showConfirm({
+      title: 'Delete Project',
+      message: `Are you sure you want to delete "${name}"? All associated commissions, payments, and team links will be removed.`,
+      confirmText: 'Okay',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!confirmed) {
       return;
     }
     try {
@@ -131,17 +147,17 @@ export const AdminProjects: React.FC = () => {
   const handleStatusChange = async (projectId: string, newStatus: string) => {
     // Optimistic UI update
     const nowIso = new Date().toISOString();
-    const isFinished = newStatus === 'delivered' || newStatus === 'completed';
+    const isFinished = newStatus === 'delivered';
     const deliveredAtVal = isFinished ? nowIso : undefined;
     setProjects((prev) =>
       prev.map((p) =>
         p._id === projectId
           ? {
-              ...p,
-              status: newStatus,
-              updatedAt: nowIso,
-              deliveredAt: deliveredAtVal,
-            }
+            ...p,
+            status: newStatus,
+            updatedAt: nowIso,
+            deliveredAt: deliveredAtVal,
+          }
           : p
       )
     );
@@ -173,21 +189,21 @@ export const AdminProjects: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const isCompletedOrDelivered = (status: string) => {
+  const isDelivered = (status: string) => {
     const s = (status || '').toLowerCase();
-    return s === 'completed' || s === 'delivered';
+    return s === 'delivered';
   };
 
   // 1. Pending & In Progress Projects (shown at the very top)
   const pendingProjects = useMemo(() => {
     return filtered
-      .filter((p) => !isCompletedOrDelivered(p.status))
+      .filter((p) => !isDelivered(p.status))
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   }, [filtered]);
 
   // 2. Completed Projects grouped into Date Boxes (latest day on top, older below)
   const completedGroups = useMemo(() => {
-    const completed = filtered.filter((p) => isCompletedOrDelivered(p.status));
+    const completed = filtered.filter((p) => isDelivered(p.status));
     const groups = new Map<string, any[]>();
 
     completed.forEach((prj) => {
@@ -248,8 +264,8 @@ export const AdminProjects: React.FC = () => {
     [completedGroups]
   );
 
-  const shouldShowPendingSection = statusFilter === 'all' || !isCompletedOrDelivered(statusFilter);
-  const shouldShowCompletedSection = statusFilter === 'all' || isCompletedOrDelivered(statusFilter);
+  const shouldShowPendingSection = statusFilter === 'all' || !isDelivered(statusFilter);
+  const shouldShowCompletedSection = statusFilter === 'all' || isDelivered(statusFilter);
 
   // Helper to render a project table row
   const renderProjectRow = (prj: any, rowNumber: number) => {
@@ -297,16 +313,13 @@ export const AdminProjects: React.FC = () => {
         <td className="py-3.5 px-5">
           <div className="w-36">
             <CustomSelect
-              value={prj.status || 'in_progress'}
+              value={prj.status || 'start_process'}
               onChange={(val) => handleStatusChange(prj._id, val)}
               options={[
-                { value: 'confirmed', label: 'Confirmed' },
-                { value: 'in_progress', label: 'In Progress' },
-                { value: 'review', label: 'In Review' },
-                { value: 'completed', label: 'Completed' },
+                { value: 'start_process', label: 'Start Process' },
+                { value: 'in_process', label: 'In Process' },
+                { value: 'in_changes', label: 'In Changes' },
                 { value: 'delivered', label: 'Delivered' },
-                { value: 'signed', label: 'Signed' },
-                { value: 'cancelled', label: 'Cancelled' },
               ]}
             />
           </div>
@@ -315,10 +328,10 @@ export const AdminProjects: React.FC = () => {
           <div className="flex items-center justify-end gap-2 relative">
             <Link
               to={`/admin/projects/${prj._id}`}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all"
             >
               <span>View</span>
-              <span className="text-zinc-400">→</span>
+              <span className="text-white/90">→</span>
             </Link>
 
             <div className="relative">
@@ -328,9 +341,18 @@ export const AdminProjects: React.FC = () => {
                     setActiveMenuId(null);
                   } else {
                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    const menuHeight = 160;
+                    const menuWidth = 168;
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const shouldFlipUp = spaceBelow < menuHeight && rect.top >= menuHeight;
+                    const topPos = shouldFlipUp
+                      ? Math.max(8, rect.top - menuHeight - 4)
+                      : Math.min(window.innerHeight - menuHeight - 8, rect.bottom + 4);
+                    const leftPos = Math.max(8, Math.min(window.innerWidth - menuWidth - 8, rect.right - menuWidth));
+
                     setMenuPos({
-                      top: rect.bottom + 4,
-                      left: Math.max(8, Math.min(window.innerWidth - 136, rect.right - 128)),
+                      top: topPos,
+                      left: leftPos,
                     });
                     setActiveMenuId(prj._id);
                   }
@@ -351,7 +373,7 @@ export const AdminProjects: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">
             Projects
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
@@ -393,34 +415,15 @@ export const AdminProjects: React.FC = () => {
             className="w-full sm:w-44"
             options={[
               { value: 'all', label: 'All statuses' },
-              { value: 'in_progress', label: 'In progress' },
-              { value: 'signed', label: 'Signed' },
-              { value: 'review', label: 'In review' },
-              { value: 'completed', label: 'Completed' },
+              { value: 'start_process', label: 'Start Process' },
+              { value: 'in_process', label: 'In Process' },
+              { value: 'in_changes', label: 'In Changes' },
               { value: 'delivered', label: 'Delivered' },
             ]}
           />
         </div>
       </div>
 
-      {/* Active Month Filter Notification Banner */}
-      {selectedMonth !== 'all' && (
-        <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-[#111218] border border-[#FF5A1F]/20 text-xs shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#FF5A1F] animate-pulse" />
-            <span className="text-zinc-300">
-              Showing projects for <span className="font-semibold text-white">{selectedMonthLabel}</span>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setSelectedMonth('all')}
-            className="text-xs text-[#FF5A1F] hover:text-[#ff7847] hover:underline font-medium cursor-pointer"
-          >
-            Show All Months
-          </button>
-        </div>
-      )}
 
       {/* Main Content Area */}
       {loading ? (
@@ -449,7 +452,7 @@ export const AdminProjects: React.FC = () => {
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#FF5A1F] animate-pulse" />
-                  <h2 className="text-sm font-semibold text-white">Pending & In Progress Projects</h2>
+                  <h2 className="text-sm font-semibold text-white">Pending & In Process Projects</h2>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FF5A1F]/10 border border-[#FF5A1F]/20 text-[#FF5A1F]">
                     {pendingProjects.length}
                   </span>
@@ -480,7 +483,7 @@ export const AdminProjects: React.FC = () => {
                 </div>
               ) : (
                 <div className="p-6 text-center text-xs text-zinc-500 bg-[#08090d] border border-white/[0.06] rounded-2xl">
-                  No pending or in-progress projects in this filter.
+                  No pending or in-process projects in this filter.
                 </div>
               )}
             </div>
@@ -492,7 +495,7 @@ export const AdminProjects: React.FC = () => {
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-[#FF5A1F]" />
-                  <h2 className="text-sm font-semibold text-white">Completed Projects</h2>
+                  <h2 className="text-sm font-semibold text-white">Delivered Projects</h2>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FF5A1F]/10 border border-[#FF5A1F]/20 text-[#FF5A1F]">
                     {completedTotalCount}
                   </span>
@@ -516,7 +519,7 @@ export const AdminProjects: React.FC = () => {
                           </div>
                         </div>
                         <span className="text-xs text-zinc-400 font-medium">
-                          {group.projects.length} {group.projects.length === 1 ? 'project completed' : 'projects completed'}
+                          {group.projects.length} {group.projects.length === 1 ? 'project delivered' : 'projects delivered'}
                         </span>
                       </div>
 
@@ -561,35 +564,37 @@ export const AdminProjects: React.FC = () => {
         return (
           <div
             ref={menuRef}
-            className="fixed w-32 bg-[#12131a] border border-white/[0.08] rounded-xl shadow-xl py-1 z-50"
+            className="fixed w-44 bg-[#12131a] border border-white/[0.08] rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100"
             style={{ top: menuPos.top, left: menuPos.left }}
           >
             <button
               onClick={() => openEditModal(activePrj)}
-              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer"
+              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-white hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer whitespace-nowrap"
             >
-              <Pencil className="w-3 h-3 text-zinc-400" />
+              <Pencil className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
               <span>Edit Project</span>
             </button>
             <Link
               to={`/admin/commissions`}
-              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-[#FF5A1F] hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer"
+              onClick={() => setActiveMenuId(null)}
+              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-[#FF5A1F] hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer whitespace-nowrap"
             >
-              <Sliders className="w-3 h-3 text-[#FF5A1F]" />
+              <Sliders className="w-3.5 h-3.5 text-[#FF5A1F] shrink-0" />
               <span>Commission Split</span>
             </Link>
             <Link
-              to={`/admin/projects/${activePrj._id || activePrj.id}?tab=workLogs`}
-              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-[#FF5A1F] hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer"
+              to="/admin/work-logs"
+              onClick={() => setActiveMenuId(null)}
+              className="w-full text-left px-3 py-2 text-xs text-zinc-300 hover:text-[#FF5A1F] hover:bg-white/[0.05] flex items-center gap-2 cursor-pointer whitespace-nowrap"
             >
-              <Clock className="w-3 h-3 text-[#FF5A1F]" />
+              <Clock className="w-3.5 h-3.5 text-[#FF5A1F] shrink-0" />
               <span>Work Logs</span>
             </Link>
             <button
               onClick={() => handleDelete(activePrj._id || activePrj.id, activePrj.projectName || activePrj.title)}
-              className="w-full text-left px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer"
+              className="w-full text-left px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 flex items-center gap-2 cursor-pointer whitespace-nowrap"
             >
-              <Trash2 className="w-3 h-3 text-red-400" />
+              <Trash2 className="w-3.5 h-3.5 text-red-400 shrink-0" />
               <span>Delete</span>
             </button>
           </div>

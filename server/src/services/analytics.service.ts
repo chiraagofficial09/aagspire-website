@@ -77,7 +77,7 @@ export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMo
       sDate <= endDate &&
       (!dDate || dDate >= startDate) &&
       (!delDate || delDate >= startDate) &&
-      p.status !== 'cancelled'
+      (p.status as any) !== 'cancelled'
     );
 
     return isCreatedInMonth || isStartedInMonth || isActiveInMonth;
@@ -88,7 +88,7 @@ export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMo
   const projectsToCalculate =
     hasProjectsInMonth
       ? bookedInMonthProjects
-      : allProjects.filter((p) => p.status !== 'cancelled');
+      : allProjects.filter((p) => (p.status as any) !== 'cancelled');
   const projectInputs = buildProjectCommissionInputs(projectsToCalculate, commissionMap);
   const weightedSplits = calculateWeightedCommissionSplits(projectInputs);
 
@@ -151,10 +151,9 @@ export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMo
 
   // 3. Project Status Distribution
   const statusDistribution: Record<string, number> = {
-    confirmed: 0,
-    in_progress: 0,
-    review: 0,
-    completed: 0,
+    start_process: 0,
+    in_process: 0,
+    in_changes: 0,
     delivered: 0,
   };
 
