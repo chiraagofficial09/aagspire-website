@@ -604,6 +604,7 @@ export const AdminProjects: React.FC = () => {
         clients={clients}
         employees={employees}
         onSuccess={() => fetchAll()}
+        onClientAdded={(newClient) => setClients((prev) => [newClient, ...prev])}
       />
     </div>
   );

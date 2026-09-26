@@ -19,6 +19,7 @@ export interface CustomDatePickerProps {
   id?: string;
   minDate?: string;
   maxDate?: string;
+  usePortal?: boolean;
 }
 
 const MONTH_NAMES = [
@@ -55,6 +56,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   id,
   minDate,
   maxDate,
+  usePortal = true,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -356,115 +358,128 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         </div>
       </button>
 
-      {/* Portal Dropdown Popover */}
+      {/* Dropdown Popover — Supports both portal-rendered and inline absolute (glued to modal on scroll) */}
       {isOpen &&
-        createPortal(
-          <div
-            ref={popoverRef}
-            style={{
-              position: 'fixed',
-              top: `${coords.top}px`,
-              left: `${coords.left}px`,
-              width: '288px',
-              transform: coords.openUp ? 'translateY(-100%)' : undefined,
-              zIndex: 99999,
-            }}
-            className="rounded-2xl bg-[#0c0d12] border border-white/[0.12] p-3 shadow-[0_20px_60px_rgba(0,0,0,0.98)] select-none animate-in fade-in duration-100"
-          >
-            {/* Calendar Header with Prev / Next */}
-            <div className="flex items-center justify-between px-1 py-1.5 mb-1">
-              <button
-                type="button"
-                onClick={handlePrevMonth}
-                title="Previous Month"
-                className="p-1 rounded-lg hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
+        (() => {
+          const popoverContent = (
+            <div
+              ref={popoverRef}
+              style={
+                usePortal
+                  ? {
+                      position: 'fixed',
+                      top: `${coords.top}px`,
+                      left: `${coords.left}px`,
+                      width: '288px',
+                      transform: coords.openUp ? 'translateY(-100%)' : undefined,
+                      zIndex: 99999,
+                    }
+                  : undefined
+              }
+              className={`${
+                usePortal
+                  ? ''
+                  : `absolute ${
+                      coords.openUp ? 'bottom-[calc(100%+6px)]' : 'top-[calc(100%+6px)]'
+                    } left-0 z-50`
+              } w-[288px] rounded-2xl bg-[#0c0d12] border border-white/[0.12] p-3 shadow-[0_20px_60px_rgba(0,0,0,0.98)] select-none animate-in fade-in duration-100`}
+            >
+              {/* Calendar Header with Prev / Next */}
+              <div className="flex items-center justify-between px-1 py-1.5 mb-1">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  title="Previous Month"
+                  className="p-1 rounded-lg hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
 
-              <span className="text-xs font-bold text-white tracking-wide">
-                {MONTH_NAMES[viewMonth]} {viewYear}
-              </span>
-
-              <button
-                type="button"
-                onClick={handleNextMonth}
-                title="Next Month"
-                className="p-1 rounded-lg hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Weekday Names */}
-            <div className="grid grid-cols-7 gap-1 text-center py-1 border-b border-white/[0.04]">
-              {WEEKDAY_NAMES.map((day) => (
-                <span key={day} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                  {day}
+                <span className="text-xs font-bold text-white tracking-wide">
+                  {MONTH_NAMES[viewMonth]} {viewYear}
                 </span>
-              ))}
-            </div>
 
-            {/* Day Cells Grid */}
-            <div className="grid grid-cols-7 gap-1 pt-2">
-              {calendarCells.map((cell) => {
-                const isSelected = value === cell.ymd;
-                const isToday = cell.ymd === todayYMD;
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  title="Next Month"
+                  className="p-1 rounded-lg hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
 
-                return (
-                  <button
-                    key={cell.ymd}
-                    type="button"
-                    disabled={cell.disabled}
-                    onClick={() => {
-                      onChange(cell.ymd);
-                      setIsOpen(false);
-                    }}
-                    className={`h-7 w-full rounded-lg text-xs flex items-center justify-center transition-all font-medium select-none ${
-                      cell.disabled
-                        ? 'opacity-20 cursor-not-allowed text-zinc-600'
-                        : isSelected
-                        ? 'bg-[#FF5A1F] text-white font-bold shadow-md cursor-pointer'
-                        : cell.isCurrentMonth
-                        ? 'text-zinc-200 hover:bg-white/[0.08] hover:text-white cursor-pointer'
-                        : 'text-zinc-600 opacity-40 hover:opacity-80 cursor-pointer'
-                    } ${isToday && !isSelected ? 'ring-1 ring-[#FF5A1F]/50 text-white font-semibold' : ''}`}
-                  >
-                    {cell.dayNumber}
-                  </button>
-                );
-              })}
-            </div>
+              {/* Weekday Names */}
+              <div className="grid grid-cols-7 gap-1 text-center py-1 border-b border-white/[0.04]">
+                {WEEKDAY_NAMES.map((day) => (
+                  <span key={day} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    {day}
+                  </span>
+                ))}
+              </div>
 
-            {/* Bottom Quick Select Bar */}
-            <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between px-1 text-[11px]">
-              <button
-                type="button"
-                onClick={() => {
-                  onChange(todayYMD);
-                  setIsOpen(false);
-                }}
-                className="text-[#FF5A1F] hover:underline font-semibold cursor-pointer"
-              >
-                Today
-              </button>
+              {/* Day Cells Grid */}
+              <div className="grid grid-cols-7 gap-1 pt-2">
+                {calendarCells.map((cell) => {
+                  const isSelected = value === cell.ymd;
+                  const isToday = cell.ymd === todayYMD;
 
-              {value && !required && (
+                  return (
+                    <button
+                      key={cell.ymd}
+                      type="button"
+                      disabled={cell.disabled}
+                      onClick={() => {
+                        onChange(cell.ymd);
+                        setIsOpen(false);
+                      }}
+                      className={`h-7 w-full rounded-lg text-xs flex items-center justify-center transition-all font-medium select-none ${
+                        cell.disabled
+                          ? 'opacity-20 cursor-not-allowed text-zinc-600'
+                          : isSelected
+                          ? 'bg-[#FF5A1F] text-white font-bold shadow-md cursor-pointer'
+                          : cell.isCurrentMonth
+                          ? 'text-zinc-200 hover:bg-white/[0.08] hover:text-white cursor-pointer'
+                          : 'text-zinc-600 opacity-40 hover:opacity-80 cursor-pointer'
+                      } ${isToday && !isSelected ? 'ring-1 ring-[#FF5A1F]/50 text-white font-semibold' : ''}`}
+                    >
+                      {cell.dayNumber}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Bottom Quick Select Bar */}
+              <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between px-1 text-[11px]">
                 <button
                   type="button"
                   onClick={() => {
-                    onChange('');
+                    onChange(todayYMD);
                     setIsOpen(false);
                   }}
-                  className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                  className="text-[#FF5A1F] hover:underline font-semibold cursor-pointer"
                 >
-                  Clear
+                  Today
                 </button>
-              )}
+
+                {value && !required && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange('');
+                      setIsOpen(false);
+                    }}
+                    className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
-          </div>,
-          document.body
-        )}
+          );
+
+          return usePortal ? createPortal(popoverContent, document.body) : popoverContent;
+        })()}
     </div>
   );
 };
