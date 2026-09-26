@@ -20,6 +20,9 @@ export interface ProjectEarningDetail {
   grossProjectValue: number;
   discountPercent: number;
   discountAmount: number;
+  productionCost?: number;
+  productionCostNotes?: string;
+  designPrice?: number;
   netProjectValue: number;
   clientDebt: number;
   officeSharePercent: number;
@@ -143,7 +146,8 @@ export async function calculateEmployeeEarnings(
       const discountAmount = proj.discountAmount
         ? fromDecimal(proj.discountAmount)
         : round2((grossVal * discountPercent) / 100);
-      const netVal = Math.max(0, round2(grossVal - discountAmount));
+      const prodCost = proj.productionCost ? fromDecimal(proj.productionCost) : 0;
+      const netVal = Math.max(0, round2(grossVal - discountAmount - prodCost));
       const allocAmt = round2((netVal * (employeePercent / 100) * equalShare) / 100);
 
       try {
@@ -192,7 +196,9 @@ export async function calculateEmployeeEarnings(
     const discountAmount = project.discountAmount
       ? fromDecimal(project.discountAmount)
       : round2((grossValue * discountPercent) / 100);
-    const netProjectValue = Math.max(0, round2(grossValue - discountAmount));
+    const productionCost = project.productionCost ? fromDecimal(project.productionCost) : 0;
+    const productionCostNotes = project.productionCostNotes || '';
+    const netProjectValue = Math.max(0, round2(grossValue - discountAmount - productionCost));
 
     // Get project commission split
     const commission = await ProjectCommission.findOne({ projectId: projId });
@@ -200,7 +206,7 @@ export async function calculateEmployeeEarnings(
     const officePercent = commission ? commission.officePercent : 10;
     const sharePercent = alloc.sharePercent ?? (alloc as any).sharePercentage ?? 100;
 
-    // Expected = Net Project Value (post-client discount) * (Employee Category % / 100) * (Share % / 100)
+    // Expected = Net Project Value (Design price after production deduction) * (Employee Category % / 100) * (Share % / 100)
     const expected = round2(
       (netProjectValue * employeePercent * sharePercent) / 10000
     );
@@ -263,6 +269,9 @@ export async function calculateEmployeeEarnings(
       grossProjectValue: grossValue,
       discountPercent,
       discountAmount,
+      productionCost,
+      productionCostNotes,
+      designPrice: netProjectValue,
       netProjectValue,
       clientDebt,
       officeSharePercent: officePercent,

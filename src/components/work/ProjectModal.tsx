@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Users, Sliders, CheckCircle2, AlertTriangle, Star } from 'lucide-react';
+import { X, Users, Sliders, CheckCircle2, AlertTriangle, Star, Plus, Minus } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
 import { useToast } from './Toast';
@@ -30,11 +30,14 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 }) => {
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [isDeductionOpen, setIsDeductionOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
     clientId: '',
     totalAmount: '',
+    productionCost: '',
+    productionCostNotes: '',
     assignedEmployees: [] as string[],
     startDate: '',
     endDate: '',
@@ -124,11 +127,19 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         : '';
 
       const val = project.projectValue ?? project.totalAmount ?? '';
+      const prodCostVal = project.productionCost !== undefined && project.productionCost !== null && Number(project.productionCost) > 0
+        ? String(project.productionCost)
+        : '';
+      const prodNotes = project.productionCostNotes || '';
+
+      setIsDeductionOpen(Boolean(prodCostVal && Number(prodCostVal) > 0));
 
       setFormData({
         title: project.projectName || project.title || '',
         clientId,
         totalAmount: val !== '' && val !== null && val !== undefined ? String(val) : '',
+        productionCost: prodCostVal,
+        productionCostNotes: prodNotes,
         assignedEmployees,
         startDate,
         endDate,
@@ -162,10 +173,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         setSavedNonStarSplit(loadedSplit);
       }
     } else {
+      setIsDeductionOpen(false);
       setFormData({
         title: '',
         clientId: defaultClientId || (clients && clients.length > 0 ? (clients[0]?._id || clients[0]?.id || '') : ''),
         totalAmount: '',
+        productionCost: '',
+        productionCostNotes: '',
         assignedEmployees: [],
         startDate: new Date().toISOString().slice(0, 10),
         endDate: '',
@@ -275,6 +289,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     try {
       setSubmitting(true);
       const grossVal = Number(formData.totalAmount) || 0;
+      const prodCostVal = isDeductionOpen ? (Number(formData.productionCost) || 0) : 0;
 
       const payload = {
         projectName: formData.title.trim(),
@@ -282,6 +297,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         clientId: formData.clientId,
         totalAmount: grossVal,
         projectValue: grossVal,
+        productionCost: prodCostVal,
+        productionCostNotes: isDeductionOpen && formData.productionCostNotes.trim() ? formData.productionCostNotes.trim() : undefined,
         discountPercent: 0,
         discountAmount: 0,
         assignedEmployees: formData.assignedEmployees,
@@ -367,17 +384,114 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               />
             </div>
             <div>
-              <label className="text-zinc-400 block mb-1.5 font-medium">Contract Value (₹) *</label>
-              <input
-                type="number"
-                required
-                placeholder="e.g. 100000"
-                value={formData.totalAmount}
-                onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                className="w-full px-3.5 py-2.5 bg-[#12131a] border border-white/[0.08] rounded-xl text-white font-mono focus:border-[#FF5A1F] focus:outline-none"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-zinc-400 font-medium">Contract Value (₹) *</label>
+              </div>
+              <div className="flex items-stretch rounded-xl overflow-hidden border border-white/[0.08] focus-within:border-[#FF5A1F] transition-all bg-[#12131a]">
+                <input
+                  type="number"
+                  required
+                  placeholder="e.g. 450"
+                  value={formData.totalAmount}
+                  onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+                  className="flex-1 bg-transparent px-3.5 py-2.5 text-white font-mono placeholder-zinc-600 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isDeductionOpen) {
+                      setIsDeductionOpen(false);
+                      setFormData((prev) => ({ ...prev, productionCost: '', productionCostNotes: '' }));
+                    } else {
+                      setIsDeductionOpen(true);
+                    }
+                  }}
+                  title={isDeductionOpen ? 'Remove Material/Production Deduction' : 'Add Material / Production Deduction (Printing Charge, Frame, etc.)'}
+                  className="px-3.5 flex items-center justify-center transition-colors cursor-pointer border-l border-white/[0.08] font-bold bg-[#FF5A1F] hover:bg-[#e04810] text-white"
+                >
+                  <Plus className={`w-4 h-4 transition-transform duration-200 ${isDeductionOpen ? 'rotate-45' : ''}`} />
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Material & Production Deduction Panel (e.g. Printing + Frame) */}
+          {isDeductionOpen && (() => {
+            const cVal = Number(formData.totalAmount) || 0;
+            const pCost = Number(formData.productionCost) || 0;
+            const netDesign = Math.max(0, cVal - pCost);
+            return (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-[#FF5A1F]/10 via-[#0a0b10] to-[#FF5A1F]/5 border border-[#FF5A1F]/30 space-y-3 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-[#FF5A1F]/20 border border-[#FF5A1F]/30 flex items-center justify-center text-[#FF5A1F]">
+                      <Minus className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="font-semibold text-white text-xs">Material / Production Deduction</span>
+                      <span className="text-[11px] text-zinc-400 block sm:inline sm:ml-2">
+                        (Printing Charge, Frame, Banner, etc.)
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDeductionOpen(false);
+                      setFormData((prev) => ({ ...prev, productionCost: '', productionCostNotes: '' }));
+                    }}
+                    className="text-[11px] text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer"
+                  >
+                    Remove deduction
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-zinc-400 block mb-1 text-[11px] font-medium">
+                      Deduction Amount (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 300"
+                      value={formData.productionCost}
+                      onChange={(e) => setFormData({ ...formData, productionCost: e.target.value })}
+                      className="w-full px-3 py-2 bg-[#12131a] border border-white/[0.1] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-zinc-400 block mb-1 text-[11px] font-medium">
+                      Deduction Reason / Notes
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Printing Charge + Frame"
+                      value={formData.productionCostNotes}
+                      onChange={(e) => setFormData({ ...formData, productionCostNotes: e.target.value })}
+                      className="w-full px-3 py-2 bg-[#12131a] border border-white/[0.1] rounded-lg text-white text-xs focus:border-[#FF5A1F] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Real-time Math Calculation Strip */}
+                <div className="p-2.5 rounded-lg bg-black/60 border border-white/[0.08] flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 font-mono flex-wrap">
+                    <span className="text-zinc-400">
+                      Total: <strong className="text-white">{formatINR(cVal)}</strong>
+                    </span>
+                    <span className="text-zinc-600">-</span>
+                    <span className="text-rose-400 font-semibold">
+                      Deduction: <strong className="text-rose-300">-{formatINR(pCost)}</strong>
+                    </span>
+                    <span className="text-zinc-600">=</span>
+                    <span className="text-[#FF5A1F] font-bold">
+                      Design Price: <strong className="text-white underline decoration-[#FF5A1F]">{formatINR(netDesign)}</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Assigned Employees Multi-Select */}
           <div>
@@ -517,87 +631,99 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 })()}
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
-                <div>
-                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Employee %</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={commissionSplit.employeePercent}
-                    onChange={(e) =>
-                      setCommissionSplit({ ...commissionSplit, employeePercent: Number(e.target.value) })
-                    }
-                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                  />
-                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.employeePercent) || 0)) / 100)}
-                  </span>
-                </div>
+              {(() => {
+                const cVal = Number(formData.totalAmount) || 0;
+                const pCost = isDeductionOpen ? (Number(formData.productionCost) || 0) : 0;
+                const netDesign = Math.max(0, cVal - pCost);
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                    <div>
+                      <label className="text-zinc-400 block text-[10px] mb-1 truncate">Employee %</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={commissionSplit.employeePercent}
+                        onChange={(e) =>
+                          setCommissionSplit({ ...commissionSplit, employeePercent: Number(e.target.value) })
+                        }
+                        className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                      />
+                      <span className="text-[10px] text-[#FF5A1F] font-mono block mt-0.5 font-bold">
+                        {formatINR((netDesign * (Number(commissionSplit.employeePercent) || 0)) / 100)}
+                      </span>
+                      {isDeductionOpen && pCost > 0 && (
+                        <span className="text-[9px] text-zinc-500 font-mono block">
+                          on {formatINR(netDesign)}
+                        </span>
+                      )}
+                    </div>
 
-                <div>
-                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Admin %</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={commissionSplit.adminPercent}
-                    onChange={(e) =>
-                      setCommissionSplit({ ...commissionSplit, adminPercent: Number(e.target.value) })
-                    }
-                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                  />
-                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.adminPercent) || 0)) / 100)}
-                  </span>
-                </div>
+                    <div>
+                      <label className="text-zinc-400 block text-[10px] mb-1 truncate">Admin %</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={commissionSplit.adminPercent}
+                        onChange={(e) =>
+                          setCommissionSplit({ ...commissionSplit, adminPercent: Number(e.target.value) })
+                        }
+                        className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                      />
+                      <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                        {formatINR((netDesign * (Number(commissionSplit.adminPercent) || 0)) / 100)}
+                      </span>
+                    </div>
 
-                <div>
-                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Office %</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={commissionSplit.officePercent}
-                    onChange={(e) =>
-                      setCommissionSplit({ ...commissionSplit, officePercent: Number(e.target.value) })
-                    }
-                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                  />
-                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.officePercent) || 0)) / 100)}
-                  </span>
-                </div>
+                    <div>
+                      <label className="text-zinc-400 block text-[10px] mb-1 truncate">Office %</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={commissionSplit.officePercent}
+                        onChange={(e) =>
+                          setCommissionSplit({ ...commissionSplit, officePercent: Number(e.target.value) })
+                        }
+                        className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                      />
+                      <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                        {formatINR((netDesign * (Number(commissionSplit.officePercent) || 0)) / 100)}
+                      </span>
+                    </div>
 
-                <div>
-                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Broker %</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={commissionSplit.brokerPercent}
-                    onChange={(e) =>
-                      setCommissionSplit({ ...commissionSplit, brokerPercent: Number(e.target.value) })
-                    }
-                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                  />
-                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.brokerPercent) || 0)) / 100)}
-                  </span>
-                </div>
+                    <div>
+                      <label className="text-zinc-400 block text-[10px] mb-1 truncate">Broker %</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={commissionSplit.brokerPercent}
+                        onChange={(e) =>
+                          setCommissionSplit({ ...commissionSplit, brokerPercent: Number(e.target.value) })
+                        }
+                        className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                      />
+                      <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                        {formatINR((netDesign * (Number(commissionSplit.brokerPercent) || 0)) / 100)}
+                      </span>
+                    </div>
 
-                <div>
-                  <label className="text-zinc-400 block text-[10px] mb-1 truncate">Reserve %</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={commissionSplit.settlementPercent}
-                    onChange={(e) =>
-                      setCommissionSplit({ ...commissionSplit, settlementPercent: Number(e.target.value) })
-                    }
-                    className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
-                  />
-                  <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
-                    {formatINR(((Number(formData.totalAmount) || 0) * (Number(commissionSplit.settlementPercent) || 0)) / 100)}
-                  </span>
-                </div>
-              </div>
+                    <div>
+                      <label className="text-zinc-400 block text-[10px] mb-1 truncate">Reserve %</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={commissionSplit.settlementPercent}
+                        onChange={(e) =>
+                          setCommissionSplit({ ...commissionSplit, settlementPercent: Number(e.target.value) })
+                        }
+                        className="w-full px-2 py-1.5 bg-[#12131a] border border-white/[0.08] rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
+                      />
+                      <span className="text-[10px] text-zinc-500 font-mono block mt-0.5">
+                        {formatINR((netDesign * (Number(commissionSplit.settlementPercent) || 0)) / 100)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

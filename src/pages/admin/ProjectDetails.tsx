@@ -128,6 +128,11 @@ export const AdminProjectDetails: React.FC = () => {
             </div>
             <p className="text-xs text-white/50 font-mono">
               Client: {project.clientId?.companyName || project.clientId?.name || 'Internal'} &bull; Budget: {formatINR(project.projectValue ?? project.totalAmount)}
+              {project.productionCost && Number(project.productionCost) > 0 && (
+                <span className="text-[#FF5A1F] font-medium ml-1.5">
+                  (Design: {formatINR(project.designPrice ?? Math.max(0, (project.projectValue ?? project.totalAmount) - Number(project.productionCost)))})
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -219,7 +224,7 @@ export const AdminProjectDetails: React.FC = () => {
               officeExpense={commission?.officeExpensePercentage ?? commission?.officePercent ?? 0}
               adminShare={commission?.adminSharePercentage ?? commission?.adminPercent ?? 0}
               settlementReserve={commission?.settlementReservePercentage ?? commission?.settlementPercent ?? 0}
-              totalAmount={project.projectValue !== undefined ? project.projectValue : project.totalAmount || 0}
+              totalAmount={project.designPrice !== undefined && Number(project.productionCost) > 0 ? project.designPrice : (project.projectValue !== undefined ? project.projectValue : project.totalAmount || 0)}
             />
           </div>
         </div>
@@ -230,11 +235,29 @@ export const AdminProjectDetails: React.FC = () => {
             <h3 className="text-xs font-mono text-white/40 uppercase tracking-wider">Financial Snapshot</h3>
             <div className="space-y-3">
               <div className="flex justify-between text-xs">
-                <span className="text-white/60">Total Budget</span>
+                <span className="text-white/60">Total Budget (Client)</span>
                 <span className="font-mono font-bold text-white">
                   {formatINR(project.projectValue ?? project.totalAmount)}
                 </span>
               </div>
+              {project.productionCost && Number(project.productionCost) > 0 && (
+                <>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-rose-400/80">
+                      - {project.productionCostNotes || 'Print & Frame Deduction'}
+                    </span>
+                    <span className="font-mono font-semibold text-rose-400">
+                      -{formatINR(project.productionCost)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs pt-1 border-t border-white/[0.06]">
+                    <span className="text-[#FF5A1F] font-medium">Net Design Price</span>
+                    <span className="font-mono font-bold text-[#FF5A1F]">
+                      {formatINR(project.designPrice ?? Math.max(0, (project.projectValue ?? project.totalAmount) - Number(project.productionCost)))}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between text-xs">
                 <span className="text-white/60">Client Collected</span>
                 <span className="font-mono font-bold text-white">
@@ -244,7 +267,11 @@ export const AdminProjectDetails: React.FC = () => {
               <div className="flex justify-between text-xs">
                 <span className="text-white/60">Team Pool</span>
                 <span className="font-mono font-bold text-ember">
-                  ₹{(financials?.employeePoolTotal || 0).toLocaleString('en-IN')}
+                  {formatINR(
+                    commission?.employeeAmount !== undefined && commission?.employeeAmount !== null
+                      ? Number(commission.employeeAmount)
+                      : (financials?.employeePoolTotal || 0)
+                  )}
                 </span>
               </div>
             </div>

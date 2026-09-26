@@ -287,8 +287,16 @@ export const AdminProjects: React.FC = () => {
         <td className="py-3.5 px-5">
           <span className="text-sm text-zinc-300">{clientName}</span>
         </td>
-        <td className="py-3.5 px-5 font-mono text-sm font-semibold text-[#FF5A1F]">
-          {formatINR(projectVal)}
+        <td className="py-3.5 px-5">
+          <div className="font-mono text-sm font-semibold text-[#FF5A1F]">
+            {formatINR(projectVal)}
+          </div>
+          {prj.productionCost && Number(prj.productionCost) > 0 ? (
+            <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1 mt-0.5" title={prj.productionCostNotes || 'Production / Material Cost'}>
+              <span className="text-zinc-500">Design:</span>
+              <span className="text-[#FF5A1F] font-medium">{formatINR(prj.designPrice ?? Math.max(0, projectVal - Number(prj.productionCost)))}</span>
+            </div>
+          ) : null}
         </td>
         <td className="py-3.5 px-5">
           {prj.assignedEmployees && prj.assignedEmployees.length > 0 ? (

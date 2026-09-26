@@ -223,6 +223,10 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
         }
       }
 
+      const prodCost = proj.productionCost ? fromDecimal(proj.productionCost) : 0;
+      const prodCostNotes = proj.productionCostNotes || '';
+      const designPrice = Math.max(0, round2(grossVal - discountAmount - prodCost));
+
       const comm = commissionsByProject[projIdStr] || null;
 
       const projObj = typeof (proj as any).toObject === 'function' ? (proj as any).toObject() : proj;
@@ -241,6 +245,9 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
         grossProjectValue: isEmployee ? 0 : grossVal,
         discountPercent: isEmployee ? 0 : discountPercent,
         discountAmount: isEmployee ? 0 : discountAmount,
+        productionCost: isEmployee ? 0 : prodCost,
+        productionCostNotes: isEmployee ? undefined : prodCostNotes,
+        designPrice: isEmployee ? 0 : designPrice,
         netProjectValue: isEmployee ? 0 : netVal,
         paymentsReceived: isEmployee ? 0 : paymentsReceived,
         outstanding: isEmployee ? 0 : outstanding,
@@ -337,6 +344,9 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
     }
 
     // 1. Create Project
+    const productionCost = req.body.productionCost !== undefined ? Math.max(0, round2(parseFloat(String(req.body.productionCost)) || 0)) : 0;
+    const productionCostNotes = req.body.productionCostNotes ? String(req.body.productionCostNotes).trim() : undefined;
+
     const project = await Project.create({
       projectCode,
       clientId,
@@ -345,6 +355,8 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
       projectValue: toDecimal(numValue),
       discountPercent,
       discountAmount: toDecimal(discountAmount),
+      productionCost: toDecimal(productionCost),
+      productionCostNotes,
       startDate: startDate ? new Date(startDate) : undefined,
       deadline: deadline ? new Date(deadline) : undefined,
       status: status || 'start_process',
@@ -352,7 +364,7 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
       createdBy: req.user!._id,
     });
 
-    // 2. Compute Commission Distribution on Net Project Value
+    // 2. Compute Commission Distribution on Net Project Value (Design Price)
     // If no team members assigned, 100% of the share goes to Admin
     const hasNoEmployees = !assignedEmployees || assignedEmployees.length === 0;
     const split = (hasNoEmployees || Number(commissionSplit?.adminPercent) === 100)
@@ -371,7 +383,7 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
           settlementPercent: Number(commissionSplit?.settlementPercent ?? commissionSplit?.settlementReservePercentage ?? 5),
         };
 
-    const commissionAmounts = calculateCommissionAmounts(numValue, split, discountPercent);
+    const commissionAmounts = calculateCommissionAmounts(numValue, split, discountPercent, productionCost);
 
     const projectCommission = await ProjectCommission.create({
       projectId: project._id,
@@ -536,11 +548,17 @@ export async function getProjectById(req: AuthenticatedRequest, res: Response): 
     const outstanding = Math.max(0, round2(netVal - paymentsReceived));
 
     const isEmployeeView = req.user?.role === 'employee';
+    const prodCost = project.productionCost ? fromDecimal(project.productionCost) : 0;
+    const prodCostNotes = project.productionCostNotes || '';
+    const designPrice = Math.max(0, round2(grossVal - discountAmount - prodCost));
 
     const projectData = {
       ...project.toObject(),
       title: project.projectName,
       projectName: project.projectName,
+      productionCost: isEmployeeView ? 0 : prodCost,
+      productionCostNotes: isEmployeeView ? undefined : prodCostNotes,
+      designPrice: isEmployeeView ? 0 : designPrice,
       totalAmount: isEmployeeView ? 0 : netVal,
       projectValue: isEmployeeView ? 0 : netVal,
       grossProjectValue: isEmployeeView ? 0 : grossVal,
@@ -701,12 +719,23 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
       projectFinancialsChanged = true;
     }
 
+    const prodCostToUpdate = req.body.productionCost;
+    if (prodCostToUpdate !== undefined) {
+      const newProdCost = Math.max(0, round2(parseFloat(String(prodCostToUpdate)) || 0));
+      project.productionCost = toDecimal(newProdCost);
+      projectFinancialsChanged = true;
+    }
+    if (req.body.productionCostNotes !== undefined) {
+      project.productionCostNotes = req.body.productionCostNotes ? String(req.body.productionCostNotes).trim() : '';
+    }
+
     const currentGross = fromDecimal(project.projectValue);
     const currentDiscPercent = Number(project.discountPercent) || 0;
     const calcDiscAmount = discAmountToUpdate !== undefined
       ? round2(parseFloat(String(discAmountToUpdate)))
       : round2((currentGross * currentDiscPercent) / 100);
     project.discountAmount = toDecimal(calcDiscAmount);
+    const currentProdCost = project.productionCost ? fromDecimal(project.productionCost) : 0;
 
     // Support updating commission split if passed
     const commissionSplitRaw = req.body.commissionSplit;
@@ -719,7 +748,7 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
         settlementPercent: Number(commissionSplitRaw.settlementPercent ?? commissionSplitRaw.settlementReservePercentage ?? 5),
       };
 
-      const updatedAmounts = calculateCommissionAmounts(currentGross, split, currentDiscPercent);
+      const updatedAmounts = calculateCommissionAmounts(currentGross, split, currentDiscPercent, currentProdCost);
       let commission = await ProjectCommission.findOne({ projectId: project._id });
       if (commission) {
         Object.assign(commission, updatedAmounts);
@@ -753,13 +782,13 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
           officePercent: commission.officePercent,
           adminPercent: commission.adminPercent,
           settlementPercent: commission.settlementPercent,
-        }, currentDiscPercent);
+        }, currentDiscPercent, currentProdCost);
         Object.assign(commission, updatedAmounts);
         await commission.save();
 
         // Re-scale employee pool allocations
         const allocations = await ProjectEmployee.find({ projectId: project._id });
-        const employeeTotal = fromDecimal(commission.employeeAmount);
+        const employeeTotal = fromDecimal(updatedAmounts.employeeAmount);
         for (const alloc of allocations) {
           const share = alloc.sharePercent ?? alloc.sharePercentage ?? 100;
           alloc.sharePercent = share;

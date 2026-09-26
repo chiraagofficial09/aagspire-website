@@ -91,13 +91,15 @@ export function calculateDiscountedSplit(
 export function calculateCommissionAmounts(
   projectValue: number,
   split: CommissionSplitInput,
-  discountPercent: number = 0
+  discountPercent: number = 0,
+  productionCost: number = 0
 ) {
   validateCommissionPercentages(split);
 
   const discPct = Math.max(0, Math.min(100, Number(discountPercent) || 0));
   const discAmount = round2((projectValue * discPct) / 100);
-  const effectiveValue = Math.max(0, round2(projectValue - discAmount));
+  const prodCost = Math.max(0, Number(productionCost) || 0);
+  const effectiveValue = Math.max(0, round2(projectValue - discAmount - prodCost));
 
   const brokerAmount = round2((effectiveValue * split.brokerPercent) / 100);
   const employeeAmount = round2((effectiveValue * split.employeePercent) / 100);

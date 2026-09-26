@@ -234,18 +234,25 @@ router.get('/projects/:id/financials', async (req, res) => {
     const comm = await ProjectCommission.findOne({ projectId: req.params.id });
     const prj = await Project.findById(req.params.id);
     const totalVal = prj ? fromDecimal(prj.projectValue) : 0;
+    const discPct = Number(prj?.discountPercent) || 0;
+    const discAmt = prj?.discountAmount ? fromDecimal(prj.discountAmount) : round2((totalVal * discPct) / 100);
+    const prodCost = prj?.productionCost ? fromDecimal(prj.productionCost) : 0;
+    const netDesignPrice = Math.max(0, round2(totalVal - discAmt - prodCost));
     
     const empPoolPct = comm?.employeePercent || 0;
     const adminPct = comm?.adminPercent || 0;
     
-    const employeePoolTotal = (totalVal * empPoolPct) / 100;
-    const employeeEarnedTotal = (collectedAmount * empPoolPct) / 100;
-    const adminEarnedShare = (collectedAmount * adminPct) / 100;
+    const employeePoolTotal = comm?.employeeAmount
+      ? fromDecimal(comm.employeeAmount)
+      : round2((netDesignPrice * empPoolPct) / 100);
+    const employeeEarnedTotal = round2((collectedAmount * empPoolPct) / 100);
+    const adminEarnedShare = round2((collectedAmount * adminPct) / 100);
 
     res.json({
       success: true,
       data: {
         totalAmount: totalVal,
+        netDesignPrice,
         collectedAmount,
         employeePoolTotal,
         employeeEarnedTotal,
