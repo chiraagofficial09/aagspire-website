@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { Search, Calendar, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
@@ -256,15 +255,6 @@ export const EmployeeProjects: React.FC = () => {
             />
           </div>
         </td>
-        <td className="py-3.5 px-5 text-right w-24">
-          <Link
-            to={`/employee/projects/${prj._id}`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all"
-          >
-            <span>View</span>
-            <span className="text-white/90">→</span>
-          </Link>
-        </td>
       </tr>
     );
   };
@@ -362,7 +352,6 @@ export const EmployeeProjects: React.FC = () => {
                           <th className="py-3.5 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CLIENT</th>
                           <th className="py-3.5 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TOTAL</th>
                           <th className="py-3.5 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">STATUS</th>
-                          <th className="py-3.5 px-5 text-right w-24"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.04]">
@@ -423,7 +412,6 @@ export const EmployeeProjects: React.FC = () => {
                               <th className="py-3 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">CLIENT</th>
                               <th className="py-3 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">TOTAL</th>
                               <th className="py-3 px-5 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">STATUS</th>
-                              <th className="py-3 px-5 text-right w-24"></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-white/[0.04]">
