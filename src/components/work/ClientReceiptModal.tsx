@@ -15,6 +15,8 @@ import { api } from '../../services/api';
 import { useToast } from './Toast';
 import { formatINR, parseAmount } from '../../utils/formatters';
 import { CustomSelect } from './CustomSelect';
+import { MonthMultiSelect } from './MonthMultiSelect';
+import { CustomDatePicker } from './CustomDatePicker';
 
 const TERMS_LIST = [
   'All prices listed are average estimates and may vary based on project complexity, scope of work, and client requirements.',
@@ -453,12 +455,23 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   );
 
   const activeDeductions = useMemo(() => {
-    if (deductions && deductions.length > 0) return deductions;
-    if (client?.deductions && Array.isArray(client.deductions) && client.deductions.length > 0) {
-      return client.deductions;
+    let list: any[] = [];
+    if (deductions && deductions.length > 0) {
+      list = deductions;
+    } else if (client?.deductions && Array.isArray(client.deductions) && client.deductions.length > 0) {
+      list = client.deductions;
     }
-    return [];
-  }, [deductions, client?.deductions]);
+
+    if (!selectedMonths.includes('all') && selectedMonths.length > 0) {
+      return list.filter((d: any) => {
+        if (!d.date) return false;
+        const dStr = typeof d.date === 'string' ? d.date : new Date(d.date).toISOString().slice(0, 10);
+        return selectedMonths.some((m) => dStr.startsWith(m));
+      });
+    }
+
+    return list;
+  }, [deductions, client?.deductions, selectedMonths]);
 
   const totalDeductions = useMemo(() => {
     return activeDeductions.reduce((sum: number, d: any) => sum + (parseAmount(d.amount) || 0), 0);
@@ -477,6 +490,14 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
       const d = new Date(p.startDate || p.createdAt);
       if (!isNaN(d.getTime())) {
         monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+      }
+    });
+    (deductions || client?.deductions || []).forEach((d: any) => {
+      if (d.date) {
+        const dt = new Date(d.date);
+        if (!isNaN(dt.getTime())) {
+          monthsSet.add(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
+        }
       }
     });
 
@@ -709,27 +730,12 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                   </div>
 
                   <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                    <div className="w-56">
-                      <CustomSelect<string>
-                        value=""
-                        onChange={(val) => {
-                          if (val === 'all') {
-                            setSelectedMonths(['all']);
-                          } else if (val) {
-                            toggleMonth(val);
-                          }
-                        }}
-                        options={[
-                          { value: 'all', label: 'All Months (All Deliverables)' },
-                          ...billingMonthOptions
-                            .filter((o) => o.value !== 'all')
-                            .map((opt) => ({
-                              ...opt,
-                              label: selectedMonths.includes(opt.value)
-                                ? `✓ ${opt.label}`
-                                : `+ ${opt.label}`,
-                            })),
-                        ]}
+                    <div className="w-56 sm:w-60">
+                      <MonthMultiSelect
+                        selectedMonths={selectedMonths}
+                        onToggleMonth={toggleMonth}
+                        onSelectAll={() => setSelectedMonths(['all'])}
+                        options={billingMonthOptions}
                         placeholder="+ Add / Select Month"
                       />
                     </div>
@@ -1058,11 +1064,11 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                   </div>
                   <div>
                     <label className="text-white/60 block mb-1">Invoice Date</label>
-                    <input
-                      type="date"
+                    <CustomDatePicker
                       value={invoiceDate}
-                      onChange={(e) => setInvoiceDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-black border border-white/10 rounded-xl text-white font-medium focus:border-[#FF5A1F] focus:outline-none [color-scheme:dark]"
+                      onChange={(val) => setInvoiceDate(val)}
+                      placeholder="Select date"
+                      required
                     />
                   </div>
                   <div>
@@ -1285,9 +1291,9 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                       if (dVal <= 0) return null;
                       const dName = d.projectName || d.label || 'Project';
                       return (
-                        <div key={idx} className="flex justify-between items-center text-white/60">
-                          <span>{dName.endsWith(':') ? dName : `${dName}:`}</span>
-                          <span className="text-white font-bold">-{formatINR(dVal)}</span>
+                        <div key={idx} className="flex justify-between items-start text-white/60 gap-4">
+                          <span className="break-words flex-1 text-left">{dName.endsWith(':') ? dName : `${dName}:`}</span>
+                          <span className="text-white font-bold whitespace-nowrap shrink-0 text-right">-{formatINR(dVal)}</span>
                         </div>
                       );
                     })}

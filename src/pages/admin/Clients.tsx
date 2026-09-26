@@ -236,14 +236,32 @@ export const AdminClients: React.FC = () => {
       {/* Table */}
       <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left text-xs min-w-[860px]">
+          <table className="w-full text-left text-xs min-w-[920px]">
             <thead>
               <tr className="border-b border-white/[0.06]">
                 <th className="py-4 pl-6 pr-4 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[240px] max-w-[300px]">CLIENT</th>
                 <th className="py-4 pl-8 pr-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[210px]">CONTACT</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[120px]">TOTAL</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[120px]">PAID</th>
-                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[120px]">PENDING</th>
+                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[150px] whitespace-nowrap">
+                  {selectedMonth === 'all'
+                    ? 'TOTAL'
+                    : selectedMonth === currentMonthKey
+                    ? 'THIS MONTH TOTAL'
+                    : `${selectedMonthLabel.toUpperCase()} TOTAL`}
+                </th>
+                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[150px] whitespace-nowrap">
+                  {selectedMonth === 'all'
+                    ? 'TOTAL PAID'
+                    : selectedMonth === currentMonthKey
+                    ? 'THIS MONTH PAID'
+                    : `${selectedMonthLabel.toUpperCase()} PAID`}
+                </th>
+                <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase min-w-[160px] whitespace-nowrap">
+                  {selectedMonth === 'all'
+                    ? 'TOTAL PENDING'
+                    : selectedMonth === currentMonthKey
+                    ? 'THIS MONTH PENDING'
+                    : `${selectedMonthLabel.toUpperCase()} PENDING`}
+                </th>
                 <th className="py-4 pl-4 pr-6 text-right w-[110px]"></th>
               </tr>
             </thead>
@@ -309,17 +327,17 @@ export const AdminClients: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="py-4 px-6 min-w-[120px]">
+                      <td className="py-4 px-6 min-w-[150px]">
                         <span className="text-sm font-semibold font-mono text-[#FF5A1F]">
                           {formatINR(totalContract)}
                         </span>
                       </td>
-                      <td className="py-4 px-6 min-w-[120px]">
+                      <td className="py-4 px-6 min-w-[150px]">
                         <span className="text-sm font-semibold font-mono text-white/80">
                           {formatINR(totalPaid)}
                         </span>
                       </td>
-                      <td className="py-4 px-6 min-w-[120px]">
+                      <td className="py-4 px-6 min-w-[160px]">
                         <span className="text-sm font-semibold font-mono text-white">
                           {formatINR(balanceDue)}
                         </span>

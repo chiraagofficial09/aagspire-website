@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Calendar as CalendarIcon,
   ChevronDown,
@@ -56,7 +57,19 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   maxDate,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const [coords, setCoords] = useState<{
+    top: number;
+    left: number;
+    openUp: boolean;
+  }>({
+    top: 0,
+    left: 0,
+    openUp: false,
+  });
 
   const today = useMemo(() => new Date(), []);
   const todayYMD = useMemo(
@@ -99,28 +112,86 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
     }
   }, [value, isOpen]);
 
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setIsOpen(false);
+      return;
+    }
+
+    const popoverWidth = 288; // w-72
+    const popoverHeight = 320;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    const openUp = spaceBelow < popoverHeight && spaceAbove > spaceBelow;
+    let left = rect.left;
+
+    const margin = 8;
+    if (left + popoverWidth > window.innerWidth - margin) {
+      left = Math.max(margin, window.innerWidth - popoverWidth - margin);
+    }
+    if (left < margin) left = margin;
+
+    const top = openUp ? rect.top - 6 : rect.bottom + 6;
+
+    setCoords({
+      top,
+      left,
+      openUp,
+    });
+  }, []);
+
+  const toggleOpen = () => {
+    if (disabled) return;
+    if (!isOpen) {
+      updatePosition();
+    }
+    setIsOpen((prev) => !prev);
+  };
+
   // Click outside or escape to close
   useEffect(() => {
+    if (!isOpen) return;
+
+    updatePosition();
+
+    const handleScrollOrResize = () => {
+      updatePosition();
+    };
+
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(target) &&
+        popoverRef.current &&
+        !popoverRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsOpen(false);
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
     return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, updatePosition]);
 
   const handlePrevMonth = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -221,7 +292,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
 
   return (
     <div
-      ref={dropdownRef}
+      ref={containerRef}
       className={`relative select-none ${disabled ? 'opacity-50 pointer-events-none' : ''} ${className}`}
     >
       {/* Hidden input for form submission */}
@@ -237,12 +308,13 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
 
       {/* Trigger button styled like custom input / select */}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={toggleOpen}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        className={`w-full inline-flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-xl text-xs text-left cursor-pointer shadow-sm select-none border transition-all ${
+        className={`w-full inline-flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-xs text-left cursor-pointer shadow-sm select-none border transition-all ${
           isOpen
             ? 'border-[#FF5A1F] ring-2 ring-[#FF5A1F]/30 bg-[#151620]'
             : 'border-white/[0.08] hover:border-white/[0.2] bg-[#0c0d12] hover:bg-[#14151e]'
@@ -284,104 +356,115 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         </div>
       </button>
 
-      {/* Solid Dark Dropdown Popover */}
-      {isOpen && (
-        <div
-          className="absolute left-0 top-full mt-2 z-50 rounded-2xl bg-[#0c0d12] border border-white/[0.1] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.95)] w-72 select-none"
-        >
-          {/* Calendar Header with Prev / Next */}
-          <div className="flex items-center justify-between px-1 py-1.5 mb-1">
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              title="Previous Month"
-              className="p-1 rounded-lg hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+      {/* Portal Dropdown Popover */}
+      {isOpen &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              width: '288px',
+              transform: coords.openUp ? 'translateY(-100%)' : undefined,
+              zIndex: 99999,
+            }}
+            className="rounded-2xl bg-[#0c0d12] border border-white/[0.12] p-3 shadow-[0_20px_60px_rgba(0,0,0,0.98)] select-none animate-in fade-in duration-100"
+          >
+            {/* Calendar Header with Prev / Next */}
+            <div className="flex items-center justify-between px-1 py-1.5 mb-1">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                title="Previous Month"
+                className="p-1 rounded-lg hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
 
-            <span className="text-xs font-bold text-white tracking-wide">
-              {MONTH_NAMES[viewMonth]} {viewYear}
-            </span>
-
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              title="Next Month"
-              className="p-1 rounded-lg hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Weekday Names */}
-          <div className="grid grid-cols-7 gap-1 text-center py-1 border-b border-white/[0.04]">
-            {WEEKDAY_NAMES.map((day) => (
-              <span key={day} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                {day}
+              <span className="text-xs font-bold text-white tracking-wide">
+                {MONTH_NAMES[viewMonth]} {viewYear}
               </span>
-            ))}
-          </div>
 
-          {/* Day Cells Grid */}
-          <div className="grid grid-cols-7 gap-1 pt-2">
-            {calendarCells.map((cell) => {
-              const isSelected = value === cell.ymd;
-              const isToday = cell.ymd === todayYMD;
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                title="Next Month"
+                className="p-1 rounded-lg hover:bg-white/[0.08] text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
 
-              return (
-                <button
-                  key={cell.ymd}
-                  type="button"
-                  disabled={cell.disabled}
-                  onClick={() => {
-                    onChange(cell.ymd);
-                    setIsOpen(false);
-                  }}
-                  className={`h-7 w-full rounded-lg text-xs flex items-center justify-center transition-all font-medium select-none ${
-                    cell.disabled
-                      ? 'opacity-20 cursor-not-allowed text-zinc-600'
-                      : isSelected
-                      ? 'bg-[#FF5A1F] text-white font-bold shadow-md cursor-pointer'
-                      : cell.isCurrentMonth
-                      ? 'text-zinc-200 hover:bg-white/[0.08] hover:text-white cursor-pointer'
-                      : 'text-zinc-600 opacity-40 hover:opacity-80 cursor-pointer'
-                  } ${isToday && !isSelected ? 'ring-1 ring-[#FF5A1F]/50 text-white font-semibold' : ''}`}
-                >
-                  {cell.dayNumber}
-                </button>
-              );
-            })}
-          </div>
+            {/* Weekday Names */}
+            <div className="grid grid-cols-7 gap-1 text-center py-1 border-b border-white/[0.04]">
+              {WEEKDAY_NAMES.map((day) => (
+                <span key={day} className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                  {day}
+                </span>
+              ))}
+            </div>
 
-          {/* Bottom Quick Select Bar */}
-          <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between px-1 text-[11px]">
-            <button
-              type="button"
-              onClick={() => {
-                onChange(todayYMD);
-                setIsOpen(false);
-              }}
-              className="text-[#FF5A1F] hover:underline font-semibold cursor-pointer"
-            >
-              Today
-            </button>
+            {/* Day Cells Grid */}
+            <div className="grid grid-cols-7 gap-1 pt-2">
+              {calendarCells.map((cell) => {
+                const isSelected = value === cell.ymd;
+                const isToday = cell.ymd === todayYMD;
 
-            {value && !required && (
+                return (
+                  <button
+                    key={cell.ymd}
+                    type="button"
+                    disabled={cell.disabled}
+                    onClick={() => {
+                      onChange(cell.ymd);
+                      setIsOpen(false);
+                    }}
+                    className={`h-7 w-full rounded-lg text-xs flex items-center justify-center transition-all font-medium select-none ${
+                      cell.disabled
+                        ? 'opacity-20 cursor-not-allowed text-zinc-600'
+                        : isSelected
+                        ? 'bg-[#FF5A1F] text-white font-bold shadow-md cursor-pointer'
+                        : cell.isCurrentMonth
+                        ? 'text-zinc-200 hover:bg-white/[0.08] hover:text-white cursor-pointer'
+                        : 'text-zinc-600 opacity-40 hover:opacity-80 cursor-pointer'
+                    } ${isToday && !isSelected ? 'ring-1 ring-[#FF5A1F]/50 text-white font-semibold' : ''}`}
+                  >
+                    {cell.dayNumber}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Bottom Quick Select Bar */}
+            <div className="mt-2.5 pt-2 border-t border-white/[0.06] flex items-center justify-between px-1 text-[11px]">
               <button
                 type="button"
                 onClick={() => {
-                  onChange('');
+                  onChange(todayYMD);
                   setIsOpen(false);
                 }}
-                className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                className="text-[#FF5A1F] hover:underline font-semibold cursor-pointer"
               >
-                Clear
+                Today
               </button>
-            )}
-          </div>
-        </div>
-      )}
+
+              {value && !required && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange('');
+                    setIsOpen(false);
+                  }}
+                  className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

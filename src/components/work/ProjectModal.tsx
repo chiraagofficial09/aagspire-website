@@ -14,6 +14,8 @@ export interface ProjectModalProps {
   clients: any[];
   employees: any[];
   onSuccess: (project?: any) => void;
+  defaultClientId?: string;
+  disableClientSelect?: boolean;
 }
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({
@@ -23,6 +25,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   clients,
   employees,
   onSuccess,
+  defaultClientId,
+  disableClientSelect = false,
 }) => {
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -160,7 +164,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     } else {
       setFormData({
         title: '',
-        clientId: clients[0]?._id || '',
+        clientId: defaultClientId || (clients && clients.length > 0 ? (clients[0]?._id || clients[0]?.id || '') : ''),
         totalAmount: '',
         assignedEmployees: [],
         startDate: new Date().toISOString().slice(0, 10),
@@ -215,7 +219,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         })
         .catch(() => {});
     }
-  }, [isOpen, project, clients]);
+  }, [isOpen, project, clients, defaultClientId]);
 
   // Escape key handler
   useEffect(() => {
@@ -356,9 +360,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 onChange={(val) => setFormData({ ...formData, clientId: val })}
                 placeholder="Select client"
                 options={clients.map((c) => ({
-                  value: c._id,
-                  label: c.name || c.companyName,
+                  value: c._id || c.id,
+                  label: c.companyName || c.name || 'Client',
                 }))}
+                disabled={disableClientSelect}
               />
             </div>
             <div>

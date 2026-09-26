@@ -30,6 +30,7 @@ import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
 import { useAlert } from '../../context/AlertContext';
 import { StatusBadge } from '../../components/work/StatusBadge';
+import { ProjectModal } from '../../components/work/ProjectModal';
 
 const getProjectNetValue = (p: any): number => parseAmount(p?.projectValue ?? p?.totalAmount ?? p);
 const getPaymentAmount = (pm: any): number => parseAmount(pm?.amount ?? pm);
@@ -44,6 +45,8 @@ export const AdminClientDetails: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [employees, setEmployees] = useState<any[]>([]);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittingPayment, setSubmittingPayment] = useState(false);
@@ -63,7 +66,6 @@ export const AdminClientDetails: React.FC = () => {
   const [deductionDate, setDeductionDate] = useState(new Date().toISOString().split('T')[0]);
   const [deductionAmount, setDeductionAmount] = useState('');
 
-  const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);
 
   const handleAddDeduction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,6 +133,34 @@ export const AdminClientDetails: React.FC = () => {
   );
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
   const [selectedStatCard, setSelectedStatCard] = useState<number | null>(null);
+
+  // Filter deductions by selected month
+  const filteredDeductions = useMemo(() => {
+    if (!selectedMonth || selectedMonth === 'all') {
+      return deductions;
+    }
+    return deductions.filter((d) => {
+      if (!d.date) return false;
+      const dStr = typeof d.date === 'string' ? d.date : new Date(d.date).toISOString().slice(0, 10);
+      return dStr.startsWith(selectedMonth);
+    });
+  }, [deductions, selectedMonth]);
+
+  const totalDeductions = useMemo(() => {
+    return filteredDeductions.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  }, [filteredDeductions]);
+
+  const openAddDeductionModal = () => {
+    setDeductionProjectName('');
+    let defDate = new Date().toISOString().split('T')[0];
+    if (selectedMonth && selectedMonth !== 'all') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      defDate = todayStr.startsWith(selectedMonth) ? todayStr : `${selectedMonth}-01`;
+    }
+    setDeductionDate(defDate);
+    setDeductionAmount('');
+    setIsDeductionModalOpen(true);
+  };
 
   // Dropdown states
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
@@ -210,15 +240,25 @@ export const AdminClientDetails: React.FC = () => {
     if (id) fetchClient();
   }, [id, selectedMonth]);
 
+  useEffect(() => {
+    api.get('/admin/employees')
+      .then((res) => setEmployees(res.data.data || res.data.employees || []))
+      .catch((err) => console.error('Error fetching employees', err));
+  }, []);
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setSubmitting(true);
-      await api.patch(`/admin/clients/${id}`, {
+      const res = await api.patch(`/admin/clients/${id}`, {
         ...editForm,
         companyName: editForm.name,
         gstNumber: editForm.taxId,
       });
+      const updated = res.data?.data || res.data?.client;
+      if (updated) {
+        setClient((prev: any) => ({ ...prev, ...updated }));
+      }
       toast.success('Client updated successfully');
       setIsEditModalOpen(false);
       fetchClient();
@@ -265,6 +305,12 @@ export const AdminClientDetails: React.FC = () => {
         const d = new Date(p.createdAt || p.startDate);
         if (!isNaN(d.getTime())) {
           monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+        }
+      });
+      (deductions || []).forEach((d: any) => {
+        const dt = new Date(d.date);
+        if (!isNaN(dt.getTime())) {
+          monthsSet.add(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
         }
       });
     }
@@ -580,15 +626,14 @@ export const AdminClientDetails: React.FC = () => {
             <span>Record Payment</span>
           </button>
 
-          {/* Download Statement PDF (Orange CTA) */}
+          {/* Add Project (Orange CTA) */}
           <button
             type="button"
-            onClick={handleQuickDownloadPdf}
-            disabled={downloadingPdf}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold transition-all disabled:opacity-50 shadow-sm cursor-pointer"
+            onClick={() => setIsProjectModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold transition-all shadow-sm cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>{downloadingPdf ? 'Generating...' : 'Download Statement PDF'}</span>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Project</span>
           </button>
 
           {/* Triple-dot menu for additional options */}
@@ -606,6 +651,16 @@ export const AdminClientDetails: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    if (client) {
+                      setEditForm({
+                        name: client.companyName || client.name || '',
+                        contactPerson: client.contactPerson || client.contactName || '',
+                        email: client.email || '',
+                        phone: client.phone || '',
+                        address: client.address || '',
+                        taxId: client.gstNumber || client.taxId || '',
+                      });
+                    }
                     setIsHeaderMenuOpen(false);
                     setIsEditModalOpen(true);
                   }}
@@ -613,17 +668,6 @@ export const AdminClientDetails: React.FC = () => {
                 >
                   <Pencil className="w-3.5 h-3.5 text-zinc-400" />
                   <span>Edit Client</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsHeaderMenuOpen(false);
-                    setIsReceiptModalOpen(true);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-white/80 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
-                >
-                  <ReceiptText className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Combine Projects</span>
                 </button>
                 <div className="my-1 border-t border-white/5" />
                 <button
@@ -759,12 +803,7 @@ export const AdminClientDetails: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setDeductionProjectName('');
-                    setDeductionDate(new Date().toISOString().split('T')[0]);
-                    setDeductionAmount('');
-                    setIsDeductionModalOpen(true);
-                  }}
+                  onClick={openAddDeductionModal}
                   className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10 hover:bg-[#FF5A1F]/20 hover:text-[#FF5A1F] hover:border-[#FF5A1F]/40 transition-colors cursor-pointer"
                   title="Add deduction"
                 >
@@ -781,45 +820,51 @@ export const AdminClientDetails: React.FC = () => {
         </div>
 
         {/* Deductions List (shown if card is shown and deductions exist) */}
-        {showDeductionCard && deductions.length > 0 && (
+        {showDeductionCard && (
           <div className="space-y-2 pt-2 border-t border-white/5">
             <div className="flex items-center justify-between">
-              <p className="text-[11px] text-white/40 font-mono uppercase tracking-wider">Project Deductions</p>
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] text-white/40 font-mono uppercase tracking-wider">Project Deductions</p>
+                {!isAllMonths && (
+                  <span className="text-[10px] text-zinc-500 font-mono">({selectedMonthLabel})</span>
+                )}
+              </div>
               <button
                 type="button"
-                onClick={() => {
-                  setDeductionProjectName('');
-                  setDeductionDate(new Date().toISOString().split('T')[0]);
-                  setDeductionAmount('');
-                  setIsDeductionModalOpen(true);
-                }}
+                onClick={openAddDeductionModal}
                 className="text-[11px] text-[#FF5A1F] hover:underline flex items-center gap-1 font-medium cursor-pointer"
               >
                 <Plus className="w-3 h-3" /> Add another
               </button>
             </div>
-            <div className="space-y-1.5">
-              {deductions.map((d) => (
-                <div key={d.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.025] border border-white/5 text-xs">
-                  <div className="flex items-center gap-3">
-                    <MinusCircle className="w-3.5 h-3.5 text-[#FF5A1F] shrink-0" />
-                    <span className="text-white/80 font-medium">{d.projectName || d.label}</span>
-                    <span className="text-white/40 font-mono">{new Date(d.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+            {filteredDeductions.length > 0 ? (
+              <div className="space-y-1.5">
+                {filteredDeductions.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.025] border border-white/5 text-xs">
+                    <div className="flex items-center gap-3">
+                      <MinusCircle className="w-3.5 h-3.5 text-[#FF5A1F] shrink-0" />
+                      <span className="text-white/80 font-medium">{d.projectName || d.label}</span>
+                      <span className="text-white/40 font-mono">{new Date(d.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-[#FF5A1F]">− {formatINR(d.amount)}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDeduction(d.id)}
+                        className="p-1 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-colors cursor-pointer"
+                        title="Remove deduction"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-[#FF5A1F]">− {formatINR(d.amount)}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveDeduction(d.id)}
-                      className="p-1 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-colors cursor-pointer"
-                      title="Remove deduction"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-white/30 py-2 italic font-sans">
+                No deductions recorded for {selectedMonthLabel}.
+              </div>
+            )}
             <div className="flex justify-end pt-1">
               <div className="flex items-center gap-2 text-xs font-mono">
                 <span className="text-white/50">Net Receivable after deductions:</span>
@@ -845,14 +890,24 @@ export const AdminClientDetails: React.FC = () => {
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setIsReceiptModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-colors cursor-pointer"
-          >
-            <ReceiptText className="w-3.5 h-3.5 text-[#FF5A1F]" />
-            <span>Combine Projects ({filteredProjects.length})</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsProjectModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FF5A1F]/10 hover:bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/20 text-xs font-medium transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Project</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsReceiptModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-colors cursor-pointer"
+            >
+              <ReceiptText className="w-3.5 h-3.5 text-[#FF5A1F]" />
+              <span>Combine Projects ({filteredProjects.length})</span>
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto custom-scrollbar">
@@ -895,7 +950,17 @@ export const AdminClientDetails: React.FC = () => {
                 <tr>
                   <td colSpan={4} className="py-8 text-center text-white/40 font-mono">
                     {isAllMonths ? (
-                      'No projects found for this client.'
+                      <div className="space-y-2.5 font-sans py-3">
+                        <p className="text-zinc-400">No projects found for this client.</p>
+                        <button
+                          type="button"
+                          onClick={() => setIsProjectModalOpen(true)}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add First Project</span>
+                        </button>
+                      </div>
                     ) : (
                       <div className="space-y-1.5 font-sans">
                         <p className="text-zinc-400">No active projects found for {selectedMonthLabel}.</p>
@@ -1341,13 +1406,11 @@ export const AdminClientDetails: React.FC = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-white/60 block mb-1">Date *</label>
-                  <input
-                    type="date"
-                    required
+                  <CustomDatePicker
                     value={deductionDate}
-                    onChange={(e) => setDeductionDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#FF5A1F] focus:outline-none"
-                    style={{ colorScheme: 'dark' }}
+                    onChange={(val) => setDeductionDate(val)}
+                    placeholder="Select date"
+                    required
                   />
                 </div>
                 <div>
@@ -1383,6 +1446,21 @@ export const AdminClientDetails: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+      {/* Project Modal for Creating Project for this Client */}
+      {client && (
+        <ProjectModal
+          isOpen={isProjectModalOpen}
+          onClose={() => setIsProjectModalOpen(false)}
+          project={null}
+          clients={[client]}
+          defaultClientId={client._id || id}
+          disableClientSelect={true}
+          employees={employees}
+          onSuccess={() => {
+            fetchClient();
+          }}
+        />
       )}
     </div>
   );

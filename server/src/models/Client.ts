@@ -11,6 +11,7 @@ export interface IClient extends Document {
   clientCode: string;
   name: string;
   companyName?: string;
+  contactPerson?: string;
   email?: string;
   phone?: string;
   address?: string;
@@ -31,6 +32,7 @@ const ClientSchema = new Schema<IClient>(
     clientCode: { type: String, required: true, unique: true, index: true, uppercase: true },
     name: { type: String, required: true, trim: true },
     companyName: { type: String, trim: true },
+    contactPerson: { type: String, trim: true },
     email: { type: String, lowercase: true, trim: true },
     phone: { type: String, trim: true },
     address: { type: String },

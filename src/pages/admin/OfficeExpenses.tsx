@@ -13,6 +13,7 @@ import { formatINR } from '../../utils/formatters';
 import { useToast } from '../../components/work/Toast';
 import { EmptyState } from '../../components/work/EmptyState';
 import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
+import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { useAlert } from '../../context/AlertContext';
 
 interface ExpenseItem {
@@ -415,12 +416,11 @@ export const AdminOfficeExpenses: React.FC = () => {
                 <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
                   Date
                 </label>
-                <input
-                  type="date"
+                <CustomDatePicker
                   value={formData.expenseDate}
-                  onChange={(e) => setFormData({ ...formData, expenseDate: e.target.value })}
+                  onChange={(val) => setFormData({ ...formData, expenseDate: val })}
+                  placeholder="Select date"
                   required
-                  className="w-full px-3.5 py-2.5 bg-[#13151f] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:border-[#FF5A1F]/50 transition-colors"
                 />
               </div>
 

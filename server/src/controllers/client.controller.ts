@@ -40,20 +40,33 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
       ClientPayment.find({ clientId: { $in: clientIds } }).lean(),
     ]);
 
-    const projectsByClient = new Map<string, any[]>();
+    const isMonthFiltered = Boolean(startOfMonth && endOfMonth);
+
+    const allProjectsByClient = new Map<string, any[]>();
+    const monthProjectsByClient = new Map<string, any[]>();
+
     for (const p of allProjects) {
       const cid = p.clientId?.toString();
       if (cid) {
-        if (endOfMonth) {
+        let allArr = allProjectsByClient.get(cid);
+        if (!allArr) {
+          allArr = [];
+          allProjectsByClient.set(cid, allArr);
+        }
+        allArr.push(p);
+
+        // Filter projects strictly belonging to this month
+        if (isMonthFiltered && startOfMonth && endOfMonth) {
           const pDate = new Date(p.startDate || p.createdAt || 0);
-          if (pDate > endOfMonth) continue;
+          if (pDate >= startOfMonth && pDate <= endOfMonth) {
+            let mArr = monthProjectsByClient.get(cid);
+            if (!mArr) {
+              mArr = [];
+              monthProjectsByClient.set(cid, mArr);
+            }
+            mArr.push(p);
+          }
         }
-        let arr = projectsByClient.get(cid);
-        if (!arr) {
-          arr = [];
-          projectsByClient.set(cid, arr);
-        }
-        arr.push(p);
       }
     }
 
@@ -64,48 +77,54 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
       if (cid) {
         const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
         const amt = fromDecimal(pm.amount);
-        if (endOfMonth) {
-          if (pmDate <= endOfMonth) {
-            paymentsByClientCumulative.set(cid, (paymentsByClientCumulative.get(cid) || 0) + amt);
-          }
-          if (startOfMonth && pmDate >= startOfMonth && pmDate <= endOfMonth) {
+        paymentsByClientCumulative.set(cid, (paymentsByClientCumulative.get(cid) || 0) + amt);
+        if (isMonthFiltered && startOfMonth && endOfMonth) {
+          if (pmDate >= startOfMonth && pmDate <= endOfMonth) {
             paymentsByClientInMonth.set(cid, (paymentsByClientInMonth.get(cid) || 0) + amt);
           }
         } else {
           paymentsByClientInMonth.set(cid, (paymentsByClientInMonth.get(cid) || 0) + amt);
-          paymentsByClientCumulative.set(cid, (paymentsByClientCumulative.get(cid) || 0) + amt);
         }
       }
     }
 
-    // Fast in-memory enrichment without any extra database queries
+    // Fast in-memory enrichment strictly honoring selected month
     const enriched = clients.map((client) => {
       const cidStr = client._id.toString();
-      const projects = projectsByClient.get(cidStr) || [];
-      const totalValue = round2(
-        projects.reduce((sum, p) => {
-          const grossVal = fromDecimal(p.projectValue);
-          const discountPercent = Number(p.discountPercent) || 0;
-          const discountAmount = p.discountAmount
-            ? fromDecimal(p.discountAmount)
-            : round2((grossVal * discountPercent) / 100);
-          return sum + Math.max(0, round2(grossVal - discountAmount));
-        }, 0)
-      );
+      const allProjects = allProjectsByClient.get(cidStr) || [];
+      const monthProjects = monthProjectsByClient.get(cidStr) || [];
+      const targetProjects = isMonthFiltered ? monthProjects : allProjects;
+
+      const calcProjectsTotal = (prjs: any[]) =>
+        round2(
+          prjs.reduce((sum, p) => {
+            const grossVal = fromDecimal(p.projectValue);
+            const discountPercent = Number(p.discountPercent) || 0;
+            const discountAmount = p.discountAmount
+              ? fromDecimal(p.discountAmount)
+              : round2((grossVal * discountPercent) / 100);
+            return sum + Math.max(0, round2(grossVal - discountAmount));
+          }, 0)
+        );
+
+      const totalValue = calcProjectsTotal(targetProjects);
+      const allTimeTotalValue = calcProjectsTotal(allProjects);
 
       const totalPaid = round2(
-        endOfMonth
+        isMonthFiltered
           ? (paymentsByClientInMonth.get(cidStr) || 0)
           : (paymentsByClientCumulative.get(cidStr) || 0)
       );
       const totalPaidCumulative = round2(paymentsByClientCumulative.get(cidStr) || 0);
-      const outstanding = Math.max(0, round2(totalValue - totalPaidCumulative));
+      const outstanding = isMonthFiltered
+        ? Math.max(0, round2(totalValue - totalPaid))
+        : Math.max(0, round2(totalValue - totalPaidCumulative));
 
       return {
         ...client.toObject(),
-        totalProjects: projects.length,
-        projectsCount: projects.length,
-        activeProjects: projects.filter((p) => ['start_process', 'in_process', 'in_changes'].includes(p.status)).length,
+        totalProjects: targetProjects.length,
+        projectsCount: targetProjects.length,
+        activeProjects: targetProjects.filter((p) => ['start_process', 'in_process', 'in_changes'].includes(p.status)).length,
         totalBusinessValue: totalValue,
         totalContractValue: totalValue,
         totalPaid,
@@ -121,6 +140,9 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
           totalPaymentsReceived: totalPaid,
           pendingPayment: outstanding,
           outstanding,
+          allTimeBusinessValue: allTimeTotalValue,
+          allTimePaid: totalPaidCumulative,
+          allTimeOutstanding: Math.max(0, round2(allTimeTotalValue - totalPaidCumulative)),
         },
       };
     });
@@ -169,6 +191,7 @@ export async function createClient(req: AuthenticatedRequest, res: Response): Pr
       clientCode,
       name: finalName,
       companyName: finalCompanyName,
+      contactPerson: contactPerson || req.body.contactName || undefined,
       email,
       phone,
       address,
@@ -364,6 +387,11 @@ export async function updateClient(req: AuthenticatedRequest, res: Response): Pr
     Object.assign(client, req.body);
     if (req.body.name && !req.body.companyName && !client.companyName) {
       client.companyName = req.body.name;
+    }
+    if (req.body.contactPerson !== undefined) {
+      client.contactPerson = req.body.contactPerson;
+    } else if (req.body.contactName !== undefined) {
+      client.contactPerson = req.body.contactName;
     }
     await client.save();
 
@@ -654,9 +682,29 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       deductionsList = client.deductions.map((d: any) => ({
         projectName: d.projectName || d.label || 'Project Deduction',
         date: d.date ? new Date(d.date).toLocaleDateString('en-IN') : undefined,
+        rawDate: d.date,
         amount: Number(d.amount) || 0,
       }));
     }
+
+    // Filter deductions month-wise if specific month(s) are selected
+    if (monthTokens.length > 0 && !monthTokens.includes('all')) {
+      deductionsList = deductionsList.filter((d: any) => {
+        const raw = d.rawDate || d.date;
+        if (!raw) return true;
+        const dStr = typeof raw === 'string' ? raw : new Date(raw).toISOString().slice(0, 10);
+        const matchesToken = monthTokens.some((token) => dStr.startsWith(token));
+        if (matchesToken) return true;
+        if (monthRange) {
+          const dt = new Date(raw);
+          if (!isNaN(dt.getTime())) {
+            return dt >= monthRange.startOfMonth && dt <= monthRange.endOfMonth;
+          }
+        }
+        return false;
+      });
+    }
+
     const totalDeductionsAmount = round2(deductionsList.reduce((sum, d) => sum + (Number(d.amount) || 0), 0));
     const pendingBalance = Math.max(0, round2(totalRevenue - totalPaid - totalDeductionsAmount));
 
