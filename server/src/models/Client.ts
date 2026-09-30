@@ -7,6 +7,14 @@ export interface IClientDeduction {
   amount: number;
 }
 
+export interface IClientBadDebt {
+  _id?: Types.ObjectId;
+  projectName: string;
+  date: Date;
+  amount: number;
+  reason?: string;
+}
+
 export interface IClient extends Document {
   clientCode: string;
   name: string;
@@ -21,6 +29,7 @@ export interface IClient extends Document {
   notes?: string;
   lastInvoiceNumber?: string;
   deductions?: IClientDeduction[];
+  badDebts?: IClientBadDebt[];
   status: 'active' | 'inactive';
   createdBy: Types.ObjectId;
   createdAt: Date;
@@ -46,6 +55,14 @@ const ClientSchema = new Schema<IClient>(
         projectName: { type: String, required: true },
         date: { type: Date, default: Date.now },
         amount: { type: Number, required: true },
+      },
+    ],
+    badDebts: [
+      {
+        projectName: { type: String, default: 'General Bad Debt' },
+        date: { type: Date, default: Date.now },
+        amount: { type: Number, required: true },
+        reason: { type: String, default: '' },
       },
     ],
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },

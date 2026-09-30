@@ -224,21 +224,29 @@ export const EmployeeProjects: React.FC = () => {
     const prj = item.projectId || item;
     const pool = item.employeeCommission || {};
     const poolTotal = pool.totalCommission ?? pool.expectedCommission ?? 0;
+    const delivered = isDelivered(prj.status);
 
     return (
-      <tr key={item._id || prj._id} className="hover:bg-white/[0.015] transition-colors">
-        <td className="py-3.5 px-5 font-mono text-xs text-zinc-500 w-12">
+      <tr
+        key={item._id || prj._id}
+        className={`transition-all duration-150 ${
+          delivered
+            ? 'bg-zinc-900/25 hover:bg-zinc-900/45 opacity-65 hover:opacity-100 text-zinc-400'
+            : 'hover:bg-white/[0.015]'
+        }`}
+      >
+        <td className={`py-3.5 px-5 font-mono text-xs w-12 ${delivered ? 'text-zinc-600' : 'text-zinc-500'}`}>
           {rowNumber}
         </td>
         <td className="py-3.5 px-5">
-          <span className="font-semibold text-white text-sm block">
+          <span className={`font-semibold text-sm block ${delivered ? 'text-zinc-400' : 'text-white'}`}>
             {prj.title || prj.projectName}
           </span>
         </td>
-        <td className="py-3.5 px-5 text-sm text-zinc-300">
+        <td className={`py-3.5 px-5 text-sm ${delivered ? 'text-zinc-500' : 'text-zinc-300'}`}>
           {prj.clientId?.companyName || prj.clientId?.name || 'Client Production'}
         </td>
-        <td className="py-3.5 px-5 font-mono text-sm font-semibold text-[#FF5A1F]">
+        <td className={`py-3.5 px-5 font-mono text-sm font-semibold ${delivered ? 'text-zinc-400' : 'text-[#FF5A1F]'}`}>
           {formatINR(poolTotal)}
         </td>
         <td className="py-3.5 px-5">
@@ -246,6 +254,7 @@ export const EmployeeProjects: React.FC = () => {
             <CustomSelect
               value={prj.status}
               onChange={(val) => handleStatusChange(prj._id, val)}
+              triggerClassName={delivered ? '!border-white/[0.04] !bg-white/[0.02]' : ''}
               options={[
                 { value: 'start_process', label: 'Start Process' },
                 { value: 'in_process', label: 'In Process' },
@@ -373,9 +382,9 @@ export const EmployeeProjects: React.FC = () => {
             <div className="space-y-4 pt-1">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#FF5A1F]" />
-                  <h2 className="text-sm font-semibold text-white">Delivered Projects</h2>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FF5A1F]/10 border border-[#FF5A1F]/20 text-[#FF5A1F]">
+                  <CheckCircle2 className="w-4 h-4 text-zinc-500" />
+                  <h2 className="text-sm font-semibold text-zinc-300">Delivered Projects</h2>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.04] border border-white/[0.08] text-zinc-400">
                     {completedTotalCount}
                   </span>
                 </div>
@@ -389,15 +398,15 @@ export const EmployeeProjects: React.FC = () => {
                       key={group.dateKey}
                       className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm"
                     >
-                      {/* Date Box Header (Orange brand styling) */}
-                      <div className="bg-[#0c1017] border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
+                      {/* Date Box Header (Neutral grey styling) */}
+                      <div className="bg-[#0b0c10] border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="px-3 py-1.5 rounded-lg bg-[#FF5A1F]/10 border border-[#FF5A1F]/25 text-[#FF5A1F] font-medium text-xs flex items-center gap-2">
-                            <Calendar className="w-3.5 h-3.5 text-[#FF5A1F]" />
+                          <div className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-zinc-300 font-medium text-xs flex items-center gap-2">
+                            <Calendar className="w-3.5 h-3.5 text-zinc-400" />
                             <span>{group.dateLabel}</span>
                           </div>
                         </div>
-                        <span className="text-xs text-zinc-400 font-medium">
+                        <span className="text-xs text-zinc-500 font-medium">
                           {group.projects.length} {group.projects.length === 1 ? 'project delivered' : 'projects delivered'}
                         </span>
                       </div>

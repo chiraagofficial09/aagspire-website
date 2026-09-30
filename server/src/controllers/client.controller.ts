@@ -393,6 +393,30 @@ export async function updateClient(req: AuthenticatedRequest, res: Response): Pr
     } else if (req.body.contactName !== undefined) {
       client.contactPerson = req.body.contactName;
     }
+
+    if (req.body.badDebts !== undefined) {
+      client.badDebts = Array.isArray(req.body.badDebts)
+        ? req.body.badDebts.map((d: any) => ({
+            projectName: d.projectName || d.label || 'Bad Debt',
+            date: d.date ? new Date(d.date) : new Date(),
+            amount: Number(d.amount) || 0,
+            reason: d.reason || '',
+          }))
+        : [];
+      client.markModified('badDebts');
+    }
+
+    if (req.body.deductions !== undefined) {
+      client.deductions = Array.isArray(req.body.deductions)
+        ? req.body.deductions.map((d: any) => ({
+            projectName: d.projectName || d.label || 'Project Deduction',
+            date: d.date ? new Date(d.date) : new Date(),
+            amount: Number(d.amount) || 0,
+          }))
+        : [];
+      client.markModified('deductions');
+    }
+
     await client.save();
 
     await logAudit({
@@ -705,7 +729,36 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       });
     }
 
-    const totalDeductionsAmount = round2(deductionsList.reduce((sum, d) => sum + (Number(d.amount) || 0), 0));
+    // Bad debts handling for statement
+    let badDebtsList: any[] = [];
+    if (client.badDebts && client.badDebts.length > 0) {
+      badDebtsList = client.badDebts.map((d: any) => ({
+        projectName: `[Bad Debt] ${d.projectName || 'General Bad Debt'}${d.reason ? ` (${d.reason})` : ''}`,
+        date: d.date ? new Date(d.date).toLocaleDateString('en-IN') : undefined,
+        rawDate: d.date,
+        amount: Number(d.amount) || 0,
+      }));
+    }
+
+    if (monthTokens.length > 0 && !monthTokens.includes('all')) {
+      badDebtsList = badDebtsList.filter((d: any) => {
+        const raw = d.rawDate || d.date;
+        if (!raw) return true;
+        const dStr = typeof raw === 'string' ? raw : new Date(raw).toISOString().slice(0, 10);
+        const matchesToken = monthTokens.some((token) => dStr.startsWith(token));
+        if (matchesToken) return true;
+        if (monthRange) {
+          const dt = new Date(raw);
+          if (!isNaN(dt.getTime())) {
+            return dt >= monthRange.startOfMonth && dt <= monthRange.endOfMonth;
+          }
+        }
+        return false;
+      });
+    }
+
+    const combinedDeductions = [...deductionsList, ...badDebtsList];
+    const totalDeductionsAmount = round2(combinedDeductions.reduce((sum, d) => sum + (Number(d.amount) || 0), 0));
     const pendingBalance = Math.max(0, round2(totalRevenue - totalPaid - totalDeductionsAmount));
 
     const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec'];
@@ -790,7 +843,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         pendingBalance,
         notes,
         projects,
-        deductions: deductionsList,
+        deductions: combinedDeductions,
       },
       res
     );

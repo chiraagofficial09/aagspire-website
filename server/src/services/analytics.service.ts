@@ -200,6 +200,7 @@ export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMo
       previousOutstandingCollected: finMetrics.previousOutstandingCollected,
       openingReceivable: finMetrics.openingReceivable,
       closingReceivable: finMetrics.closingReceivable,
+      totalBadDebt: finMetrics.totalBadDebt,
 
       // Cash Reconciliation
       appliedCollections: finMetrics.appliedCollections,

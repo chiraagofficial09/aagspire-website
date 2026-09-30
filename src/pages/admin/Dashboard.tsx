@@ -141,6 +141,8 @@ export const AdminDashboard: React.FC = () => {
   const previousOutstandingCollected = Number(kpis.previousOutstandingCollected ?? finMetrics.previousOutstandingCollected ?? 0);
   const openingReceivable = Number(kpis.openingReceivable ?? finMetrics.openingReceivable ?? 0);
   const closingReceivable = Number(kpis.closingReceivable ?? finMetrics.closingReceivable ?? kpis.outstandingAmount ?? 0);
+  const totalBadDebt = Number(kpis.totalBadDebt ?? finMetrics.totalBadDebt ?? 0);
+  const netPending = Math.max(0, closingReceivable - totalBadDebt);
 
   // Supporting Cash Accounting
   const appliedCollections = Number(kpis.appliedCollections ?? finMetrics.appliedCollections ?? 0);
@@ -183,6 +185,7 @@ export const AdminDashboard: React.FC = () => {
         previousOutstandingCollected: Number(t.previousOutstandingCollected ?? 0),
         openingReceivable: Number(t.openingReceivable ?? 0),
         closingReceivable: Number(t.closingReceivable ?? 0),
+        badDebt: Number(t.badDebt ?? 0),
         appliedCollections: Number(t.appliedCollections ?? 0),
         unappliedCash: Number(t.unappliedCash ?? 0),
       }))
@@ -194,6 +197,7 @@ export const AdminDashboard: React.FC = () => {
         previousOutstandingCollected: 0,
         openingReceivable: 0,
         closingReceivable: 0,
+        badDebt: 0,
         appliedCollections: 0,
         unappliedCash: 0,
       }));
@@ -435,17 +439,37 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 4: Remaining Due */}
+          {/* Card 4: Total Bad Debt */}
           <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Pending</span>
+              <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Bad Debt</span>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-rose-400 border border-white/10">
+                <AlertCircle className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FF5A1F]">
+                {formatINR(totalBadDebt)}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 5: Total Pending */}
+          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Pending</span>
+                {totalBadDebt > 0 && (
+                  <span className="text-[9px] text-[#FF5A1F] font-mono px-1 rounded bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">Net</span>
+                )}
+              </div>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
                 <Tag className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3">
               <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FF5A1F]">
-                {formatINR(closingReceivable)}
+                {formatINR(netPending)}
               </div>
             </div>
           </div>

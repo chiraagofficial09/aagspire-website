@@ -4,6 +4,7 @@ import { ProjectCommission } from '../models/ProjectCommission.js';
 import { ProjectEmployee } from '../models/ProjectEmployee.js';
 import { ClientPayment } from '../models/ClientPayment.js';
 import { Settlement } from '../models/Settlement.js';
+import { Client } from '../models/Client.js';
 import { fromDecimal, round2 } from '../utils/decimalHelper.js';
 
 export interface FinancialMetrics {
@@ -14,6 +15,7 @@ export interface FinancialMetrics {
   previousOutstandingCollected: number;
   openingReceivable: number;
   closingReceivable: number;
+  totalBadDebt: number;
 
   // Supporting Cash Accounting
   appliedCollections: number;
@@ -67,6 +69,7 @@ export interface MonthlyTrendPoint {
   closingReceivable: number;
   appliedCollections: number;
   unappliedCash: number;
+  badDebt?: number;
 }
 
 /**
@@ -403,6 +406,30 @@ export async function calculateFinancialMetrics(options: {
     ['start_process', 'in_process', 'in_changes'].includes(p.status)
   ).length;
 
+  // 11. Bad Debt calculation (scoped to client or all clients)
+  const clientFilter: any = clientId
+    ? { _id: typeof clientId === 'string' ? new Types.ObjectId(clientId) : clientId }
+    : { 'badDebts.0': { $exists: true } };
+
+  const clientsWithBadDebt = await Client.find(clientFilter, 'badDebts').lean();
+  let totalBadDebt = 0;
+  for (const c of clientsWithBadDebt) {
+    if (Array.isArray(c.badDebts)) {
+      for (const bd of c.badDebts) {
+        if (!bd.amount) continue;
+        const bdAmt = Number(bd.amount) || 0;
+        if (isAllMonths || !startDate || !endDate) {
+          totalBadDebt = round2(totalBadDebt + bdAmt);
+        } else {
+          const bdDate = new Date(bd.date || 0);
+          if (bdDate >= startDate && bdDate <= endDate) {
+            totalBadDebt = round2(totalBadDebt + bdAmt);
+          }
+        }
+      }
+    }
+  }
+
   return {
     newProjectValue,
     cashCollected,
@@ -410,6 +437,7 @@ export async function calculateFinancialMetrics(options: {
     previousOutstandingCollected,
     openingReceivable,
     closingReceivable,
+    totalBadDebt,
     appliedCollections,
     unappliedCash,
     excessCash,
@@ -724,6 +752,7 @@ export async function calculateMonthlyTrends(
       closingReceivable: m.closingReceivable,
       appliedCollections: m.appliedCollections,
       unappliedCash: m.unappliedCash,
+      badDebt: m.totalBadDebt,
     });
   }
 

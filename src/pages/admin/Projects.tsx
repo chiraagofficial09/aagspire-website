@@ -273,28 +273,38 @@ export const AdminProjects: React.FC = () => {
         : clients.find((c) => c._id === prj.clientId || c.id === prj.clientId);
     const clientName = clientObj?.companyName || clientObj?.name || 'Client Production';
     const projectVal = prj.projectValue ?? prj.netProjectValue ?? prj.totalAmount ?? prj.grossProjectValue ?? 0;
+    const delivered = isDelivered(prj.status);
 
     return (
-      <tr key={prj._id} className="hover:bg-white/[0.015] transition-colors">
-        <td className="py-3.5 px-5 font-mono text-xs text-zinc-500 w-12">
+      <tr
+        key={prj._id}
+        className={`transition-all duration-150 ${
+          delivered
+            ? 'bg-zinc-900/25 hover:bg-zinc-900/45 opacity-65 hover:opacity-100 text-zinc-400'
+            : 'hover:bg-white/[0.015]'
+        }`}
+      >
+        <td className={`py-3.5 px-5 font-mono text-xs w-12 ${delivered ? 'text-zinc-600' : 'text-zinc-500'}`}>
           {rowNumber}
         </td>
         <td className="py-3.5 px-5">
-          <div className="font-semibold text-white text-sm">
+          <div className={`font-semibold text-sm ${delivered ? 'text-zinc-400' : 'text-white'}`}>
             {prj.projectName || prj.title}
           </div>
         </td>
         <td className="py-3.5 px-5">
-          <span className="text-sm text-zinc-300">{clientName}</span>
+          <span className={`text-sm ${delivered ? 'text-zinc-500' : 'text-zinc-300'}`}>{clientName}</span>
         </td>
         <td className="py-3.5 px-5">
-          <div className="font-mono text-sm font-semibold text-[#FF5A1F]">
+          <div className={`font-mono text-sm font-semibold ${delivered ? 'text-zinc-400' : 'text-[#FF5A1F]'}`}>
             {formatINR(projectVal)}
           </div>
           {prj.productionCost && Number(prj.productionCost) > 0 ? (
-            <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1 mt-0.5" title={prj.productionCostNotes || 'Production / Material Cost'}>
+            <div className="text-[10px] text-zinc-500 font-mono flex items-center gap-1 mt-0.5" title={prj.productionCostNotes || 'Production / Material Cost'}>
               <span className="text-zinc-500">Design:</span>
-              <span className="text-[#FF5A1F] font-medium">{formatINR(prj.designPrice ?? Math.max(0, projectVal - Number(prj.productionCost)))}</span>
+              <span className={delivered ? 'text-zinc-400 font-medium' : 'text-[#FF5A1F] font-medium'}>
+                {formatINR(prj.designPrice ?? Math.max(0, projectVal - Number(prj.productionCost)))}
+              </span>
             </div>
           ) : null}
         </td>
@@ -304,10 +314,14 @@ export const AdminProjects: React.FC = () => {
               {prj.assignedEmployees.map((emp: any) => (
                 <span
                   key={emp._id || emp}
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-zinc-200"
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs ${
+                    delivered
+                      ? 'bg-white/[0.02] border-white/[0.05] text-zinc-400'
+                      : 'bg-white/[0.04] border-white/[0.08] text-zinc-200'
+                  }`}
                   title={`${emp.fullName || emp.name} (${emp.employeeCode || 'EMP'})`}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${delivered ? 'bg-zinc-500' : 'bg-[#FF5A1F]'}`} />
                   <span className="truncate max-w-[110px]">{emp.fullName || emp.name}</span>
                 </span>
               ))}
@@ -321,6 +335,7 @@ export const AdminProjects: React.FC = () => {
             <CustomSelect
               value={prj.status || 'start_process'}
               onChange={(val) => handleStatusChange(prj._id, val)}
+              triggerClassName={delivered ? '!border-white/[0.04] !bg-white/[0.02]' : ''}
               options={[
                 { value: 'start_process', label: 'Start Process' },
                 { value: 'in_process', label: 'In Process' },
@@ -334,10 +349,14 @@ export const AdminProjects: React.FC = () => {
           <div className="flex items-center justify-end gap-2 relative">
             <Link
               to={`/admin/projects/${prj._id}`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold shadow-sm transition-all"
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all ${
+                delivered
+                  ? 'bg-white/[0.06] hover:bg-white/[0.1] text-zinc-400 hover:text-white border border-white/[0.06]'
+                  : 'bg-[#FF5A1F] hover:bg-[#e04810] text-white'
+              }`}
             >
               <span>View</span>
-              <span className="text-white/90">→</span>
+              <span className={delivered ? 'text-zinc-500' : 'text-white/90'}>→</span>
             </Link>
 
             <div className="relative">
@@ -500,9 +519,9 @@ export const AdminProjects: React.FC = () => {
             <div className="space-y-4 pt-1">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-[#FF5A1F]" />
-                  <h2 className="text-sm font-semibold text-white">Delivered Projects</h2>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#FF5A1F]/10 border border-[#FF5A1F]/20 text-[#FF5A1F]">
+                  <CheckCircle2 className="w-4 h-4 text-zinc-500" />
+                  <h2 className="text-sm font-semibold text-zinc-300">Delivered Projects</h2>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/[0.04] border border-white/[0.08] text-zinc-400">
                     {completedTotalCount}
                   </span>
                 </div>
@@ -516,15 +535,15 @@ export const AdminProjects: React.FC = () => {
                       key={group.dateKey}
                       className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm"
                     >
-                      {/* Date Box Header (Orange brand styling) */}
-                      <div className="bg-[#0c1017] border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
+                      {/* Date Box Header (Neutral grey styling) */}
+                      <div className="bg-[#0b0c10] border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="px-3 py-1.5 rounded-lg bg-[#FF5A1F]/10 border border-[#FF5A1F]/25 text-[#FF5A1F] font-medium text-xs flex items-center gap-2">
-                            <Calendar className="w-3.5 h-3.5 text-[#FF5A1F]" />
+                          <div className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-zinc-300 font-medium text-xs flex items-center gap-2">
+                            <Calendar className="w-3.5 h-3.5 text-zinc-400" />
                             <span>{group.dateLabel}</span>
                           </div>
                         </div>
-                        <span className="text-xs text-zinc-400 font-medium">
+                        <span className="text-xs text-zinc-500 font-medium">
                           {group.projects.length} {group.projects.length === 1 ? 'project delivered' : 'projects delivered'}
                         </span>
                       </div>

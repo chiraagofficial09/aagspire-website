@@ -20,6 +20,7 @@ import {
   Target,
   Plus,
   MinusCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
@@ -66,6 +67,19 @@ export const AdminClientDetails: React.FC = () => {
   const [deductionDate, setDeductionDate] = useState(new Date().toISOString().split('T')[0]);
   const [deductionAmount, setDeductionAmount] = useState('');
 
+  // Bad Debts state
+  interface BadDebtEntry {
+    id: string;
+    label: string;
+    projectName: string;
+    date: string;
+    amount: number;
+    reason?: string;
+  }
+  const [showBadDebtCard, setShowBadDebtCard] = useState(false);
+  const [badDebts, setBadDebts] = useState<BadDebtEntry[]>([]);
+  const [isBadDebtModalOpen, setIsBadDebtModalOpen] = useState(false);
+  const [badDebtAmount, setBadDebtAmount] = useState('');
 
   const handleAddDeduction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +139,70 @@ export const AdminClientDetails: React.FC = () => {
     }
   };
 
+  const handleAddBadDebt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(badDebtAmount);
+    if (!amt || amt <= 0) return;
+
+    let defDate = new Date().toISOString().split('T')[0];
+    if (selectedMonth && selectedMonth !== 'all') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      defDate = todayStr.startsWith(selectedMonth) ? todayStr : `${selectedMonth}-01`;
+    }
+
+    const newEntry: BadDebtEntry = {
+      id: Date.now().toString(),
+      label: 'Bad Debt',
+      projectName: 'Bad Debt',
+      date: defDate,
+      amount: amt,
+      reason: '',
+    };
+    const updated = [...badDebts, newEntry];
+    setBadDebts(updated);
+    setShowBadDebtCard(true);
+    setBadDebtAmount('');
+    setIsBadDebtModalOpen(false);
+
+    if (id) {
+      try {
+        await api.put(`/admin/clients/${id}`, {
+          badDebts: updated.map((d) => ({
+            projectName: d.projectName || d.label || 'Bad Debt',
+            date: d.date,
+            amount: d.amount,
+            reason: d.reason || '',
+          })),
+        });
+        toast.success('Bad debt recorded successfully');
+      } catch (err) {
+        console.error('Failed to persist bad debt:', err);
+        toast.error('Failed to save bad debt to server');
+      }
+    }
+  };
+
+  const handleRemoveBadDebt = async (entryId: string) => {
+    const updated = badDebts.filter((d) => d.id !== entryId);
+    setBadDebts(updated);
+    if (id) {
+      try {
+        await api.put(`/admin/clients/${id}`, {
+          badDebts: updated.map((d) => ({
+            projectName: d.projectName || d.label,
+            date: d.date,
+            amount: d.amount,
+            reason: d.reason || '',
+          })),
+        });
+        toast.success('Bad debt removed');
+      } catch (err) {
+        console.error('Failed to remove bad debt:', err);
+        toast.error('Failed to remove bad debt from server');
+      }
+    }
+  };
+
   // Month-wise billing state
   const now = useMemo(() => new Date(), []);
   const currentMonthKey = useMemo(
@@ -150,6 +228,22 @@ export const AdminClientDetails: React.FC = () => {
     return filteredDeductions.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
   }, [filteredDeductions]);
 
+  // Filter bad debts by selected month
+  const filteredBadDebts = useMemo(() => {
+    if (!selectedMonth || selectedMonth === 'all') {
+      return badDebts;
+    }
+    return badDebts.filter((d) => {
+      if (!d.date) return false;
+      const dStr = typeof d.date === 'string' ? d.date : new Date(d.date).toISOString().slice(0, 10);
+      return dStr.startsWith(selectedMonth);
+    });
+  }, [badDebts, selectedMonth]);
+
+  const totalBadDebts = useMemo(() => {
+    return filteredBadDebts.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  }, [filteredBadDebts]);
+
   const openAddDeductionModal = () => {
     setDeductionProjectName('');
     let defDate = new Date().toISOString().split('T')[0];
@@ -160,6 +254,11 @@ export const AdminClientDetails: React.FC = () => {
     setDeductionDate(defDate);
     setDeductionAmount('');
     setIsDeductionModalOpen(true);
+  };
+
+  const openAddBadDebtModal = () => {
+    setBadDebtAmount('');
+    setIsBadDebtModalOpen(true);
   };
 
   // Dropdown states
@@ -215,7 +314,7 @@ export const AdminClientDetails: React.FC = () => {
           address: c.address || '',
           taxId: c.gstNumber || c.taxId || '',
         });
-        if (Array.isArray(c.deductions)) {
+        if (Array.isArray(c.deductions) && c.deductions.length > 0) {
           const loaded: DeductionEntry[] = c.deductions.map((d: any) => ({
             id: d._id ? String(d._id) : (d.id || `${Date.now()}-${Math.random()}`),
             projectName: d.projectName || d.label || 'Project Deduction',
@@ -224,9 +323,25 @@ export const AdminClientDetails: React.FC = () => {
             amount: Number(d.amount) || 0,
           }));
           setDeductions(loaded);
-          if (loaded.length > 0) {
-            setShowDeductionCard(true);
-          }
+          setShowDeductionCard(loaded.length > 0);
+        } else {
+          setDeductions([]);
+          setShowDeductionCard(false);
+        }
+        if (Array.isArray(c.badDebts) && c.badDebts.length > 0) {
+          const loadedBad: BadDebtEntry[] = c.badDebts.map((d: any) => ({
+            id: d._id ? String(d._id) : (d.id || `${Date.now()}-${Math.random()}`),
+            projectName: d.projectName || d.label || 'Bad Debt',
+            label: d.projectName || d.label || 'Bad Debt',
+            date: d.date ? new Date(d.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            amount: Number(d.amount) || 0,
+            reason: d.reason || '',
+          }));
+          setBadDebts(loadedBad);
+          setShowBadDebtCard(loadedBad.length > 0);
+        } else {
+          setBadDebts([]);
+          setShowBadDebtCard(false);
         }
       }
     } catch (err) {
@@ -308,6 +423,12 @@ export const AdminClientDetails: React.FC = () => {
         }
       });
       (deductions || []).forEach((d: any) => {
+        const dt = new Date(d.date);
+        if (!isNaN(dt.getTime())) {
+          monthsSet.add(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
+        }
+      });
+      (badDebts || []).forEach((d: any) => {
         const dt = new Date(d.date);
         if (!isNaN(dt.getTime())) {
           monthsSet.add(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
@@ -465,6 +586,10 @@ export const AdminClientDetails: React.FC = () => {
       ? finSummary.closingReceivable
       : (isAllMonths ? allTimeRemainingDue : Math.max(0, openingReceivable + newProjectValue - (currentMonthCollection + previousOutstandingCollected)))
   );
+
+  const netReceivableAfterAll = useMemo(() => {
+    return Math.max(0, closingReceivable - totalDeductions - totalBadDebts);
+  }, [closingReceivable, totalDeductions, totalBadDebts]);
 
   const appliedCollections = Number(finSummary.appliedCollections ?? (currentMonthCollection + previousOutstandingCollected));
   const unappliedCash = Number(finSummary.unappliedCash || 0);
@@ -711,21 +836,41 @@ export const AdminClientDetails: React.FC = () => {
             <span className="w-1 h-4 rounded-full bg-[#FF5A1F] shrink-0" />
             <h2 className="text-lg font-bold text-[#FF5A1F] tracking-tight">Financial Overview</h2>
           </div>
-          {!showDeductionCard && (
-            <button
-              type="button"
-              onClick={() => setShowDeductionCard(true)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10 hover:bg-[#FF5A1F]/20 hover:text-[#FF5A1F] hover:border-[#FF5A1F]/40 transition-colors cursor-pointer"
-              title="Add Deductions Box"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {!showBadDebtCard && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBadDebtCard(true);
+                  openAddBadDebtModal();
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border bg-white/5 text-white/70 border-white/10 hover:bg-[#FF5A1F]/20 hover:text-[#FF5A1F] hover:border-[#FF5A1F]/40 text-xs transition-colors cursor-pointer"
+                title="Add Bad Debt"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Bad Debt</span>
+              </button>
+            )}
+            {!showDeductionCard && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeductionCard(true);
+                  openAddDeductionModal();
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border bg-white/5 text-white/70 border-white/10 hover:bg-[#FF5A1F]/20 hover:text-[#FF5A1F] hover:border-[#FF5A1F]/40 text-xs transition-colors cursor-pointer"
+                title="Add Deduction"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Deduction</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 lg:gap-3.5">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:flex xl:flex-row gap-3">
           {/* Card 1: Total */}
-          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
+          <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between xl:flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-medium text-white/50">Total</span>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10">
@@ -739,8 +884,8 @@ export const AdminClientDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2: Done */}
-          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
+          {/* Card 2: Previous Month Pending */}
+          <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between xl:flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-medium text-white/50">Previous Month Pending</span>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10">
@@ -754,8 +899,8 @@ export const AdminClientDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 3: Done */}
-          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
+          {/* Card 3: Money Received This Month */}
+          <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between xl:flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-medium text-white/50">Money Received This Month</span>
               <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10">
@@ -769,32 +914,51 @@ export const AdminClientDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 4: Pending */}
-          <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium text-white/50">Pending</span>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10">
-                <Tag className="w-3.5 h-3.5" />
+          {/* Card 4 (Item 5): Bad Debt */}
+          {showBadDebtCard && (
+            <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between xl:flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium text-white/50">Bad Debt</span>
+                  {badDebts.length === 0 && totalBadDebts === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowBadDebtCard(false)}
+                      className="p-0.5 rounded text-white/30 hover:text-white/70 transition-colors cursor-pointer"
+                      title="Hide Bad Debt box"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={openAddBadDebtModal}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center border bg-white/5 text-white/70 border-white/10 hover:bg-[#FF5A1F]/20 hover:text-[#FF5A1F] hover:border-[#FF5A1F]/40 transition-colors cursor-pointer"
+                  title="Add Bad Debt"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="mt-3">
+                <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
+                  {formatINR(totalBadDebts)}
+                </p>
               </div>
             </div>
-            <div className="mt-3">
-              <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
-                {formatINR(closingReceivable)}
-              </p>
-            </div>
-          </div>
+          )}
 
-          {/* Card 5: Deductions (shown when showDeductionCard is true) */}
+          {/* Card 5 (Item 4): Deductions */}
           {showDeductionCard && (
-            <div className="flex-1 p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between">
+            <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between xl:flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-medium text-white/50">Deductions</span>
-                  {deductions.length === 0 && (
+                  {deductions.length === 0 && totalDeductions === 0 && (
                     <button
                       type="button"
                       onClick={() => setShowDeductionCard(false)}
-                      className="p-1 rounded text-white/30 hover:text-white/70 transition-colors"
+                      className="p-0.5 rounded text-white/30 hover:text-white/70 transition-colors cursor-pointer"
                       title="Hide Deductions box"
                     >
                       <X className="w-3 h-3" />
@@ -817,9 +981,81 @@ export const AdminClientDetails: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Card 6: Pending (Net Receivable at the END) */}
+          <div className="p-4 rounded-xl border border-[#FF5A1F]/20 bg-[#FF5A1F]/[0.03] flex flex-col justify-between xl:flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-medium text-white/70">Pending</span>
+                <span className="text-[9px] text-[#FF5A1F] font-mono px-1 rounded bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">Net</span>
+              </div>
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-[#FF5A1F]/10 text-[#FF5A1F] border-[#FF5A1F]/20">
+                <Tag className="w-3.5 h-3.5" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-xl font-bold tracking-tight text-[#FF5A1F]">
+                {formatINR(netReceivableAfterAll)}
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Deductions List (shown if card is shown and deductions exist) */}
+        {/* Bad Debts List */}
+        {showBadDebtCard && (
+          <div className="space-y-2 pt-2 border-t border-white/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] text-white/40 font-mono uppercase tracking-wider">Bad Debts (Write-offs)</p>
+                {!isAllMonths && (
+                  <span className="text-[10px] text-zinc-500 font-mono">({selectedMonthLabel})</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={openAddBadDebtModal}
+                className="text-[11px] text-[#FF5A1F] hover:underline flex items-center gap-1 font-medium cursor-pointer"
+              >
+                <Plus className="w-3 h-3" /> Add another
+              </button>
+            </div>
+            {filteredBadDebts.length > 0 ? (
+              <div className="space-y-1.5">
+                {filteredBadDebts.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.025] border border-white/5 text-xs">
+                    <div className="flex items-center gap-3">
+                      <MinusCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <div>
+                        <span className="text-white/80 font-medium">{d.projectName || d.label}</span>
+                        {d.reason && (
+                          <span className="ml-2 text-white/40 text-[11px] italic">({d.reason})</span>
+                        )}
+                      </div>
+                      <span className="text-white/40 font-mono">{new Date(d.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-rose-400">− {formatINR(d.amount)}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveBadDebt(d.id)}
+                        className="p-1 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-colors cursor-pointer"
+                        title="Remove bad debt"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-white/30 py-2 italic font-sans">
+                No bad debts recorded for {selectedMonthLabel}.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Deductions List */}
         {showDeductionCard && (
           <div className="space-y-2 pt-2 border-t border-white/5">
             <div className="flex items-center justify-between">
@@ -865,11 +1101,14 @@ export const AdminClientDetails: React.FC = () => {
                 No deductions recorded for {selectedMonthLabel}.
               </div>
             )}
-            <div className="flex justify-end pt-1">
-              <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="text-white/50">Net Receivable after deductions:</span>
-                <span className="font-bold text-[#FF5A1F] text-sm">{formatINR(Math.max(0, closingReceivable - totalDeductions))}</span>
-              </div>
+          </div>
+        )}
+
+        {(totalBadDebts > 0 || totalDeductions > 0) && (
+          <div className="flex justify-end pt-1 border-t border-white/5">
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <span className="text-white/50">Net Receivable after bad debts & deductions:</span>
+              <span className="font-bold text-[#FF5A1F] text-sm">{formatINR(netReceivableAfterAll)}</span>
             </div>
           </div>
         )}
@@ -1441,6 +1680,60 @@ export const AdminClientDetails: React.FC = () => {
                   className="px-4 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white font-medium cursor-pointer shadow-sm"
                 >
                   Add Deduction
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Bad Debt Modal */}
+      {isBadDebtModalOpen && (
+        <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="premium-modal animate-modal-scale relative w-full max-w-xs p-5 sm:p-6 space-y-4 text-white text-xs my-auto shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <h3 className="font-bold text-sm">Record Bad Debt</h3>
+                <p className="text-[11px] text-white/40 mt-0.5">Write off uncollectible amount</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBadDebtModalOpen(false)}
+                className="p-1 rounded bg-white/5 text-white/60 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddBadDebt} className="space-y-4">
+              <div>
+                <label className="text-white/70 font-medium block mb-1.5">Amount (₹) *</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="any"
+                  autoFocus
+                  placeholder="0"
+                  value={badDebtAmount}
+                  onChange={(e) => setBadDebtAmount(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white font-mono text-base focus:border-[#FF5A1F] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsBadDebtModalOpen(false)}
+                  className="px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 cursor-pointer text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white font-medium cursor-pointer shadow-sm text-xs"
+                >
+                  Record Bad Debt
                 </button>
               </div>
             </form>
