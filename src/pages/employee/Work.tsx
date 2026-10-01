@@ -359,60 +359,56 @@ export const EmployeeWork: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.03]">
-                      {deliverables.map((item, idx) => {
-                        const isCompleted = item.status === 'completed';
+                      {deliverables.map((item, idx) => (
+                        <tr
+                          key={idx}
+                          className="hover:bg-white/[0.015] transition-colors"
+                        >
+                          {/* NO. */}
+                          <td className="py-3 px-3 font-normal text-zinc-400 text-xs">
+                            {idx + 1}.
+                          </td>
 
-                        return (
-                          <tr
-                            key={idx}
-                            className="hover:bg-white/[0.015] transition-colors"
-                          >
-                            {/* NO. */}
-                            <td className="py-3 px-3 font-normal text-zinc-400 text-xs">
-                              {idx + 1}.
-                            </td>
+                          {/* PROJECT: Name only */}
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-white text-sm">
+                              {item.name}
+                            </span>
+                          </td>
 
-                            {/* PROJECT: Name only */}
-                            <td className="py-3 px-3">
-                              <span className="font-bold text-white text-sm">
-                                {item.name}
+                          {/* STATUS (Pill badge with colored dot) */}
+                          <td className="py-3 px-3 text-right">
+                            {item.status === 'delivered' ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
+                                Delivered
                               </span>
-                            </td>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25 capitalize">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
+                                {item.rawStatus ? item.rawStatus.replace('_', ' ') : 'In Process'}
+                              </span>
+                            )}
+                          </td>
 
-                            {/* STATUS (Pill badge with colored dot) */}
-                            <td className="py-3 px-3 text-right">
-                              {item.status === 'delivered' ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
-                                  Delivered
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FF5A1F]/10 text-[#FF5A1F] border border-[#FF5A1F]/25 capitalize">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
-                                  {item.rawStatus ? item.rawStatus.replace('_', ' ') : 'In Process'}
-                                </span>
-                              )}
-                            </td>
-
-                            {/* More Options (•••) */}
-                            <td className="py-3 px-3 text-right">
-                              {item.projectId ? (
-                                <Link
-                                  to={`/employee/projects/${item.projectId}`}
-                                  title="View project details"
-                                  className="p-1 rounded text-zinc-500 hover:text-[#FF5A1F] transition-colors inline-block"
-                                >
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </Link>
-                              ) : (
-                                <span className="p-1 text-zinc-600 inline-block">
-                                  <MoreHorizontal className="w-4 h-4" />
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
+                          {/* More Options (•••) */}
+                          <td className="py-3 px-3 text-right">
+                            {item.projectId ? (
+                              <Link
+                                to={`/employee/projects/${item.projectId}`}
+                                title="View project details"
+                                className="p-1 rounded text-zinc-500 hover:text-[#FF5A1F] transition-colors inline-block"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Link>
+                            ) : (
+                              <span className="p-1 text-zinc-600 inline-block">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

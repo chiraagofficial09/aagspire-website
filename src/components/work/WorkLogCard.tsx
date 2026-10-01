@@ -278,11 +278,8 @@ export const WorkLogCard: React.FC<WorkLogCardProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-white/[0.03]">
-            {deliverables.map((item, idx) => {
-              const isCompleted = item.status === 'completed';
-
-              return (
-                <tr
+            {deliverables.map((item, idx) => (
+              <tr
                   key={idx}
                   className="hover:bg-white/[0.015] transition-colors"
                 >
@@ -330,8 +327,7 @@ export const WorkLogCard: React.FC<WorkLogCardProps> = ({
                     )}
                   </td>
                 </tr>
-              );
-            })}
+              ))}
           </tbody>
         </table>
       </div>

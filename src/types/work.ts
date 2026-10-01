@@ -7,6 +7,7 @@ export interface AuthUser {
   role: UserRole;
   employeeId?: string;
   employeeCode?: string;
+  designation?: string;
 }
 
 export interface EmployeeProfile {

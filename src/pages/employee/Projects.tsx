@@ -242,12 +242,14 @@ export const EmployeeProjects: React.FC = () => {
           {rowNumber}
         </td>
         <td className="py-3.5 px-5">
-          <div
-           className={`font-semibold text-sm block transition-colors ${delivered ? 'text-zinc-400' : 'text-white'}`}
+          <Link
+            to={`/employee/projects/${projectId}`}
+            className={`font-semibold text-sm block hover:text-[#FF5A1F] transition-colors ${
+              delivered ? 'text-zinc-400' : 'text-white'
+            }`}
           >
             {prj.title || prj.projectName}
-          </div>
-
+          </Link>
         </td>
         <td className={`py-3.5 px-5 text-sm ${delivered ? 'text-zinc-500' : 'text-zinc-300'}`}>
           {prj.clientId?.companyName || prj.clientId?.name || 'Client Production'}

@@ -21,6 +21,7 @@ export const EmployeeDashboard: React.FC = () => {
   const { user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [designation, setDesignation] = useState<string>('');
 
   // Month-wise filter setup
   const now = useMemo(() => new Date(), []);
@@ -77,6 +78,16 @@ export const EmployeeDashboard: React.FC = () => {
     fetchDashboard(selectedMonth);
   }, [selectedMonth]);
 
+  useEffect(() => {
+    api
+      .get('/employee/profile')
+      .then((res) => {
+        const d = res.data?.data?.designation || res.data?.employee?.designation;
+        if (d) setDesignation(d);
+      })
+      .catch(() => {});
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -114,6 +125,13 @@ export const EmployeeDashboard: React.FC = () => {
     .slice(0, 2)
     .map((n: string) => n[0].toUpperCase())
     .join('') || 'RJ';
+
+  const userDesignation =
+    designation ||
+    data?.designation ||
+    data?.employee?.designation ||
+    user?.designation ||
+    'Creative Producer';
 
   const todayDateStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -158,8 +176,8 @@ export const EmployeeDashboard: React.FC = () => {
                 <span className="block text-xs font-semibold text-white leading-tight">
                   {fullName}
                 </span>
-                <span className="block text-[10px] text-zinc-500 leading-tight capitalize">
-                  {user?.role || 'Employee'}
+                <span className="block text-[10px] text-zinc-500 leading-tight">
+                  {userDesignation}
                 </span>
               </div>
             </div>
@@ -300,11 +318,6 @@ export const EmployeeDashboard: React.FC = () => {
                       >
                         {projectName}
                       </Link>
-                      {prj.description && (
-                        <span className="text-[10px] text-zinc-500 block truncate mt-0.5" title={prj.description}>
-                          {prj.description}
-                        </span>
-                      )}
                     </div>
 
                     <div className="col-span-3 text-center">

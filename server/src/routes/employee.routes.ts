@@ -75,7 +75,7 @@ router.get('/receipts/:id/pdf', downloadReceiptPdf);
 
 // Profile
 router.get('/profile', (req: AuthenticatedRequest, res: Response): void => {
-  res.json({ success: true, employee: req.employee });
+  res.json({ success: true, employee: req.employee, data: req.employee });
 });
 
 router.put('/profile', async (req: AuthenticatedRequest, res: Response): Promise<void> => {

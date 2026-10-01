@@ -270,6 +270,8 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       recentWorkLogs: formattedWorkLogs,
       recentReceipts,
       selectedMonth: targetMonth,
+      employee: req.employee,
+      designation: req.employee?.designation || '',
     };
 
     res.json({

@@ -43,6 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: u.role,
           employeeId: u.employee?._id,
           employeeCode: u.employee?.employeeCode,
+          designation: u.employee?.designation || u.designation,
         };
         setUser(authUser);
         localStorage.setItem('aagspire_user', JSON.stringify(authUser));
