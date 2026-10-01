@@ -49,7 +49,11 @@ const AdminAttendance = lazy(() => import('./pages/admin/Attendance').then((m) =
 const AdminPayments = lazy(() => import('./pages/admin/Payments').then((m) => ({ default: m.AdminPayments })));
 const AdminCommissions = lazy(() => import('./pages/admin/Commissions').then((m) => ({ default: m.AdminCommissions })));
 const AdminOfficeExpenses = lazy(() => import('./pages/admin/OfficeExpenses').then((m) => ({ default: m.AdminOfficeExpenses })));
+const AdminLegalPolicies = lazy(() => import('./pages/admin/LegalPolicies').then((m) => ({ default: m.LegalPolicies })));
 const AdminSettings = lazy(() => import('./pages/admin/Settings').then((m) => ({ default: m.AdminSettings })));
+
+// Public Legal Pages
+const LegalPage = lazy(() => import('./pages/public/LegalPage').then((m) => ({ default: m.LegalPage })));
 
 // Lazy Loaded Employee Pages
 const EmployeeDashboard = lazy(() => import('./pages/employee/Dashboard').then((m) => ({ default: m.EmployeeDashboard })));
@@ -140,8 +144,10 @@ export default function App() {
               <NotificationProvider>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
-                  {/* Public Landing Page */}
+                  {/* Public Landing Page & Legal Pages */}
                   <Route path="/" element={<PublicWebsite />} />
+                  <Route path="/terms" element={<LegalPage type="terms_and_conditions" />} />
+                  <Route path="/privacy" element={<LegalPage type="privacy_policy" />} />
 
                   {/* Authentication Portal */}
                   <Route
@@ -195,6 +201,7 @@ export default function App() {
                     <Route path="receipts" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="analytics" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="reports" element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="legal" element={<AdminLegalPolicies />} />
                     <Route path="settings" element={<AdminSettings />} />
                   </Route>
 

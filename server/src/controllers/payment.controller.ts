@@ -7,6 +7,7 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
 import { createNotification } from '../services/notification.service.js';
 import { getMonthDateRange } from '../utils/dateHelper.js';
+import { appendRowSafely } from '../services/googleSheets.service.js';
 
 export async function listPayments(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -163,6 +164,19 @@ export async function createPayment(req: AuthenticatedRequest, res: Response): P
       link: '/admin/payments',
       metadata: { paymentId: payment._id, clientId: client._id, projectId: attributedProjectId, amount: numAmount },
     }).catch(() => {});
+
+    // Auto-append to Google Sheets (non-blocking)
+    appendRowSafely('Client Payments', [
+      new Date(payment.paymentDate).toLocaleDateString('en-IN'),
+      projectDoc?.projectCode || '',
+      projectDoc?.projectName || '',
+      client.companyName || client.name || '',
+      numAmount,
+      (paymentMethod || 'bank_transfer').toUpperCase(),
+      transactionReference || '',
+      notes || '',
+      String(payment._id),
+    ]).catch(() => {});
 
     const paymentData = {
       ...payment.toObject(),

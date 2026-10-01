@@ -12,6 +12,7 @@ import {
   Percent,
   WalletCards,
   Settings,
+  FileText,
   Clock,
   LogOut,
   X,
@@ -110,7 +111,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
             <NavItem item={{ label: 'Office Expenses', path: '/admin/expenses', icon: WalletCards }} onNavigate={() => setMobileOpen(false)} />
 
             {/* SYSTEM */}
-            <div className="pt-2">
+            <div className="pt-2 space-y-1">
+              <NavItem item={{ label: 'Terms & Policies', path: '/admin/legal', icon: FileText }} onNavigate={() => setMobileOpen(false)} />
               <NavItem item={{ label: 'Settings', path: '/admin/settings', icon: Settings }} onNavigate={() => setMobileOpen(false)} />
             </div>
           </>

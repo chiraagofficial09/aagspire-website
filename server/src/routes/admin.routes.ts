@@ -64,6 +64,11 @@ import {
   updateOfficeExpense,
   deleteOfficeExpense,
 } from '../controllers/officeExpense.controller.js';
+import {
+  getGoogleSheetsStatus,
+  testConnection as testGoogleSheetsConnection,
+  syncGoogleSheet,
+} from '../controllers/googleSheets.controller.js';
 import { getAdminAnalytics } from '../controllers/analytics.controller.js';
 import { exportReportCsv } from '../controllers/report.controller.js';
 import { calculateEmployeeEarnings } from '../services/earnings.service.js';
@@ -306,6 +311,11 @@ router.get('/expenses', listOfficeExpenses);
 router.post('/expenses', createOfficeExpense);
 router.patch('/expenses/:id', updateOfficeExpense);
 router.delete('/expenses/:id', deleteOfficeExpense);
+
+// Google Sheets Integration
+router.get('/google-sheets/status', getGoogleSheetsStatus);
+router.post('/google-sheets/test', testGoogleSheetsConnection);
+router.post('/google-sheets/sync', syncGoogleSheet);
 
 // Reports
 router.get('/reports/:type/export', exportReportCsv);

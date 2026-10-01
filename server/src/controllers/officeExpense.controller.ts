@@ -5,6 +5,7 @@ import { toDecimal, fromDecimal, round2 } from '../utils/decimalHelper.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { getMonthDateRange } from '../utils/dateHelper.js';
 import { logAudit } from '../services/audit.service.js';
+import { appendRowSafely } from '../services/googleSheets.service.js';
 
 export async function listOfficeExpenses(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -126,6 +127,16 @@ export async function createOfficeExpense(req: AuthenticatedRequest, res: Respon
       entityId: expense._id,
       newValue: { title: expense.title, amount: numAmount },
     });
+
+    // Auto-append to Google Sheets (non-blocking)
+    appendRowSafely('Office Expenses', [
+      dateVal.toLocaleDateString('en-IN'),
+      expense.title,
+      numAmount,
+      (expense.paymentMethod || 'cash').toUpperCase(),
+      expense.notes || '',
+      String(expense._id),
+    ]).catch(() => {});
 
     res.status(201).json({
       success: true,

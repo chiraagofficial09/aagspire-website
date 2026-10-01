@@ -11,6 +11,7 @@ import authRoutes from './routes/auth.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import employeeRoutes from './routes/employee.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import legalRoutes from './routes/legal.routes.js';
 
 export const app = express();
 
@@ -75,6 +76,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/legal', legalRoutes);
 
 // Global Error Handler
 app.use(errorHandler);
