@@ -50,6 +50,7 @@ const AdminPayments = lazy(() => import('./pages/admin/Payments').then((m) => ({
 const AdminCommissions = lazy(() => import('./pages/admin/Commissions').then((m) => ({ default: m.AdminCommissions })));
 const AdminOfficeExpenses = lazy(() => import('./pages/admin/OfficeExpenses').then((m) => ({ default: m.AdminOfficeExpenses })));
 const AdminSettings = lazy(() => import('./pages/admin/Settings').then((m) => ({ default: m.AdminSettings })));
+const AdminTermsManagement = lazy(() => import('./pages/admin/TermsManagement').then((m) => ({ default: m.TermsManagement })));
 
 // Lazy Loaded Employee Pages
 const EmployeeDashboard = lazy(() => import('./pages/employee/Dashboard').then((m) => ({ default: m.EmployeeDashboard })));
@@ -58,6 +59,7 @@ const EmployeeProjectDetails = lazy(() => import('./pages/employee/ProjectDetail
 const EmployeeWork = lazy(() => import('./pages/employee/Work').then((m) => ({ default: m.EmployeeWork })));
 const EmployeeAttendance = lazy(() => import('./pages/employee/Attendance').then((m) => ({ default: m.EmployeeAttendance })));
 const EmployeeProfile = lazy(() => import('./pages/employee/Profile').then((m) => ({ default: m.EmployeeProfile })));
+const EmployeeTermsAndConditions = lazy(() => import('./pages/employee/TermsAndConditions').then((m) => ({ default: m.EmployeeTermsAndConditions })));
 
 const queryClient = new QueryClient();
 
@@ -195,6 +197,7 @@ export default function App() {
                     <Route path="receipts" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="analytics" element={<Navigate to="/admin/dashboard" replace />} />
                     <Route path="reports" element={<Navigate to="/admin/dashboard" replace />} />
+                    <Route path="terms" element={<AdminTermsManagement />} />
                     <Route path="settings" element={<AdminSettings />} />
                   </Route>
 
@@ -221,6 +224,7 @@ export default function App() {
                     <Route path="receipts" element={<Navigate to="/employee/dashboard" replace />} />
                     <Route path="reports" element={<Navigate to="/employee/receipts" replace />} />
                     <Route path="profile" element={<EmployeeProfile />} />
+                    <Route path="terms" element={<EmployeeTermsAndConditions />} />
                   </Route>
 
                   {/* Fallback */}

@@ -14,6 +14,7 @@ import {
 import { calculateEmployeeEarnings } from '../services/earnings.service.js';
 import { listSettlements } from '../controllers/settlement.controller.js';
 import { listReceipts, getReceiptById, downloadReceiptPdf } from '../controllers/receipt.controller.js';
+import { listCompanyTermsEmployee } from '../controllers/companyTerm.controller.js';
 
 const router = Router();
 
@@ -97,5 +98,8 @@ router.put('/profile', async (req: AuthenticatedRequest, res: Response): Promise
     res.status(500).json({ success: false, message: error.message });
   }
 });
+
+// Staff Terms & Conditions (Read-Only)
+router.get('/terms', listCompanyTermsEmployee);
 
 export default router;

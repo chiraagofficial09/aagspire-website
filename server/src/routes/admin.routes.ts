@@ -71,6 +71,13 @@ import {
 } from '../controllers/googleSheets.controller.js';
 import { getAdminAnalytics } from '../controllers/analytics.controller.js';
 import { exportReportCsv } from '../controllers/report.controller.js';
+import {
+  listCompanyTermsAdmin,
+  getCompanyTermById,
+  createCompanyTerm,
+  updateCompanyTerm,
+  deleteCompanyTerm,
+} from '../controllers/companyTerm.controller.js';
 import { calculateEmployeeEarnings } from '../services/earnings.service.js';
 import { ProjectCommission } from '../models/ProjectCommission.js';
 import { ProjectEmployee } from '../models/ProjectEmployee.js';
@@ -319,5 +326,14 @@ router.post('/google-sheets/sync', syncGoogleSheet);
 
 // Reports
 router.get('/reports/:type/export', exportReportCsv);
+
+// Staff Terms & Conditions (Company Guidelines)
+router.get('/terms', listCompanyTermsAdmin);
+router.get('/terms/:id', getCompanyTermById);
+router.post('/terms', createCompanyTerm);
+router.put('/terms', updateCompanyTerm);
+router.put('/terms/:id', updateCompanyTerm);
+router.delete('/terms', deleteCompanyTerm);
+router.delete('/terms/:id', deleteCompanyTerm);
 
 export default router;

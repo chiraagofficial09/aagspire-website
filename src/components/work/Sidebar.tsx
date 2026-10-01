@@ -12,6 +12,7 @@ import {
   Percent,
   WalletCards,
   Settings,
+  ScrollText,
   Clock,
   LogOut,
   X,
@@ -110,7 +111,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
             <NavItem item={{ label: 'Office Expenses', path: '/admin/expenses', icon: WalletCards }} onNavigate={() => setMobileOpen(false)} />
 
             {/* SYSTEM */}
-            <div className="pt-2">
+            <div className="pt-2 space-y-1">
+              <NavItem item={{ label: 'Terms & Conditions', path: '/admin/terms', icon: ScrollText }} onNavigate={() => setMobileOpen(false)} />
               <NavItem item={{ label: 'Settings', path: '/admin/settings', icon: Settings }} onNavigate={() => setMobileOpen(false)} />
             </div>
           </>
@@ -122,6 +124,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
             <NavItem item={{ label: 'Work Logs', path: '/employee/work', icon: Clock }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Attendance', path: '/employee/attendance', icon: Calendar }} onNavigate={() => setMobileOpen(false)} />
             <NavItem item={{ label: 'Profile', path: '/employee/profile', icon: User }} onNavigate={() => setMobileOpen(false)} />
+
+            {/* COMPANY */}
+            <SectionLabel text="COMPANY" />
+            <NavItem item={{ label: 'Terms & Conditions', path: '/employee/terms', icon: ScrollText }} onNavigate={() => setMobileOpen(false)} />
           </>
         )}
       </div>
