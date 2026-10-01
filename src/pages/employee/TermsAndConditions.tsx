@@ -40,46 +40,11 @@ export const EmployeeTermsAndConditions: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16 font-sans">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#0d0e14] via-[#140b07] to-[#0d0e14] border border-[#FF5A1F]/20 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-[#FF5A1F]/5 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20 text-[#FF5A1F] text-xs font-semibold">
-              <ScrollText className="w-3.5 h-3.5" />
-              <span>Staff Portal Documentation</span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Terms & Conditions
-            </h1>
-
-            <p className="text-xs sm:text-sm text-zinc-400 max-w-xl leading-relaxed">
-              Official operating policies, attendance ethics, deliverable guidelines, and confidentiality protocols for Aagspire team members.
-            </p>
-          </div>
-
-          {/* Quick Print Button */}
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border border-white/[0.08] transition-colors"
-            >
-              <Printer className="w-3.5 h-3.5 text-[#FF5A1F]" />
-              <span>Print Document</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
+     
       {/* Meta Bar */}
       {lastUpdated && (
         <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
-          <div className="flex items-center gap-2">
-            <FileCheck className="w-4 h-4 text-emerald-400" />
-            <span>Official studio agreement for all active staff members.</span>
-          </div>
+          
 
           <div className="flex items-center gap-1.5 text-zinc-500 text-[11px]">
             <Calendar className="w-3.5 h-3.5" />
@@ -118,18 +83,8 @@ export const EmployeeTermsAndConditions: React.FC = () => {
         </div>
       )}
 
-      {/* Footer Info Notice */}
-      <div className="p-5 rounded-2xl bg-[#08090d] border border-white/[0.06] flex items-center gap-4">
-        <div className="w-9 h-9 rounded-xl bg-[#FF5A1F]/10 border border-[#FF5A1F]/20 flex items-center justify-center text-[#FF5A1F] shrink-0">
-          <HelpCircle className="w-4 h-4" />
-        </div>
-        <div className="text-xs">
-          <span className="font-bold text-white block">Questions regarding these terms?</span>
-          <span className="text-zinc-400">
-            For questions about attendance, asset handling, or commissions, contact studio administration.
-          </span>
-        </div>
-      </div>
+     
+      
     </div>
   );
 };
