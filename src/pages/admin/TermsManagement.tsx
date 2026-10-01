@@ -164,10 +164,6 @@ export const TermsManagement: React.FC = () => {
       {/* Meta Bar */}
       {lastUpdated && (
         <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Employees can view these terms in the staff portal at <b>/employee/terms</b>.</span>
-          </div>
 
           <div className="flex items-center gap-1.5 text-zinc-500 text-[11px]">
             <Calendar className="w-3.5 h-3.5" />
