@@ -154,6 +154,25 @@ export async function clockOut(req: AuthenticatedRequest, res: Response): Promis
       incomingProjects = [{ projectId: String(projectId), status: 'in_process' }];
     }
 
+    // Failsafe: Automatically include any assigned project marked as 'delivered' today during this shift
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
+    const shiftStart = attendance.clockInAt ? new Date(attendance.clockInAt) : todayStart;
+
+    const deliveredDuringShift = await Project.find({
+      assignedEmployees: employeeId,
+      status: 'delivered',
+      deliveredAt: { $gte: shiftStart },
+      _id: { $nin: incomingProjects.map((p) => p.projectId) },
+    });
+
+    for (const dp of deliveredDuringShift) {
+      incomingProjects.push({
+        projectId: dp._id.toString(),
+        status: 'delivered',
+      });
+    }
+
     const updatedProjectsSummary: { id: any; name: string; code?: string; status: string }[] = [];
 
     for (const item of incomingProjects) {

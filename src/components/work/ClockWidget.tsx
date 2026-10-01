@@ -84,6 +84,21 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
     }
   };
 
+  const isDeliveredToday = (p: any) => {
+    const isFinished = p.status === 'delivered' || p.status === 'completed';
+    if (!isFinished) return false;
+    const dateVal = p.deliveredAt || p.updatedAt;
+    if (!dateVal) return false;
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return false;
+    const now = new Date();
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  };
+
   const openClockOutModal = () => {
     setSelectedProjectIds([]);
     setProjectSearch('');
@@ -92,16 +107,27 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
     api.get('/employee/projects')
       .then((res) => {
         const rawList = res.data.data || res.data.projects || [];
-        // Filter to all active (non-delivered) projects
-        const list = rawList.filter((p: any) => p.status !== 'delivered' && p.status !== 'completed');
+        // Include all active projects + projects delivered today during this shift
+        const list = rawList.filter((p: any) => {
+          const isFinished = p.status === 'delivered' || p.status === 'completed';
+          if (!isFinished) return true;
+          return isDeliveredToday(p);
+        });
         setProjects(list);
         const map: Record<string, string> = {};
+        const autoSelectedIds: string[] = [];
         list.forEach((p: any) => {
-          map[p._id] = p.status || 'in_process';
+          const isFinished = p.status === 'delivered' || p.status === 'completed';
+          map[p._id] = isFinished ? 'delivered' : (p.status || 'in_process');
+          if (isFinished && isDeliveredToday(p)) {
+            autoSelectedIds.push(p._id);
+          }
         });
         setProjectStatusMap(map);
-        // If employee has only 1 in-progress project, auto-select it for convenience
-        if (list.length === 1) {
+        // Auto-select projects delivered today, or if only 1 project
+        if (autoSelectedIds.length > 0) {
+          setSelectedProjectIds(autoSelectedIds);
+        } else if (list.length === 1) {
           setSelectedProjectIds([list[0]._id]);
         }
       })
@@ -157,10 +183,9 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
   };
 
   const filteredProjects = useMemo(() => {
-    const list = projects.filter((p) => p.status !== 'delivered' && p.status !== 'completed');
-    if (!projectSearch.trim()) return list;
+    if (!projectSearch.trim()) return projects;
     const q = projectSearch.toLowerCase();
-    return list.filter(
+    return projects.filter(
       (p) =>
         (p.projectName || p.title || '').toLowerCase().includes(q) ||
         (p.projectCode || '').toLowerCase().includes(q) ||
@@ -223,7 +248,7 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-zinc-300">
-                In-Progress Projects ({selectedProjectIds.length} selected)
+                Projects Worked on Today ({selectedProjectIds.length} selected)
               </label>
               {filteredProjects.length > 1 && (
                 <div className="flex items-center gap-2 text-[11px]">
@@ -291,9 +316,16 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-semibold text-white truncate">
-                            {p.projectName || p.title}
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs font-semibold text-white truncate">
+                              {p.projectName || p.title}
+                            </p>
+                            {isDeliveredToday(p) && (
+                              <span className="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase shrink-0">
+                                Delivered Today
+                              </span>
+                            )}
+                          </div>
                           {(p.projectCode || p.clientId?.companyName || p.clientId?.name) && (
                             <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-zinc-400 mt-0.5">
                               {(p.clientId?.companyName || p.clientId?.name) && (                                                          
