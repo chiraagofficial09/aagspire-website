@@ -293,9 +293,18 @@ export const EmployeeDashboard: React.FC = () => {
                     className="grid grid-cols-12 items-center p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] hover:border-white/[0.08] transition-all"
                   >
                     <div className="col-span-5 min-w-0 pr-2">
-                      <span className="font-semibold text-xs text-white block truncate" title={projectName}>
+                      <Link
+                        to={`/employee/projects/${prjId}`}
+                        className="font-semibold text-xs text-white block truncate hover:text-[#FF5A1F] transition-colors"
+                        title={projectName}
+                      >
                         {projectName}
-                      </span>
+                      </Link>
+                      {prj.description && (
+                        <span className="text-[10px] text-zinc-500 block truncate mt-0.5" title={prj.description}>
+                          {prj.description}
+                        </span>
+                      )}
                     </div>
 
                     <div className="col-span-3 text-center">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, Clock, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
 import { useToast } from '../../components/work/Toast';
@@ -66,7 +66,7 @@ export const EmployeeProjectDetails: React.FC = () => {
   const sharePercent = employeeCommission?.sharePercent ?? assignment?.sharePercent ?? assignment?.sharePercentage;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in max-w-5xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link
@@ -77,7 +77,10 @@ export const EmployeeProjectDetails: React.FC = () => {
           </Link>
           <div>
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="page-title text-2xl font-extrabold text-white tracking-tight">{project.projectName || project.title}</h1>
+              <h1 className="page-title text-2xl font-extrabold text-white tracking-tight">
+                {project.projectName || project.title}
+              </h1>
+              
             </div>
             <p className="page-subtitle text-xs text-white/50 font-mono mt-0.5">
               Client: {project.clientId?.companyName || project.clientId?.name || 'Aagspire Partner'} &bull; Role: {employeeCommission?.roleInProject || assignment?.roleInProject || 'Creator'}
@@ -107,20 +110,84 @@ export const EmployeeProjectDetails: React.FC = () => {
         </div>
       </div>
 
-      {/* Your Commission Pool — Total only */}
-      <div className="space-y-3">
-        <h2 className="text-xs font-bold text-white/60 uppercase tracking-wider font-mono">Your Commission Pool</h2>
-        <div className="inline-block">
-          <div className="premium-card p-5 rounded-2xl space-y-1 border-[#FF5A1F]/20 min-w-[180px]">
-            <span className="text-[10px] font-bold font-mono text-white/60 uppercase tracking-wider block">TOTAL</span>
-            <p className="text-2xl sm:text-3xl font-extrabold font-mono text-[#FF5A1F] tracking-tight">
-              {formatINR(poolTotal)}
-            </p>
-            <span className="text-[10px] text-zinc-500 block">Your total commission</span>
+      {/* Overview Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Your Commission Pool */}
+        <div className="premium-card p-5 rounded-2xl space-y-1 border-[#FF5A1F]/20">
+          <span className="text-[10px] font-bold font-mono text-white/60 uppercase tracking-wider block">YOUR COMMISSION</span>
+          <p className="text-2xl font-extrabold font-mono text-[#FF5A1F] tracking-tight">
+            {formatINR(poolTotal)}
+          </p>
+          <span className="text-[10px] text-zinc-500 block">Total allocated share</span>
+        </div>
+
+        {/* Start Date */}
+        <div className="premium-card p-5 rounded-2xl space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold font-mono text-white/60 uppercase tracking-wider block">START DATE</span>
+            <Calendar className="w-3.5 h-3.5 text-zinc-500" />
           </div>
+          <p className="text-base font-semibold text-white">
+            {project.startDate ? new Date(project.startDate).toLocaleDateString('en-IN') : 'Not set'}
+          </p>
+          <span className="text-[10px] text-zinc-500 block">Production launch</span>
+        </div>
+
+        {/* Delivery Deadline */}
+        <div className="premium-card p-5 rounded-2xl space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold font-mono text-white/60 uppercase tracking-wider block">DELIVERY DEADLINE</span>
+            <Clock className="w-3.5 h-3.5 text-zinc-500" />
+          </div>
+          <p className="text-base font-semibold text-white">
+            {project.deadline || project.endDate ? new Date(project.deadline || project.endDate).toLocaleDateString('en-IN') : 'Ongoing'}
+          </p>
+          <span className="text-[10px] text-zinc-500 block">Target completion</span>
+        </div>
+
+        {/* Current Status */}
+        <div className="premium-card p-5 rounded-2xl space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold font-mono text-white/60 uppercase tracking-wider block">CURRENT PHASE</span>
+            <CheckCircle2 className="w-3.5 h-3.5 text-zinc-500" />
+          </div>
+          <p className="text-base font-semibold text-white capitalize">
+            {(project.status || 'start_process').replace('_', ' ')}
+          </p>
+          <span className="text-[10px] text-zinc-500 block">Workflow status</span>
         </div>
       </div>
 
+      {/* Project Description Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-[#FF5A1F]" />
+            <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+              Project Description & Brief
+            </h2>
+          </div>
+          {project.description && (
+            <span className="text-[11px] text-zinc-500 font-mono">
+              Brief details
+            </span>
+          )}
+        </div>
+
+        <div className="p-6 rounded-2xl bg-[#08090d] border border-white/[0.08] shadow-sm">
+          {project.description ? (
+            <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
+              {project.description}
+            </div>
+          ) : (
+            <div className="py-4 text-center">
+              <p className="text-xs text-zinc-500 italic font-mono">
+                No description or brief provided for this project.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

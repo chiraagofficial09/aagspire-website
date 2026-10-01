@@ -213,6 +213,18 @@ export const AdminProjectDetails: React.FC = () => {
             </div>
           </div>
 
+          {/* Project Description / Brief */}
+          {project.description && (
+            <div className="premium-card p-6 rounded-2xl space-y-2">
+              <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                Project Description & Brief
+              </h2>
+              <p className="text-sm text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                {project.description}
+              </p>
+            </div>
+          )}
+
           {/* Current Commission Bar Preview */}
           <div className="premium-card p-6 rounded-2xl space-y-4">
             <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
