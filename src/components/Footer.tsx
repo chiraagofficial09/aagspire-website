@@ -6,7 +6,6 @@ import {
   SiPinterest,
 } from 'react-icons/si';
 import { MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 function FiverrFiIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -143,28 +142,10 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t border-white/5 text-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t border-white/5 text-center gap-2">
           <p className="text-xs text-white/30">
             © {new Date().getFullYear()} <strong className="font-bold text-white/60">Aagspire</strong> . All rights reserved.
           </p>
-
-          {/* Public Legal Policies */}
-          <div className="flex items-center gap-4 text-xs text-white/40">
-            <Link
-              to="/terms"
-              className="hover:text-ember transition-colors duration-200"
-            >
-              Terms & Conditions
-            </Link>
-            <span className="text-white/20">•</span>
-            <Link
-              to="/privacy"
-              className="hover:text-ember transition-colors duration-200"
-            >
-              Privacy Policy
-            </Link>
-          </div>
-
           <a
             href="/work/login"
             className="text-[11px] font-mono text-white/30 hover:text-ember transition-colors"
