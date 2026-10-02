@@ -33,21 +33,22 @@ interface RichTextEditorProps {
 }
 
 const TEXT_COLORS = [
-  { name: 'Default White', color: '#FFFFFF' },
+  { name: 'Default Dark', color: '#18181B' },
   { name: 'Ember Orange', color: '#FF5A1F' },
-  { name: 'Warm Amber', color: '#F59E0B' },
-  { name: 'Emerald Green', color: '#10B981' },
-  { name: 'Electric Cyan', color: '#06B6D4' },
-  { name: 'Rose Red', color: '#F43F5E' },
-  { name: 'Muted Gray', color: '#9CA3AF' },
+  { name: 'Royal Blue', color: '#2563EB' },
+  { name: 'Emerald Green', color: '#059669' },
+  { name: 'Amber Gold', color: '#D97706' },
+  { name: 'Rose Red', color: '#E11D48' },
+  { name: 'Muted Gray', color: '#6B7280' },
 ];
 
 const HIGHLIGHT_COLORS = [
   { name: 'None', color: 'transparent' },
-  { name: 'Ember Glow', color: 'rgba(255, 90, 31, 0.2)' },
-  { name: 'Amber Glow', color: 'rgba(245, 158, 11, 0.2)' },
-  { name: 'Emerald Tint', color: 'rgba(16, 185, 129, 0.2)' },
-  { name: 'Cyan Tint', color: 'rgba(6, 182, 212, 0.2)' },
+  { name: 'Yellow Tint', color: '#FEF08A' },
+  { name: 'Ember Tint', color: '#FED7AA' },
+  { name: 'Green Tint', color: '#BBF7D0' },
+  { name: 'Blue Tint', color: '#BFDBFE' },
+  { name: 'Rose Tint', color: '#FECDD3' },
 ];
 
 export interface BlockFormatOption {
@@ -668,15 +669,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         </button>
       </div>
 
-      {/* Editor Content Area */}
-      <div className="relative p-4">
+      {/* Editor Content Area (White Canvas) */}
+      <div className="relative p-3 sm:p-5 bg-[#090a0f]">
         {isSourceMode ? (
           <textarea
             value={sourceHtml}
             onChange={handleSourceChange}
             placeholder="Edit raw HTML code..."
             style={{ minHeight }}
-            className="w-full bg-[#07080c] font-mono text-xs text-amber-300/90 leading-relaxed p-4 rounded-xl border border-white/10 focus:outline-none focus:border-[#FF5A1F] custom-scrollbar resize-y"
+            className="w-full bg-white font-mono text-xs text-zinc-900 leading-relaxed p-6 rounded-xl border border-zinc-300 focus:outline-none focus:border-[#FF5A1F] focus:ring-2 focus:ring-[#FF5A1F]/20 custom-scrollbar resize-y shadow-sm"
           />
         ) : (
           <div
@@ -691,7 +692,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onMouseUp={detectActiveBlock}
             style={{ minHeight }}
             data-placeholder={placeholder}
-            className="outline-none text-sm text-zinc-200 leading-relaxed custom-scrollbar rich-text-content focus:ring-0 empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-600 empty:before:pointer-events-none"
+            className="outline-none text-sm text-zinc-900 leading-relaxed p-6 sm:p-8 rounded-xl bg-white border border-zinc-200 shadow-md rich-text-content rich-text-content-light focus:ring-2 focus:ring-[#FF5A1F]/30 focus:border-[#FF5A1F] transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-400 empty:before:pointer-events-none"
           />
         )}
       </div>

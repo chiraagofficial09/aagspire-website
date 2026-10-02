@@ -21,6 +21,5 @@ export const ENV = {
   EMAILJS_PRIVATE_KEY: (process.env.EMAILJS_PRIVATE_KEY || '').trim(),
   GOOGLE_SERVICE_ACCOUNT_EMAIL: (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || '').trim(),
   GOOGLE_PRIVATE_KEY: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n').trim(),
-  GOOGLE_SHEET_ID: (process.env.GOOGLE_SHEET_ID || '').trim(),
   GOOGLE_CREDENTIALS_PATH: (process.env.GOOGLE_CREDENTIALS_PATH || '').trim(),
 };

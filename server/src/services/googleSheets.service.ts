@@ -1,13 +1,54 @@
 import fs from 'fs';
-import path from 'path';
+import { fileURLToPath } from 'url';
 import { google, sheets_v4 } from 'googleapis';
 import { ENV } from '../config/env.js';
 import { OfficeExpense } from '../models/OfficeExpense.js';
 import { ClientPayment } from '../models/ClientPayment.js';
 import { WorkLog } from '../models/WorkLog.js';
+import { Client } from '../models/Client.js';
+import { Project } from '../models/Project.js';
+import { buildClientBlocks, buildClientSheetRequests } from './clientProjectSheet.js';
+import { buildDashboardData, buildDashboardRequests, CLIENT_REPORT_START_ROW, DASHBOARD_DATA_TITLE } from './clientSheetDashboard.js';
 import { fromDecimal } from '../utils/decimalHelper.js';
+import { resolveSpreadsheetId } from './googleSheetsSettings.service.js';
 
 let cachedAuth: any = null;
+const activeClientSyncs = new Set<string>();
+
+export async function syncClientProjectsToSheet(rawSpreadsheetId?: string) {
+  const spreadsheetId = await resolveSpreadsheetId(rawSpreadsheetId);
+  if (activeClientSyncs.has(spreadsheetId)) throw new Error('A client report sync is already running. Please wait.');
+  activeClientSyncs.add(spreadsheetId);
+  try {
+    const sheets = getSheetsClient();
+    const [clients, projects, payments, metadata] = await Promise.all([
+      Client.find().select('name companyName').lean(),
+      Project.find().select('clientId projectName projectValue discountPercent discountAmount startDate createdAt deadline status').lean(),
+      ClientPayment.find().select('clientId amount paymentDate createdAt').lean(),
+      sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts(chartId))' }),
+    ]);
+    const blocks = buildClientBlocks(clients, projects, payments);
+    const tabTitle = 'Clients & Projects';
+    const reportTab = metadata.data.sheets?.find(tab => tab.properties?.title === tabTitle);
+    const existing = reportTab?.properties;
+    const dataTab = metadata.data.sheets?.find(tab => tab.properties?.title === DASHBOARD_DATA_TITLE)?.properties;
+    const usedIds = new Set(metadata.data.sheets?.map(tab => tab.properties?.sheetId));
+    let sheetId = existing?.sheetId ?? 0;
+    if (!existing) while (usedIds.has(sheetId)) sheetId++;
+    usedIds.add(sheetId);
+    let dataSheetId = dataTab?.sheetId ?? 0;
+    if (!dataTab) while (usedIds.has(dataSheetId)) dataSheetId++;
+    const requests = buildClientSheetRequests(sheetId, blocks, existing?.gridProperties?.rowCount || 1, existing?.gridProperties?.columnCount || 1, CLIENT_REPORT_START_ROW);
+    if (!existing) requests.unshift({ addSheet: { properties: { sheetId, title: tabTitle } } });
+    if (!dataTab) requests.unshift({ addSheet: { properties: { sheetId: dataSheetId, title: DASHBOARD_DATA_TITLE } } });
+    const dashboard = buildDashboardData(blocks, clients, projects, payments);
+    requests.push(...buildDashboardRequests(sheetId, dataSheetId, dashboard, (reportTab?.charts || []).flatMap(chart => chart.chartId == null ? [] : [chart.chartId])));
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
+    return { success: true, spreadsheetId, tabTitle, sheetId, syncedCount: projects.length, clientCount: blocks.length, syncedAt: new Date().toISOString() };
+  } finally {
+    activeClientSyncs.delete(spreadsheetId);
+  }
+}
 
 /**
  * Resolve Google Auth client from credentials JSON file or Environment Variables.
@@ -25,7 +66,7 @@ export function getGoogleSheetsAuth() {
   }
 
   // 2. Check server/google-credentials.json
-  const defaultLocalJson = path.resolve(process.cwd(), 'google-credentials.json');
+  const defaultLocalJson = fileURLToPath(new URL('../../google-credentials.json', import.meta.url));
   if (fs.existsSync(defaultLocalJson)) {
     cachedAuth = new google.auth.GoogleAuth({
       keyFile: defaultLocalJson,
@@ -86,26 +127,13 @@ function getSheetsClient(): sheets_v4.Sheets {
 /**
  * Clean and extract spreadsheet ID from either a raw ID or full Google Sheet URL.
  */
-export function parseSpreadsheetId(input?: string): string {
-  const target = (input || ENV.GOOGLE_SHEET_ID || '').trim();
-  if (!target) {
-    throw new Error('Spreadsheet ID is required. Please provide a spreadsheet ID or set GOOGLE_SHEET_ID in .env');
-  }
-
-  // If user pasted a full URL (e.g. https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit)
-  const urlMatch = target.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-  if (urlMatch && urlMatch[1]) {
-    return urlMatch[1];
-  }
-
-  return target;
-}
+export { parseSpreadsheetId } from './googleSheetsSettings.service.js';
 
 /**
  * Test connection to a Google Spreadsheet
  */
 export async function testGoogleSheetsConnection(rawSpreadsheetId?: string) {
-  const spreadsheetId = parseSpreadsheetId(rawSpreadsheetId);
+  const spreadsheetId = await resolveSpreadsheetId(rawSpreadsheetId);
   const sheets = getSheetsClient();
 
   const metadata = await sheets.spreadsheets.get({
@@ -172,7 +200,7 @@ async function ensureTabExists(
  * Sync all Office Expenses to Google Sheet
  */
 export async function syncExpensesToSheet(rawSpreadsheetId?: string) {
-  const spreadsheetId = parseSpreadsheetId(rawSpreadsheetId);
+  const spreadsheetId = await resolveSpreadsheetId(rawSpreadsheetId);
   const sheets = getSheetsClient();
   const tabTitle = 'Office Expenses';
   const headers = ['Date', 'Title / Description', 'Amount (INR)', 'Payment Method', 'Notes', 'Expense ID'];
@@ -218,7 +246,7 @@ export async function syncExpensesToSheet(rawSpreadsheetId?: string) {
  * Sync all Client Payments to Google Sheet
  */
 export async function syncPaymentsToSheet(rawSpreadsheetId?: string) {
-  const spreadsheetId = parseSpreadsheetId(rawSpreadsheetId);
+  const spreadsheetId = await resolveSpreadsheetId(rawSpreadsheetId);
   const sheets = getSheetsClient();
   const tabTitle = 'Client Payments';
   const headers = [
@@ -282,7 +310,7 @@ export async function syncPaymentsToSheet(rawSpreadsheetId?: string) {
  * Sync all Work Logs to Google Sheet
  */
 export async function syncWorkLogsToSheet(rawSpreadsheetId?: string) {
-  const spreadsheetId = parseSpreadsheetId(rawSpreadsheetId);
+  const spreadsheetId = await resolveSpreadsheetId(rawSpreadsheetId);
   const sheets = getSheetsClient();
   const tabTitle = 'Employee Work Logs';
   const headers = [
@@ -347,9 +375,10 @@ export async function syncWorkLogsToSheet(rawSpreadsheetId?: string) {
  * Sync all sections (Expenses, Payments, Work Logs) in one operation
  */
 export async function syncAllToSheet(rawSpreadsheetId?: string) {
-  const expensesResult = await syncExpensesToSheet(rawSpreadsheetId);
-  const paymentsResult = await syncPaymentsToSheet(rawSpreadsheetId);
-  const workLogsResult = await syncWorkLogsToSheet(rawSpreadsheetId);
+  const spreadsheetId = await resolveSpreadsheetId(rawSpreadsheetId);
+  const expensesResult = await syncExpensesToSheet(spreadsheetId);
+  const paymentsResult = await syncPaymentsToSheet(spreadsheetId);
+  const workLogsResult = await syncWorkLogsToSheet(spreadsheetId);
 
   return {
     success: true,
@@ -368,8 +397,14 @@ export async function syncAllToSheet(rawSpreadsheetId?: string) {
 export async function appendRowSafely(tabTitle: string, rowValues: any[], rawSpreadsheetId?: string) {
   try {
     if (!isGoogleSheetsConfigured()) return;
-    const spreadsheetId = parseSpreadsheetId(rawSpreadsheetId);
+    const spreadsheetId = await resolveSpreadsheetId(rawSpreadsheetId);
     const sheets = getSheetsClient();
+
+    const headers: Record<string, string[]> = {
+      'Office Expenses': ['Date', 'Title / Description', 'Amount (INR)', 'Payment Method', 'Notes', 'Expense ID'],
+      'Client Payments': ['Payment Date', 'Project Code', 'Project Name', 'Client Name', 'Amount (INR)', 'Payment Method', 'Transaction Ref', 'Notes', 'Payment ID'],
+    };
+    if (headers[tabTitle]) await ensureTabExists(sheets, spreadsheetId, tabTitle, headers[tabTitle]);
 
     await sheets.spreadsheets.values.append({
       spreadsheetId,

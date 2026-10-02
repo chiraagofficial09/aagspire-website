@@ -1094,3 +1094,47 @@ body {
   text-decoration: line-through !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   LIGHT CANVAS (WHITE BACKGROUND) OVERRIDES FOR RICH TEXT
+   ═══════════════════════════════════════════════════════════════ */
+
+.rich-text-content-light {
+  color: #18181b !important;
+}
+
+.rich-text-content-light h1 {
+  color: #09090b !important;
+}
+
+.rich-text-content-light h2 {
+  color: #FF5A1F !important;
+}
+
+.rich-text-content-light h3 {
+  color: #27272a !important;
+}
+
+.rich-text-content-light p {
+  color: #3f3f46 !important;
+}
+
+.rich-text-content-light ul li,
+.rich-text-content-light ol li {
+  color: #27272a !important;
+}
+
+.rich-text-content-light b,
+.rich-text-content-light strong {
+  color: #09090b !important;
+}
+
+.rich-text-content-light blockquote {
+  background: rgba(255, 90, 31, 0.08) !important;
+  color: #27272a !important;
+  border-left: 4px solid #FF5A1F !important;
+}
+
+.rich-text-content-light hr {
+  border-color: #e4e4e7 !important;
+}
+

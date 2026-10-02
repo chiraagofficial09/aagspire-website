@@ -21,3 +21,7 @@ dist-ssr
 *.sln
 *.sw?
 .env
+google-credentials.json
+server/google-credentials.json
+server/aagspire-work-*.json
+server/*credentials*.json

@@ -3,6 +3,7 @@ import { Building2, User, Key, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { useToast } from '../../components/work/Toast';
+import { GoogleSheetsSettings } from '../../components/admin/GoogleSheetsSettings';
 
 export const AdminSettings: React.FC = () => {
   const { user } = useAuth();
@@ -52,6 +53,8 @@ export const AdminSettings: React.FC = () => {
         <h1 className="text-2xl font-bold tracking-tight text-[#FF5A1F]">Settings</h1>
         <p className="text-xs text-zinc-400 mt-1">Manage workspace metadata and admin credentials.</p>
       </div>
+
+      <GoogleSheetsSettings />
 
       {/* Organization Meta */}
       <div className="bg-[#08090d] border border-white/[0.06] p-6 rounded-2xl space-y-5">
