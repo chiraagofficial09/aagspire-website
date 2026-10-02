@@ -1132,9 +1132,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                     <h3 className="text-sm font-bold text-white">
                       {client.companyName || client.name}
                     </h3>
-                    {client.contactPerson && (
-                      <p className="text-xs text-[#71717A] mt-0.5">Attn: {client.contactPerson}</p>
-                    )}
+                    
                   </div>
                   <div className="flex flex-col sm:items-end justify-center">
                     <div className="w-full sm:w-64 space-y-1.5 text-xs">

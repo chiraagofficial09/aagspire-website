@@ -283,7 +283,7 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
     const leftStartY = cursorY + 13;
     doc.fillColor('#666666').fontSize(7.5).font(boldFont).text('BILLED TO/CLIENT', col1X, leftStartY, { characterSpacing: 0.6 });
     doc.fillColor('#FFFFFF').fontSize(11).font(boldFont).text(data.companyName || data.clientName, col1X, leftStartY + 14, { width: 240, ellipsis: true });
-    doc.fillColor('#888888').fontSize(8).font(regularFont).text(`Attn: ${data.contactPerson}`, col1X, leftStartY + 30, { width: 240, ellipsis: true });
+
   } else {
     const leftStartY = cursorY + Math.round((billedCardH - 26) / 2);
     doc.fillColor('#666666').fontSize(7.5).font(boldFont).text('BILLED TO/CLIENT', col1X, leftStartY, { characterSpacing: 0.6 });
