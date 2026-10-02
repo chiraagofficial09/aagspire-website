@@ -107,7 +107,7 @@ test('client advance exists even when the client has no projects', () => {
   assert.ok(JSON.stringify(requests).includes('Advance / Credit'));
 });
 
-test('includes assigned team members in client project sheet requests without merge overlaps', () => {
+test('includes assigned team members in client project sheet requests without merge overlaps and excludes status column', () => {
   const clients = [{ _id: 'c1', name: 'Acme Corp' }];
   const projects = [
     {
@@ -125,6 +125,7 @@ test('includes assigned team members in client project sheet requests without me
   const serialized = JSON.stringify(requests);
   assert.ok(serialized.includes('Assigned Team'));
   assert.ok(serialized.includes('Rahul Sharma, Priya Patel'));
+  assert.ok(!serialized.includes('"Status"'));
 
   const merges = requests.flatMap(r => r.mergeCells?.range ? [r.mergeCells.range] : []);
   for (let i = 0; i < merges.length; i++) {
@@ -136,4 +137,5 @@ test('includes assigned team members in client project sheet requests without me
     }
   }
 });
+
 

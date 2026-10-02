@@ -52,7 +52,7 @@ export function buildClientBlocks(clients: ClientRow[], projects: ProjectRow[], 
 
 export type ClientBlock = ReturnType<typeof buildClientBlocks>[number];
 
-/** Five columns per client, with two blank spacer columns. */
+/** Four columns per client, with three blank spacer columns. */
 export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[], previousRows = 1, previousColumns = 1, rowOffset = 0) {
   const orange = { red: 1, green: 0.39, blue: 0.04 };
   const pendingText = { red: 0.8, green: 0.24, blue: 0.01 };
@@ -66,7 +66,7 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
   const border = { red: 0.86, green: 0.88, blue: 0.9 };
   const currency = { type: 'NUMBER', pattern: '"₹"#,##0.00' };
   const rows = rowOffset + Math.max(14, ...blocks.map(b => Math.max(1, b.projects.length) + 11));
-  const columns = Math.max(rowOffset ? 12 : 5, blocks.length ? blocks.length * 7 - 2 : 5);
+  const columns = Math.max(rowOffset ? 11 : 4, blocks.length ? blocks.length * 7 - 3 : 4);
   if (columns > 18278) throw new Error('Too many clients for one horizontal Google Sheet. Split clients into multiple spreadsheets.');
   const gridRows = Math.max(rows, previousRows);
   const gridColumns = Math.max(columns, previousColumns);
@@ -97,34 +97,34 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
     const totalRow = 3 + projectRows;
     const data: (string | number)[][] = [
       [block.name], [block.contact ? `PROJECT SUMMARY · ${block.contact}` : 'PROJECT SUMMARY'],
-      ['Project Date', 'Project', 'Assigned Team', 'Net Value', 'Status'],
-      ...(block.projects.length ? block.projects.map(p => [p.date, p.name, p.assignedTo, p.value, p.status]) : [['', 'No projects yet', '', '', '']]),
-      ['Total Project Value', '', '', block.total, ''], [], ['CLIENT SUMMARY'],
-      ['RECEIVED', '', '', 'PENDING', ''], [block.received, '', '', block.pending, ''],
-      ...(block.credit > 0 ? [['Advance / Credit', '', '', block.credit, '']] : []),
+      ['Project Date', 'Project', 'Assigned Team', 'Net Value'],
+      ...(block.projects.length ? block.projects.map(p => [p.date, p.name, p.assignedTo, p.value]) : [['', 'No projects yet', '', '']]),
+      ['Total Project Value', '', block.total, ''], [], ['CLIENT SUMMARY'],
+      ['RECEIVED', '', 'PENDING', ''], [block.received, '', block.pending, ''],
+      ...(block.credit > 0 ? [['Advance / Credit', '', block.credit, '']] : []),
     ];
     requests.push({ updateCells: { start: { sheetId, rowIndex: rowOffset, columnIndex: col }, rows: data.map(values => ({ values: values.map(value => ({ userEnteredValue: typeof value === 'number' ? { numberValue: value } : { stringValue: value } })) })), fields: 'userEnteredValue' } });
-    merge(0, col, 5); merge(1, col, 5); merge(totalRow + 2, col, 5);
-    style(0, 1, col, col + 5, { textFormat: { bold: true, fontSize: 23, foregroundColor: background }, backgroundColor: orange });
-    style(1, 2, col, col + 5, { textFormat: { bold: true, fontSize: 12, foregroundColor: text } });
-    style(2, 3, col, col + 5, { backgroundColor: peach, textFormat: { bold: true, foregroundColor: text } });
-    style(2, 3, col + 4, col + 5, { wrapStrategy: 'CLIP', horizontalAlignment: 'CENTER' });
+    merge(0, col, 4); merge(1, col, 4); merge(totalRow + 2, col, 4);
+    style(0, 1, col, col + 4, { textFormat: { bold: true, fontSize: 23, foregroundColor: background }, backgroundColor: orange });
+    style(1, 2, col, col + 4, { textFormat: { bold: true, fontSize: 12, foregroundColor: text } });
+    style(2, 3, col, col + 4, { backgroundColor: peach, textFormat: { bold: true, foregroundColor: text } });
     block.projects.forEach((_, i) => {
-      if (i % 2 === 1) style(3 + i, 4 + i, col, col + 5, { backgroundColor: stripe });
+      if (i % 2 === 1) style(3 + i, 4 + i, col, col + 4, { backgroundColor: stripe });
     });
     style(3, totalRow + 1, col + 3, col + 4, { numberFormat: currency, textFormat: { bold: true, foregroundColor: text } });
     for (const offset of [0, ...(block.credit > 0 ? [5] : [])]) {
       const row = totalRow + offset;
-      merge(row, col, 3); merge(row, col + 3, 2);
-      style(row, row + 1, col, col + 5, { backgroundColor: offset === 0 ? black : mint, textFormat: { bold: true, foregroundColor: offset === 0 ? background : green, fontSize: 14 } });
-      style(row, row + 1, col + 3, col + 5, { numberFormat: currency });
-      if (offset === 0) style(row, row + 1, col + 3, col + 5, { textFormat: { bold: true, foregroundColor: orange, fontSize: 22 } });
-      tableBorders(row, row + 1, col, col + 3);
-      tableBorders(row, row + 1, col + 3, col + 5);
+      merge(row, col, 2); merge(row, col + 2, 2);
+      style(row, row + 1, col, col + 4, { backgroundColor: offset === 0 ? black : mint, textFormat: { bold: true, foregroundColor: offset === 0 ? background : green, fontSize: 14 } });
+      style(row, row + 1, col + 2, col + 4, { numberFormat: currency });
+      if (offset === 0) style(row, row + 1, col + 2, col + 4, { textFormat: { bold: true, foregroundColor: orange, fontSize: 22 } });
+      tableBorders(row, row + 1, col, col + 2);
+      tableBorders(row, row + 1, col + 2, col + 4);
     }
-    style(totalRow + 2, totalRow + 3, col, col + 5, { textFormat: { bold: true, fontSize: 15, foregroundColor: text } });
+    style(totalRow + 2, totalRow + 3, col, col + 4, { textFormat: { bold: true, fontSize: 15, foregroundColor: text } });
     // Two adjacent summary cards: labels above numeric, editable amounts.
-    for (const [side, start] of [[0, col], [1, col + 3]] as const) {
+    for (const side of [0, 2]) {
+      const start = col + side;
       merge(totalRow + 3, start, 2);
       merge(totalRow + 4, start, 2);
       style(totalRow + 3, totalRow + 5, start, start + 2, { backgroundColor: side === 0 ? mint : peach, horizontalAlignment: 'CENTER' });
@@ -133,12 +133,11 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
       tableBorders(totalRow + 3, totalRow + 5, start, start + 2);
       requests.push({ updateBorders: { range: range(totalRow + 3, totalRow + 5, start, start + 2), left: { style: 'SOLID_THICK', color: side === 0 ? green : orange } } });
     }
-    block.projects.forEach((project, i) => style(3 + i, 4 + i, col + 4, col + 5, { backgroundColor: project.status === 'Delivered' ? mint : peach, horizontalAlignment: 'CENTER', wrapStrategy: 'CLIP', textFormat: { bold: true, foregroundColor: project.status === 'Delivered' ? green : pendingText } }));
-    tableBorders(0, 1, col, col + 5);
-    tableBorders(2, totalRow, col, col + 5, true);
-    [130, 220, 180, 140, 130].forEach((width, offset) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + offset, endIndex: col + offset + 1 }, properties: { pixelSize: width }, fields: 'pixelSize' } }));
+    tableBorders(0, 1, col, col + 4);
+    tableBorders(2, totalRow, col, col + 4, true);
+    [145, 240, 190, 155].forEach((width, offset) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + offset, endIndex: col + offset + 1 }, properties: { pixelSize: width }, fields: 'pixelSize' } }));
     if (index < blocks.length - 1) {
-      requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + 5, endIndex: col + 7 }, properties: { pixelSize: 14 }, fields: 'pixelSize' } });
+      requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + 4, endIndex: col + 7 }, properties: { pixelSize: 14 }, fields: 'pixelSize' } });
     }
   });
   // Rows are shared by all side-by-side clients; take the tallest requirement.

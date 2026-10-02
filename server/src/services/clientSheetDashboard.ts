@@ -69,14 +69,14 @@ export function buildDashboardRequests(sheetId: number, dataSheetId: number, dat
     write(sheetId, row, col, [[value]]);
   };
   // Also size these columns when there are fewer than two clients.
-  [130, 220, 180, 140, 130, 14, 14, 130, 220, 180, 140, 130].forEach((pixelSize, col) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col, endIndex: col + 1 }, properties: { pixelSize }, fields: 'pixelSize' } }));
-  merged(0, 0, 12, 'AAGSPIRE | BUSINESS DASHBOARD');
-  format(0, 1, 0, 12, { backgroundColor: orange, textFormat: { bold: true, fontSize: 23, foregroundColor: white } });
-  merged(1, 0, 12, `All-time overview · Last synced: ${data.updated} IST · Monthly charts: last 6 months`);
-  format(1, 2, 0, 12, { textFormat: { fontSize: 11, foregroundColor: dark } });
+  [145, 240, 190, 155, 14, 14, 14, 145, 240, 190, 155].forEach((pixelSize, col) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col, endIndex: col + 1 }, properties: { pixelSize }, fields: 'pixelSize' } }));
+  merged(0, 0, 11, 'AAGSPIRE | BUSINESS DASHBOARD');
+  format(0, 1, 0, 11, { backgroundColor: orange, textFormat: { bold: true, fontSize: 23, foregroundColor: white } });
+  merged(1, 0, 11, `All-time overview · Last synced: ${data.updated} IST · Monthly charts: last 6 months`);
+  format(1, 2, 0, 11, { textFormat: { fontSize: 11, foregroundColor: dark } });
   const cards: [string, number, number, number, number, boolean][] = [
-    ['Total Clients', data.clientCount, 3, 0, 2, false], ['Total Projects', data.projectCount, 3, 2, 5, false], ['Active Projects', data.activeCount, 3, 7, 12, false],
-    ['Total Project Value', data.total, 6, 0, 2, true], ['Total Received', data.received, 6, 2, 5, true], ['Total Pending', data.pending, 6, 7, 12, true],
+    ['Total Clients', data.clientCount, 3, 0, 2, false], ['Total Projects', data.projectCount, 3, 2, 4, false], ['Active Projects', data.activeCount, 3, 7, 11, false],
+    ['Total Project Value', data.total, 6, 0, 2, true], ['Total Received', data.received, 6, 2, 4, true], ['Total Pending', data.pending, 6, 7, 11, true],
   ];
   for (const [label, value, row, col, endCol, money] of cards) {
     merged(row, col, endCol, label); merged(row + 1, col, endCol, value);
@@ -84,8 +84,8 @@ export function buildDashboardRequests(sheetId: number, dataSheetId: number, dat
     format(row + 1, row + 2, col, endCol, { textFormat: { bold: true, fontSize: 23, foregroundColor: label === 'Total Received' ? green : dark }, ...(money ? { numberFormat: currency } : {}) });
     requests.push({ updateBorders: { range: range(row, row + 2, col, endCol), top: line, bottom: line, left: line, right: line } });
   }
-  merged(9, 0, 12, `Advance / Credit: ₹${data.credit.toLocaleString('en-IN', { minimumFractionDigits: 2 })} · Client advances do not reduce another client's pending balance.`);
-  format(9, 10, 0, 12, { textFormat: { fontSize: 10, foregroundColor: green } });
+  merged(9, 0, 11, `Advance / Credit: ₹${data.credit.toLocaleString('en-IN', { minimumFractionDigits: 2 })} · Client advances do not reduce another client's pending balance.`);
+  format(9, 10, 0, 11, { textFormat: { fontSize: 10, foregroundColor: green } });
 
   // Hidden supporting tab contains names and aggregates only; charts include hidden data.
   requests.push({ updateSheetProperties: { properties: { sheetId: dataSheetId, hidden: true, gridProperties: { rowCount: 20, columnCount: 16 } }, fields: 'hidden,gridProperties.rowCount,gridProperties.columnCount' } });
@@ -120,18 +120,18 @@ export function buildDashboardRequests(sheetId: number, dataSheetId: number, dat
     series: [{ series: source(15, top.length), targetAxis: 'BOTTOM_AXIS', color: orange }], axis: [{ position: 'BOTTOM_AXIS', title: 'INR' }],
   } });
 
-  merged(32, 0, 5, 'TOP PENDING CLIENTS');
-  format(32, 34, 0, 5, { backgroundColor: pale, textFormat: { bold: true, foregroundColor: dark } });
-  merged(33, 0, 3, 'Client'); merged(33, 3, 5, 'Pending Amount');
+  merged(32, 0, 4, 'TOP PENDING CLIENTS');
+  format(32, 34, 0, 4, { backgroundColor: pale, textFormat: { bold: true, foregroundColor: dark } });
+  merged(33, 0, 2, 'Client'); merged(33, 2, 4, 'Pending Amount');
   for (let i = 0; i < 5; i++) {
     const pending = data.pendingClients[i];
-    merged(34 + i, 0, 3, pending?.name || (i === 0 ? 'No pending balances' : ''));
-    merged(34 + i, 3, 5, pending?.pending ?? '');
+    merged(34 + i, 0, 2, pending?.name || (i === 0 ? 'No pending balances' : ''));
+    merged(34 + i, 2, 4, pending?.pending ?? '');
   }
-  format(34, 39, 3, 5, { numberFormat: currency });
-  requests.push({ updateBorders: { range: range(33, 39, 0, 5), top: line, bottom: line, left: line, right: line, innerHorizontal: line } });
-  merged(40, 0, 12, 'CLIENT PROJECTS');
-  format(40, 41, 0, 12, { textFormat: { bold: true, fontSize: 22, foregroundColor: dark } });
+  format(34, 39, 2, 4, { numberFormat: currency });
+  requests.push({ updateBorders: { range: range(33, 39, 0, 4), top: line, bottom: line, left: line, right: line, innerHorizontal: line } });
+  merged(40, 0, 11, 'CLIENT PROJECTS');
+  format(40, 41, 0, 11, { textFormat: { bold: true, fontSize: 22, foregroundColor: dark } });
   for (const [row, size] of [[0, 64], [4, 50], [7, 50]]) requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: row, endIndex: row + 1 }, properties: { pixelSize: size }, fields: 'pixelSize' } });
   return requests;
 }
