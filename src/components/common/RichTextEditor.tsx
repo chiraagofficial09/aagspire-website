@@ -22,6 +22,7 @@ import {
   Palette,
   Highlighter,
   ChevronDown,
+  Check,
 } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -49,6 +50,20 @@ const HIGHLIGHT_COLORS = [
   { name: 'Cyan Tint', color: 'rgba(6, 182, 212, 0.2)' },
 ];
 
+export interface BlockFormatOption {
+  value: string;
+  label: string;
+  tag: string;
+  description: string;
+}
+
+export const BLOCK_FORMAT_OPTIONS: BlockFormatOption[] = [
+  { value: 'p', label: 'Paragraph', tag: 'P', description: 'Regular body text' },
+  { value: 'h1', label: 'Main Title (H1)', tag: 'H1', description: 'Main heading' },
+  { value: 'h2', label: 'Section Heading (H2)', tag: 'H2', description: 'Section heading' },
+  { value: 'h3', label: 'Subheading (H3)', tag: 'H3', description: 'Small subheading' },
+];
+
 export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   value,
   onChange,
@@ -60,6 +75,43 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [sourceHtml, setSourceHtml] = useState<string>(value || '');
   const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
   const [showHighlightPicker, setShowHighlightPicker] = useState<boolean>(false);
+  const [currentBlock, setCurrentBlock] = useState<string>('p');
+  const [isBlockMenuOpen, setIsBlockMenuOpen] = useState<boolean>(false);
+
+  const blockMenuRef = useRef<HTMLDivElement>(null);
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+  const highlightPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close menus when clicking outside or pressing Escape
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (blockMenuRef.current && !blockMenuRef.current.contains(target)) {
+        setIsBlockMenuOpen(false);
+      }
+      if (colorPickerRef.current && !colorPickerRef.current.contains(target)) {
+        setShowColorPicker(false);
+      }
+      if (highlightPickerRef.current && !highlightPickerRef.current.contains(target)) {
+        setShowHighlightPicker(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsBlockMenuOpen(false);
+        setShowColorPicker(false);
+        setShowHighlightPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // Sync internal content only when value changes externally and editor is not focused
   useEffect(() => {
@@ -92,8 +144,43 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
+  const detectActiveBlock = () => {
+    if (!editorRef.current || isSourceMode) return;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+
+    let node: Node | null = sel.anchorNode;
+    while (node && node !== editorRef.current) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = (node as HTMLElement).tagName.toLowerCase();
+        if (['p', 'h1', 'h2', 'h3'].includes(tag)) {
+          setCurrentBlock(tag);
+          return;
+        }
+      }
+      node = node.parentNode;
+    }
+    setCurrentBlock('p');
+  };
+
   const handleFormatBlock = (tag: string) => {
-    executeCommand('formatBlock', tag);
+    if (isSourceMode) return;
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+    const cleanTag = tag.toLowerCase().replace(/[<>]/g, '');
+    try {
+      document.execCommand('formatBlock', false, `<${cleanTag}>`);
+    } catch {
+      document.execCommand('formatBlock', false, cleanTag);
+    }
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      onChange(html);
+      setSourceHtml(html);
+    }
+    setCurrentBlock(cleanTag);
+    setIsBlockMenuOpen(false);
   };
 
   const handleInsertLink = () => {
@@ -148,19 +235,123 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     <div className="border border-white/[0.08] rounded-2xl bg-[#090a0f] overflow-hidden shadow-xl flex flex-col focus-within:border-[#FF5A1F]/50 transition-colors">
       {/* Formatting Toolbar */}
       <div className="p-2 bg-[#0d0e14] border-b border-white/[0.06] flex flex-wrap items-center gap-1 text-xs select-none">
-        {/* Headings / Block Type Dropdown */}
-        <div className="relative inline-block mr-1">
-          <select
+        {/* Headings / Block Type Custom Dropdown */}
+        <div className="relative inline-block mr-1" ref={blockMenuRef}>
+          <button
+            type="button"
             disabled={isSourceMode}
-            onChange={(e) => handleFormatBlock(e.target.value)}
-            defaultValue="p"
-            className="h-8 px-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white rounded-lg text-xs font-medium cursor-pointer focus:outline-none focus:border-[#FF5A1F] transition-colors disabled:opacity-40"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setIsBlockMenuOpen(!isBlockMenuOpen);
+              setShowColorPicker(false);
+              setShowHighlightPicker(false);
+            }}
+            title="Text Style / Heading Level"
+            className={`h-8 px-2.5 rounded-lg text-xs font-medium flex items-center justify-between gap-2 transition-all cursor-pointer select-none disabled:opacity-40 min-w-[155px] border ${
+              isBlockMenuOpen
+                ? 'bg-[#151620] border-[#FF5A1F] shadow-[0_0_12px_rgba(255,90,31,0.25)] text-white'
+                : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] hover:border-white/20 text-zinc-200'
+            }`}
           >
-            <option value="p" className="bg-[#0f1016] text-white">Paragraph</option>
-            <option value="h1" className="bg-[#0f1016] text-white font-bold">Main Title (H1)</option>
-            <option value="h2" className="bg-[#0f1016] text-[#FF5A1F] font-bold">Section Heading (H2)</option>
-            <option value="h3" className="bg-[#0f1016] text-white font-semibold">Subheading (H3)</option>
-          </select>
+            <div className="flex items-center gap-1.5 truncate">
+              {(() => {
+                const active = BLOCK_FORMAT_OPTIONS.find((b) => b.value === currentBlock) || BLOCK_FORMAT_OPTIONS[0];
+                return (
+                  <>
+                    <span
+                      className={`w-5 h-4 rounded text-[9px] font-mono font-bold flex items-center justify-center shrink-0 ${
+                        active.value === 'h2'
+                          ? 'bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/30'
+                          : active.value === 'h1'
+                          ? 'bg-white/10 text-white border border-white/15'
+                          : active.value === 'h3'
+                          ? 'bg-white/5 text-zinc-300 border border-white/10'
+                          : 'bg-white/5 text-zinc-400 border border-white/10'
+                      }`}
+                    >
+                      {active.tag}
+                    </span>
+                    <span
+                      className={`truncate text-xs ${
+                        active.value === 'h2'
+                          ? 'text-[#FF5A1F] font-bold'
+                          : active.value === 'h1'
+                          ? 'text-white font-bold'
+                          : active.value === 'h3'
+                          ? 'text-zinc-100 font-semibold'
+                          : 'text-zinc-300 font-normal'
+                      }`}
+                    >
+                      {active.label}
+                    </span>
+                  </>
+                );
+              })()}
+            </div>
+            <ChevronDown
+              className={`w-3.5 h-3.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
+                isBlockMenuOpen ? 'rotate-180 text-[#FF5A1F]' : ''
+              }`}
+            />
+          </button>
+
+          {isBlockMenuOpen && (
+            <div className="absolute top-full left-0 mt-1.5 z-40 min-w-[210px] p-1.5 rounded-xl bg-[#101118]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/80 space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-2.5 py-1 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
+                Block Style
+              </div>
+              {BLOCK_FORMAT_OPTIONS.map((opt) => {
+                const isSelected = currentBlock === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={isSourceMode}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleFormatBlock(opt.value)}
+                    className={`w-full flex items-center justify-between gap-3 px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left group ${
+                      isSelected
+                        ? 'bg-[#FF5A1F]/15 border border-[#FF5A1F]/30 text-white'
+                        : 'hover:bg-white/[0.06] text-zinc-300 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`w-6 h-5 rounded flex items-center justify-center text-[10px] font-mono font-bold shrink-0 transition-colors ${
+                          opt.value === 'h2'
+                            ? 'bg-[#FF5A1F]/20 text-[#FF5A1F] border border-[#FF5A1F]/30'
+                            : opt.value === 'h1'
+                            ? 'bg-white/10 text-white border border-white/15'
+                            : opt.value === 'h3'
+                            ? 'bg-white/5 text-zinc-300 border border-white/10'
+                            : 'bg-white/5 text-zinc-400 border border-white/10'
+                        }`}
+                      >
+                        {opt.tag}
+                      </span>
+                      <span
+                        className={`text-xs ${
+                          opt.value === 'h2'
+                            ? 'text-[#FF5A1F] font-bold'
+                            : opt.value === 'h1'
+                            ? 'text-white font-bold'
+                            : opt.value === 'h3'
+                            ? 'text-zinc-100 font-semibold'
+                            : 'text-zinc-300 font-normal'
+                        }`}
+                      >
+                        {opt.label}
+                      </span>
+                    </div>
+
+                    {isSelected && (
+                      <Check className="w-3.5 h-3.5 text-[#FF5A1F] shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="w-px h-5 bg-white/10 mx-1" />
@@ -213,7 +404,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <div className="w-px h-5 bg-white/10 mx-1" />
 
         {/* Color Pickers */}
-        <div className="relative">
+        <div className="relative" ref={colorPickerRef}>
           <button
             type="button"
             disabled={isSourceMode}
@@ -221,6 +412,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onClick={() => {
               setShowColorPicker(!showColorPicker);
               setShowHighlightPicker(false);
+              setIsBlockMenuOpen(false);
             }}
             title="Text Color"
             className="h-8 px-2 rounded-lg flex items-center gap-1.5 text-zinc-300 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 transition-colors cursor-pointer"
@@ -256,7 +448,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           )}
         </div>
 
-        <div className="relative">
+        <div className="relative" ref={highlightPickerRef}>
           <button
             type="button"
             disabled={isSourceMode}
@@ -264,6 +456,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onClick={() => {
               setShowHighlightPicker(!showHighlightPicker);
               setShowColorPicker(false);
+              setIsBlockMenuOpen(false);
             }}
             title="Highlight Background"
             className="h-8 px-2 rounded-lg flex items-center gap-1.5 text-zinc-300 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 transition-colors cursor-pointer"
@@ -424,8 +617,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           type="button"
           disabled={isSourceMode}
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => executeCommand('removeFormat')}
-          title="Clear Formatting"
+          onClick={() => {
+            executeCommand('removeFormat');
+            handleFormatBlock('p');
+          }}
+          title="Clear Formatting & Remove Heading (Ctrl+\)"
           className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-300 hover:text-rose-400 hover:bg-white/[0.06] disabled:opacity-30 transition-colors cursor-pointer"
         >
           <RemoveFormatting className="w-4 h-4" />
@@ -486,8 +682,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <div
             ref={editorRef}
             contentEditable
-            onInput={handleInput}
+            onInput={() => {
+              handleInput();
+              detectActiveBlock();
+            }}
             onBlur={handleInput}
+            onKeyUp={detectActiveBlock}
+            onMouseUp={detectActiveBlock}
             style={{ minHeight }}
             data-placeholder={placeholder}
             className="outline-none text-sm text-zinc-200 leading-relaxed custom-scrollbar rich-text-content focus:ring-0 empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-600 empty:before:pointer-events-none"
@@ -498,7 +699,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
       {/* Footer Info Bar */}
       <div className="px-4 py-2 bg-[#0d0e14]/70 border-t border-white/[0.04] flex items-center justify-between text-[11px] text-zinc-500 font-mono">
         <div className="flex items-center gap-3">
-          <span>{isSourceMode ? 'Mode: HTML Source Editor' : 'Mode: Visual WYSIWYG'}</span>
+          <span>{isSourceMode ? 'Mode: HTML Source Editor' : 'Mode: Visual'}</span>
           <span>•</span>
           <span>{sourceHtml.replace(/<[^>]*>/g, '').trim().length} Characters</span>
         </div>

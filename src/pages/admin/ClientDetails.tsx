@@ -1024,7 +1024,7 @@ export const AdminClientDetails: React.FC = () => {
                 {filteredBadDebts.map((d) => (
                   <div key={d.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.025] border border-white/5 text-xs">
                     <div className="flex items-center gap-3">
-                      <MinusCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <MinusCircle className="w-3.5 h-3.5 text-[#FF5A1F] shrink-0" />
                       <div>
                         <span className="text-white/80 font-medium">{d.projectName || d.label}</span>
                         {d.reason && (

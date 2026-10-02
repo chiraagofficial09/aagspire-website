@@ -444,7 +444,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Bad Debt</span>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-rose-400 border border-white/10">
-                <AlertCircle className="w-4 h-4" />
+                <AlertCircle className="w-4 h-4 text-white" />
               </div>
             </div>
             <div className="mt-3">
