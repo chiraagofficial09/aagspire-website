@@ -89,8 +89,8 @@ function calculateStatementHeight(
   y += headerGap; // Divider line to Billed To card
 
   const hasGstin = Boolean(data.gstNumber);
-  const billedCardH = hasGstin ? 72 : 56;
-  y += billedCardH + 20;
+  const billedCardH = hasGstin ? 62 : 48;
+  y += billedCardH + 18;
 
   y += 22; // Table header
   const items = data.projects && data.projects.length > 0 ? data.projects : [];
@@ -267,51 +267,100 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
   cursorY += logoH + headerGap;
   doc.strokeColor('#1E1E1E').lineWidth(1).moveTo(contentX, cursorY).lineTo(contentX + contentW, cursorY).stroke();
 
-  // 3. Billed To & Invoice Details Card (Same spacing as above divider)
+  // ======================================================
+  // 3. BILLED TO / CLIENT + INVOICE DETAILS
+  // ======================================================
   cursorY += headerGap;
+
   const hasGstin = Boolean(data.gstNumber);
-  const billedCardH = hasGstin ? 72 : 56;
+  const billedCardH = hasGstin ? 62 : 48;
 
-  doc.roundedRect(contentX, cursorY, contentW, billedCardH, 8).fill('#111111');
-  doc.roundedRect(contentX, cursorY, contentW, billedCardH, 8).strokeColor('#202020').lineWidth(0.8).stroke();
+  // Card Background & Border
+  doc
+    .roundedRect(contentX, cursorY, contentW, billedCardH, 8)
+    .fill('#111111');
+  doc
+    .roundedRect(contentX, cursorY, contentW, billedCardH, 8)
+    .strokeColor('#202020')
+    .lineWidth(0.8)
+    .stroke();
 
-  // Left & Right columns setup
-  const col1X = contentX + 18;
-  const col2W = 195;
-  const col2X = contentX + contentW - col2W - 18;
+  // Columns Layout (Without vertical line, matching invoice modal)
+  const cardPadding = 16;
+  const col1X = contentX + cardPadding;
+  const col1W = 230;
 
-  const row1Y = cursorY + 14;
-  const row2Y = cursorY + 31;
+  const col2W = 190;
+  const col2X = contentX + contentW - cardPadding - col2W;
 
-  // Invoice No calculation
+  const row1Y = cursorY + 11;
+  const row2Y = cursorY + 25;
+  const row3Y = cursorY + 39;
+
+  // Left: BILLED TO / CLIENT (Row 1) & Client Name (Row 2)
+  doc
+    .fillColor('#71717A')
+    .fontSize(7.2)
+    .font(boldFont)
+    .text('BILLED TO / CLIENT', col1X, row1Y, { width: col1W, characterSpacing: 0.6 });
+
+  doc
+    .fillColor('#FFFFFF')
+    .fontSize(11)
+    .font(boldFont)
+    .text(data.companyName || data.clientName, col1X, row2Y, { width: col1W, ellipsis: true });
+
+  // Invoice Number
   const digits = data.clientCode?.match(/\d+/g);
   const defaultNum = digits && digits.length > 0
     ? (digits[digits.length - 1].length === 4 && digits[digits.length - 1].startsWith('0') ? digits[digits.length - 1].substring(1) : digits[digits.length - 1])
     : '001';
   const displayInvoiceNo = data.invoiceNumber || defaultNum;
 
-  // Row 1: Left = 'BILLED TO/CLIENT', Right = 'Invoice No:' [gap] 'displayInvoiceNo'
-  doc.fillColor('#666666').fontSize(7.5).font(boldFont).text('BILLED TO/CLIENT', col1X, row1Y, { characterSpacing: 0.6 });
-  doc.fillColor('#777777').fontSize(8.5).font(regularFont).text('Invoice No:', col2X, row1Y);
-  doc.fillColor('#FFFFFF').fontSize(8.5).font(boldFont).text(displayInvoiceNo, col2X, row1Y, { align: 'right', width: col2W });
+  // Right: Invoice No (Row 1)
+  doc
+    .fillColor('#71717A')
+    .fontSize(8.2)
+    .font(regularFont)
+    .text('Invoice No:', col2X, row1Y);
+  doc
+    .fillColor('#FFFFFF')
+    .fontSize(8.5)
+    .font(boldFont)
+    .text(displayInvoiceNo, col2X, row1Y, { width: col2W, align: 'right' });
 
-  // Row 2: Left = Company/Client Name, Right = 'Invoice Date:' [gap] 'statementDate'
-  doc.fillColor('#FFFFFF').fontSize(11).font(boldFont).text(data.companyName || data.clientName, col1X, row2Y, { width: 240, ellipsis: true });
-  doc.fillColor('#777777').fontSize(8.5).font(regularFont).text('Invoice Date:', col2X, row2Y);
-  doc.fillColor('#FFFFFF').fontSize(8.5).font(regularFont).text(data.statementDate, col2X, row2Y, { align: 'right', width: col2W });
+  // Right: Invoice Date (Row 2)
+  doc
+    .fillColor('#71717A')
+    .fontSize(8.2)
+    .font(regularFont)
+    .text('Invoice Date:', col2X, row2Y);
+  doc
+    .fillColor('#FFFFFF')
+    .fontSize(8.5)
+    .font(regularFont)
+    .text(data.statementDate, col2X, row2Y, { width: col2W, align: 'right' });
 
-  // Row 3 (Optional): GSTIN if applicable
+  // Right: GSTIN (Row 3, Optional)
   if (hasGstin) {
-    const row3Y = cursorY + 48;
     const gstinGrad = doc.linearGradient(col2X + 50, row3Y, col2X + col2W, row3Y);
     gstinGrad.stop(0, '#FF5A1F');
     gstinGrad.stop(1, '#FFA05C');
-    doc.fillColor('#777777').fontSize(8.5).font(regularFont).text('GSTIN:', col2X, row3Y);
-    doc.fillColor(gstinGrad).fontSize(8.5).font(boldFont).text(data.gstNumber!, col2X, row3Y, { align: 'right', width: col2W });
+
+    doc
+      .fillColor('#71717A')
+      .fontSize(8.2)
+      .font(regularFont)
+      .text('GSTIN:', col2X, row3Y);
+    doc
+      .fillColor(gstinGrad)
+      .fontSize(8.5)
+      .font(boldFont)
+      .text(data.gstNumber!, col2X, row3Y, { width: col2W, align: 'right' });
   }
 
   // 4. Deliverables Table
-  cursorY += billedCardH + 20;
+  cursorY += billedCardH + 18;
 
   const colX_No = contentX + 6;
   const colX_Project = contentX + 28;

@@ -66,12 +66,8 @@ export const GoogleSheetsSettings: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <FileSpreadsheet className="h-6 w-6 text-orange-400" />
-          <div><h2 className="font-bold text-white">Client Project Report</h2>
-            <p className="text-xs text-zinc-400 mt-1">Business dashboard, charts and side-by-side client reports in Google Sheets.</p></div>
+          <div><h2 className="font-bold text-white">Client Project Report</h2></div>
         </div>
-        <span className={`text-xs ${configured ? 'text-emerald-400' : 'text-amber-400'}`}>
-          {busy === 'status' ? 'Checking configuration…' : configured ? 'Credentials configured' : 'Setup required'}
-        </span>
       </div>
       {!configured && busy !== 'status' && <p className="text-sm text-amber-200 bg-amber-500/5 rounded-xl p-4">
         Enable Google Sheets API and securely install the service account key as server/google-credentials.json.
@@ -95,7 +91,6 @@ export const GoogleSheetsSettings: React.FC = () => {
             {busy === 'test' ? 'Saving…' : 'Test & Save Connection'}
           </button>
         </div>
-        <p className="text-xs text-zinc-500">Saved for all admins. Reports and payment/expense exports use this Sheet. No Sheet ID environment variable is needed.</p>
       </form>
       {connection && <p className="text-xs text-emerald-400">Connected: {connection.title}</p>}
       {error && <p role="alert" className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-300">{error}</p>}
@@ -106,7 +101,6 @@ export const GoogleSheetsSettings: React.FC = () => {
         </button>
         {result && <a target="_blank" rel="noreferrer" href={`https://docs.google.com/spreadsheets/d/${result.spreadsheetId}/edit#gid=${result.sheetId}`} className="inline-flex items-center gap-1 text-xs text-emerald-400">Open Report <ExternalLink className="h-3 w-3" /></a>}
       </div>
-      <p className="text-xs text-zinc-500">Each sync refreshes the dashboard, charts and client tables in “Clients &amp; Projects”, plus its hidden chart-data tab. Keep manual notes in another tab. Use Sync again after changing clients, projects or payments.</p>
       {result && <p role="status" className="text-xs text-emerald-400">Last sync this session: {new Date(result.syncedAt).toLocaleString()} · {result.clientCount} clients · {result.syncedCount} projects</p>}
     </section>
   );
