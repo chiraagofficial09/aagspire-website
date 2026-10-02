@@ -124,7 +124,7 @@ test('includes assigned team members in client project sheet requests without me
 
   const requests = buildClientSheetRequests(1, blocks);
   const serialized = JSON.stringify(requests);
-  assert.ok(serialized.includes('Assigned Team'));
+  assert.ok(serialized.includes('ASSIGNED TEAM') || serialized.includes('Assigned Team'));
   assert.ok(serialized.includes('Rahul Sharma, Priya Patel'));
   assert.ok(!serialized.includes('"Status"'));
 

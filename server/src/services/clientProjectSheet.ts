@@ -36,7 +36,11 @@ export function buildClientBlocks(clients: ClientRow[], projects: ProjectRow[], 
           : [];
         return {
           date: project.startDate || project.createdAt
-            ? new Date(project.startDate || project.createdAt!).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }).replace(/ /g, '-') : '',
+            ? new Date(project.startDate || project.createdAt!)
+                .toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })
+                .replace(/ /g, '-')
+                .replace(/-Sep-/i, '-Sept-')
+            : '',
           name: project.projectName,
           assignedTo: assignedNames.length > 0 ? assignedNames.join(', ') : 'Unassigned',
           value: getNetProjectValue(project),
@@ -54,19 +58,18 @@ export type ClientBlock = ReturnType<typeof buildClientBlocks>[number];
 
 /** Four columns per client, with three blank spacer columns. */
 export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[], previousRows = 1, previousColumns = 1, rowOffset = 0) {
-  const orangeDark = { red: 0.98, green: 0.32, blue: 0.05 }; // #FA520D Deep vibrant orange
-  const gradientCols = [
-    { red: 1, green: 0.36, blue: 0.10 }, // Col 0: #FF5C1A
-    { red: 1, green: 0.44, blue: 0.18 }, // Col 1: #FF702E
-    { red: 1, green: 0.52, blue: 0.26 }, // Col 2: #FF8542
-    { red: 1, green: 0.60, blue: 0.35 }, // Col 3: #FF9959
-  ];
-  const darkNavy = { red: 0.08, green: 0.12, blue: 0.20 };
-  const orange = { red: 1, green: 0.38, blue: 0.10 };
-  const slateText = { red: 0.09, green: 0.12, blue: 0.17 };
-  const stripe = { red: 0.98, green: 0.99, blue: 1.0 };
-  const background = { red: 1, green: 1, blue: 1 };
-  const border = { red: 0.88, green: 0.90, blue: 0.93 };
+  const orangeHeader = { red: 0.98, green: 0.35, blue: 0.08 }; // #FA5914 Vibrant Orange
+  const headerBg = { red: 0.96, green: 0.97, blue: 0.98 }; // #F5F7FA Light cool gray
+  const headerText = { red: 0.36, green: 0.42, blue: 0.49 }; // #5C6B7E Slate gray
+  const darkNavy = { red: 0.11, green: 0.14, blue: 0.19 }; // #1B2430 Dark charcoal navy
+  const orangeTotal = { red: 1.0, green: 0.38, blue: 0.10 }; // #FF611A Vibrant Orange
+  const dateColor = { red: 0.35, green: 0.40, blue: 0.48 }; // #596677 Slate text
+  const projectColor = { red: 0.08, green: 0.12, blue: 0.18 }; // #141E2E Dark bold text
+  const teamColor = { red: 0.40, green: 0.46, blue: 0.54 }; // #66768A Slate team text
+  const stripe = { red: 0.97, green: 0.98, blue: 0.99 }; // #F8FAFC
+  const background = { red: 1.0, green: 1.0, blue: 1.0 };
+  const border = { red: 0.89, green: 0.91, blue: 0.94 }; // #E3E8EF
+  const divider = { red: 0.30, green: 0.36, blue: 0.44 }; // #4D5C70 Divider in navy total bar
   const currency = { type: 'NUMBER', pattern: '"₹"#,##0.00' };
   const rows = rowOffset + Math.max(8, ...blocks.map(b => (b.projects.length || 1) + 4));
   const columns = Math.max(rowOffset ? 11 : 4, blocks.length ? blocks.length * 7 - 3 : 4);
@@ -81,11 +84,12 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
     { unmergeCells: { range: all } },
     // Clear the generated tab inside the same atomic batch as its replacement.
     { updateCells: { range: all, fields: 'userEnteredValue,userEnteredFormat,note' } },
-    { repeatCell: { range: all, cell: { userEnteredFormat: { backgroundColor: background, textFormat: { foregroundColor: slateText, fontFamily: 'Arial', fontSize: 11 }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat' } },
+    { repeatCell: { range: all, cell: { userEnteredFormat: { backgroundColor: background, textFormat: { foregroundColor: projectColor, fontFamily: 'Arial', fontSize: 11 }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat' } },
     { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: gridRows }, properties: { pixelSize: 36 }, fields: 'pixelSize' } },
   ];
-  const style = (r1: number, r2: number, c1: number, c2: number, format: sheets_v4.Schema$CellFormat) => {
-    requests.push({ repeatCell: { range: range(r1, r2, c1, c2), cell: { userEnteredFormat: format }, fields: Object.keys(format).map(key => `userEnteredFormat.${key}`).join(',') } });
+  const style = (r1: number, r2: number, c1: number, c2: number, format: sheets_v4.Schema$CellFormat, fields?: string) => {
+    const mask = fields || Object.keys(format).map(key => `userEnteredFormat.${key}`).join(',');
+    requests.push({ repeatCell: { range: range(r1, r2, c1, c2), cell: { userEnteredFormat: format }, fields: mask } });
   };
   const merge = (row: number, col: number, width: number) => requests.push({ mergeCells: { range: range(row, row + 1, col, col + width), mergeType: 'MERGE_ALL' } });
   const tableBorders = (r1: number, r2: number, c1: number, c2: number, grid = false) => {
@@ -100,34 +104,57 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
     const totalRow = 2 + projectRows;
     const data: (string | number)[][] = [
       [block.name],
-      ['Project Date', 'Project', 'Assigned Team', 'Net Value'],
+      ['PROJECT DATE', 'PROJECT', 'ASSIGNED TEAM', 'NET VALUE'],
       ...(block.projects.length ? block.projects.map(p => [p.date, p.name, p.assignedTo, p.value]) : [['', 'No projects yet', '', '']]),
-      ['Total Project Value', '', block.total, ''],
+      ['Total Project Value', '', '', block.total],
     ];
     requests.push({ updateCells: { start: { sheetId, rowIndex: rowOffset, columnIndex: col }, rows: data.map(values => ({ values: values.map(value => ({ userEnteredValue: typeof value === 'number' ? { numberValue: value } : { stringValue: value } })) })), fields: 'userEnteredValue' } });
+    
+    // Header Row 0: Client Banner (Vibrant Orange, Bold White Text)
     merge(0, col, 4);
-    style(0, 1, col, col + 4, { textFormat: { bold: true, fontSize: 16, foregroundColor: background }, backgroundColor: orangeDark, horizontalAlignment: 'CENTER' });
-    gradientCols.forEach((color, i) => {
-      style(1, 2, col + i, col + i + 1, { backgroundColor: color, textFormat: { bold: true, foregroundColor: background, fontSize: 11 }, horizontalAlignment: i === 1 ? 'LEFT' : 'CENTER' });
-    });
+    style(0, 1, col, col + 4, { textFormat: { bold: true, fontSize: 16, foregroundColor: background }, backgroundColor: orangeHeader, horizontalAlignment: 'CENTER' });
+    
+    // Header Row 1: Column Headers (Soft Slate-Gray, Uppercase Bold)
+    style(1, 2, col, col + 4, { backgroundColor: headerBg, textFormat: { bold: true, foregroundColor: headerText, fontSize: 10 } });
+    style(1, 2, col, col + 1, { horizontalAlignment: 'LEFT' });
+    style(1, 2, col + 1, col + 2, { horizontalAlignment: 'LEFT' });
+    style(1, 2, col + 2, col + 3, { horizontalAlignment: 'LEFT' });
+    style(1, 2, col + 3, col + 4, { horizontalAlignment: 'RIGHT' });
+
+    // Data Rows: Alternating rows, project name bold, date/team slate, net value bold
     block.projects.forEach((_, i) => {
-      if (i % 2 === 1) style(2 + i, 3 + i, col, col + 4, { backgroundColor: stripe });
+      const row = 2 + i;
+      if (i % 2 === 1) style(row, row + 1, col, col + 4, { backgroundColor: stripe });
+      style(row, row + 1, col, col + 1, { textFormat: { bold: false, foregroundColor: dateColor, fontSize: 11 }, horizontalAlignment: 'LEFT' });
+      style(row, row + 1, col + 1, col + 2, { textFormat: { bold: true, foregroundColor: projectColor, fontSize: 11 }, horizontalAlignment: 'LEFT' });
+      style(row, row + 1, col + 2, col + 3, { textFormat: { bold: false, foregroundColor: teamColor, fontSize: 11 }, horizontalAlignment: 'LEFT' });
+      style(row, row + 1, col + 3, col + 4, { textFormat: { bold: true, foregroundColor: projectColor, fontSize: 11 }, numberFormat: currency, horizontalAlignment: 'RIGHT' });
     });
-    style(2, totalRow, col + 3, col + 4, { numberFormat: currency, textFormat: { bold: true, foregroundColor: slateText } });
-    merge(totalRow, col, 2); merge(totalRow, col + 2, 2);
-    style(totalRow, totalRow + 1, col, col + 4, { backgroundColor: darkNavy, textFormat: { bold: true, foregroundColor: background, fontSize: 13 } });
-    style(totalRow, totalRow + 1, col + 2, col + 4, { numberFormat: currency, textFormat: { bold: true, foregroundColor: orange, fontSize: 20 } });
-    tableBorders(totalRow, totalRow + 1, col, col + 2);
-    tableBorders(totalRow, totalRow + 1, col + 2, col + 4);
+    if (!block.projects.length) {
+      style(2, 3, col + 1, col + 2, { textFormat: { bold: false, foregroundColor: teamColor, italic: true }, horizontalAlignment: 'CENTER' });
+    }
+
+    // Footer Row: Dark Navy with 'Total Project Value' on left and large Orange amount on right
+    merge(totalRow, col, 3);
+    style(totalRow, totalRow + 1, col, col + 4, { backgroundColor: darkNavy });
+    style(totalRow, totalRow + 1, col, col + 3, { textFormat: { bold: true, foregroundColor: background, fontSize: 14 }, horizontalAlignment: 'LEFT' });
+    style(totalRow, totalRow + 1, col + 3, col + 4, { numberFormat: currency, textFormat: { bold: true, foregroundColor: orangeTotal, fontSize: 20 }, horizontalAlignment: 'RIGHT' });
+
+    // Borders: Header banner, subtle inner/outer table grid, and dark navy total row with divider
     tableBorders(0, 1, col, col + 4);
     tableBorders(1, totalRow, col, col + 4, true);
+    const navyLine = { style: 'SOLID', color: darkNavy };
+    requests.push({ updateBorders: { range: range(totalRow, totalRow + 1, col, col + 4), top: navyLine, bottom: navyLine, left: navyLine, right: navyLine } });
+    const dividerLine = { style: 'SOLID', color: divider };
+    requests.push({ updateBorders: { range: range(totalRow, totalRow + 1, col + 3, col + 4), left: dividerLine } });
+
     [140, 260, 220, 160].forEach((width, offset) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + offset, endIndex: col + offset + 1 }, properties: { pixelSize: width }, fields: 'pixelSize' } }));
     if (index < blocks.length - 1) {
       requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + 4, endIndex: col + 7 }, properties: { pixelSize: 26 }, fields: 'pixelSize' } });
     }
   });
   // Rows are shared by all side-by-side clients; take the tallest requirement.
-  const rowHeights = new Map<number, number>([[0, 48], [1, 38]]);
+  const rowHeights = new Map<number, number>([[0, 48], [1, 36]]);
   for (const block of blocks) {
     const total = 2 + Math.max(1, block.projects.length);
     rowHeights.set(total, Math.max(rowHeights.get(total) || 36, 48));

@@ -983,13 +983,12 @@ export const AdminClientDetails: React.FC = () => {
           )}
 
           {/* Card 6: Pending (Net Receivable at the END) */}
-          <div className="p-4 rounded-xl border border-[#FF5A1F]/20 bg-[#FF5A1F]/[0.03] flex flex-col justify-between xl:flex-1 min-w-0">
+          <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between xl:flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-medium text-white/70">Pending</span>
-                <span className="text-[9px] text-[#FF5A1F] font-mono px-1 rounded bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">Net</span>
+                <span className="text-[11px] font-medium text-white/50">Pending</span>
               </div>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center border bg-[#FF5A1F]/10 text-[#FF5A1F] border-[#FF5A1F]/20">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center border text-white/50 border-white/10">
                 <Tag className="w-3.5 h-3.5" />
               </div>
             </div>
@@ -1034,7 +1033,7 @@ export const AdminClientDetails: React.FC = () => {
                       <span className="text-white/40 font-mono">{new Date(d.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="font-mono font-bold text-rose-400">− {formatINR(d.amount)}</span>
+                      <span className="font-mono font-bold text-[#FF5A1F]">− {formatINR(d.amount)}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveBadDebt(d.id)}
