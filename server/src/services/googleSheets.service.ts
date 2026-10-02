@@ -23,7 +23,7 @@ export async function syncClientProjectsToSheet(rawSpreadsheetId?: string) {
     const sheets = getSheetsClient();
     const [clients, projects, payments, metadata] = await Promise.all([
       Client.find().select('name companyName').lean(),
-      Project.find().select('clientId projectName projectValue discountPercent discountAmount startDate createdAt deadline status').lean(),
+      Project.find().select('clientId projectName projectValue discountPercent discountAmount startDate createdAt deadline status assignedEmployees').populate('assignedEmployees', 'fullName name').lean(),
       ClientPayment.find().select('clientId amount paymentDate createdAt').lean(),
       sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets(properties,charts(chartId))' }),
     ]);

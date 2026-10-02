@@ -239,7 +239,9 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
 
     const [financialMetrics, rawProjects, rawPayments] = await Promise.all([
       calculateFinancialMetrics({ clientId: client._id, targetMonth }),
-      Project.find({ clientId: client._id }).sort({ createdAt: -1 }),
+      Project.find({ clientId: client._id })
+        .populate('assignedEmployees', 'fullName name employeeCode')
+        .sort({ createdAt: -1 }),
       ClientPayment.find({ clientId: client._id })
         .populate('projectId', 'projectName projectCode')
         .sort({ paymentDate: -1 }),

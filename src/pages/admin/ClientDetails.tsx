@@ -1154,6 +1154,7 @@ export const AdminClientDetails: React.FC = () => {
             <thead className="border-b border-white/[0.06] text-white/40 font-mono text-[10px] uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-3 font-medium">PROJECT NAME</th>
+                <th className="py-3 px-3 font-medium">ASSIGNED TEAM</th>
                 <th className="py-3 px-3 font-medium">STATUS</th>
                 <th className="py-3 px-3 font-medium text-right sm:text-left">CONTRACT VALUE</th>
                 <th className="py-3 px-3 font-medium text-right">ACTION</th>
@@ -1167,6 +1168,27 @@ export const AdminClientDetails: React.FC = () => {
                       <span className="font-medium text-white text-sm block">
                         {p.projectName || p.title}
                       </span>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      {p.assignedEmployees && p.assignedEmployees.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-1.5 max-w-[200px]">
+                          {p.assignedEmployees.map((emp: any) => {
+                            const empName = emp.fullName || emp.name || (typeof emp === 'string' ? emp : 'Team Member');
+                            return (
+                              <span
+                                key={emp._id || emp}
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-white/[0.08] bg-white/[0.04] text-xs text-zinc-200"
+                                title={empName}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
+                                <span className="truncate max-w-[100px]">{empName}</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-zinc-500 italic">Unassigned</span>
+                      )}
                     </td>
                     <td className="py-3.5 px-3">
                       <StatusBadge status={p.status || 'start_process'} type="project" />
@@ -1187,7 +1209,7 @@ export const AdminClientDetails: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="py-8 text-center text-white/40 font-mono">
+                  <td colSpan={5} className="py-8 text-center text-white/40 font-mono">
                     {isAllMonths ? (
                       <div className="space-y-2.5 font-sans py-3">
                         <p className="text-zinc-400">No projects found for this client.</p>

@@ -13,4 +13,5 @@ async function startServer() {
   });
 }
 
+// Server auto-reload trigger
 startServer();

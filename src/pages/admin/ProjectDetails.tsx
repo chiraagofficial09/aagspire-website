@@ -101,15 +101,12 @@ export const AdminProjectDetails: React.FC = () => {
 
   if (!project) return <div className="p-8 text-center text-white/50 font-mono">Project not found.</div>;
 
-  const assignedList = (project.assignedEmployees && project.assignedEmployees.length > 0)
-    ? project.assignedEmployees
-    : [];
-  const teamMembers = assignedList.length > 0
-    ? (team.length > 0
-        ? team.map((m: any) => m.employeeId?.fullName || m.employeeId?.name).filter(Boolean)
-        : assignedList.map((e: any) => e.fullName || e.name).filter(Boolean))
-    : [];
-  const teamMemberDisplay = teamMembers.length > 0 ? teamMembers.join(', ') : 'Unassigned';
+  const assignedNames: string[] = [
+    ...(project.assignedEmployees || []).map((e: any) => e?.fullName || e?.name).filter(Boolean),
+    ...(team || []).map((m: any) => m.employeeId?.fullName || m.employeeId?.name).filter(Boolean),
+  ];
+  const uniqueTeamMembers = Array.from(new Set(assignedNames));
+  const teamMemberDisplay = uniqueTeamMembers.length > 0 ? uniqueTeamMembers.join(', ') : 'Unassigned';
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -204,11 +201,22 @@ export const AdminProjectDetails: React.FC = () => {
                 <StatusBadge status={project.status} type="project" />
               </div>
               <div>
-                <span className="text-white/40 block font-mono text-[10px] mb-1">TEAM MEMBER</span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border bg-white/10 text-white border-white/15">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
-                  <span className="truncate max-w-[150px]">{teamMemberDisplay}</span>
-                </span>
+                <span className="text-white/40 block font-mono text-[10px] mb-1 uppercase">ASSIGNED TEAM</span>
+                {uniqueTeamMembers.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {uniqueTeamMembers.map((name: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-white/10 text-white border-white/15"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
+                        <span>{name}</span>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-xs text-zinc-500 italic">Unassigned</span>
+                )}
               </div>
             </div>
           </div>

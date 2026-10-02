@@ -106,3 +106,34 @@ test('client advance exists even when the client has no projects', () => {
   const requests = buildClientSheetRequests(1, [block]);
   assert.ok(JSON.stringify(requests).includes('Advance / Credit'));
 });
+
+test('includes assigned team members in client project sheet requests without merge overlaps', () => {
+  const clients = [{ _id: 'c1', name: 'Acme Corp' }];
+  const projects = [
+    {
+      clientId: 'c1',
+      projectName: 'Website Redesign',
+      projectValue: 50000,
+      status: 'in_process',
+      assignedEmployees: [{ fullName: 'Rahul Sharma' }, { name: 'Priya Patel' }],
+    },
+  ];
+  const blocks = buildClientBlocks(clients, projects, []);
+  assert.equal(blocks[0].projects[0].assignedTo, 'Rahul Sharma, Priya Patel');
+
+  const requests = buildClientSheetRequests(1, blocks);
+  const serialized = JSON.stringify(requests);
+  assert.ok(serialized.includes('Assigned Team'));
+  assert.ok(serialized.includes('Rahul Sharma, Priya Patel'));
+
+  const merges = requests.flatMap(r => r.mergeCells?.range ? [r.mergeCells.range] : []);
+  for (let i = 0; i < merges.length; i++) {
+    for (let j = i + 1; j < merges.length; j++) {
+      const a = merges[i];
+      const b = merges[j];
+      const overlaps = a.startRowIndex! < b.endRowIndex! && b.startRowIndex! < a.endRowIndex! && a.startColumnIndex! < b.endColumnIndex! && b.startColumnIndex! < a.endColumnIndex!;
+      assert.equal(overlaps, false, `Overlapping merges ${i} and ${j}`);
+    }
+  }
+});
+
