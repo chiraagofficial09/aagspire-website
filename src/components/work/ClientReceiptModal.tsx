@@ -1123,70 +1123,71 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                   </div>
                 </div>
 
-                {/* Billed To */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-[#111111] border border-[#202020]">
-                  <div>
-                    <span className="text-[10px] text-[#71717A] uppercase font-bold tracking-wider block mb-1">
+                {/* Billed To & Invoice Details Card */}
+                <div className="p-4 rounded-xl bg-[#111111] border border-[#202020] space-y-2">
+                  {/* Row 1: BILLED TO/CLIENT on left, Invoice No on right */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[10px] text-[#71717A] uppercase font-bold tracking-wider">
                       Billed To/Client
                     </span>
-                    <h3 className="text-sm font-bold text-white">
-                      {client.companyName || client.name}
-                    </h3>
-                    
-                  </div>
-                  <div className="flex flex-col sm:items-end justify-center">
-                    <div className="w-full sm:w-64 space-y-1.5 text-xs">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[#71717A]">Invoice No:</span>
-                        <strong
-                          onClick={() => {
-                            const val = window.prompt('Enter Custom Invoice Number:', invoiceNumber);
-                            if (val !== null && val.trim()) handleSetInvoiceNumber(val.trim());
-                          }}
-                          title="Click to edit Invoice Number"
-                          className="text-white font-bold cursor-pointer hover:text-[#FF5A1F] transition-colors"
-                        >
-                          {invoiceNumber || getInitialInvoiceNo(client?.clientCode, client?.lastInvoiceNumber) || '001'}
-                        </strong>
-                      </div>
-
-                      <div className="flex justify-between items-center">
-                        <span className="text-[#71717A]">Invoice Date:</span>
-                        <div className="relative group">
-                          <input
-                            type="date"
-                            value={invoiceDate}
-                            onChange={(e) => setInvoiceDate(e.target.value)}
-                            className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10 [color-scheme:dark]"
-                            title="Click to set Invoice Date"
-                          />
-                          <span className="text-white font-medium cursor-pointer group-hover:text-[#FF5A1F] transition-colors">
-                            {invoiceDate
-                              ? new Date(invoiceDate + 'T00:00:00').toLocaleDateString('en-IN', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })
-                              : new Date().toLocaleDateString('en-IN', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                              })}
-                          </span>
-                        </div>
-                      </div>
-
-
-                      {client.gstNumber && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-[#71717A]">GSTIN:</span>
-                          <span className="font-bold bg-gradient-to-r from-[#FF5A1F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F]">
-                            {client.gstNumber}
-                          </span>
-                        </div>
-                      )}
+                    <div className="flex items-center justify-between w-48 sm:w-56">
+                      <span className="text-[#71717A]">Invoice No:</span>
+                      <strong
+                        onClick={() => {
+                          const val = window.prompt('Enter Custom Invoice Number:', invoiceNumber);
+                          if (val !== null && val.trim()) handleSetInvoiceNumber(val.trim());
+                        }}
+                        title="Click to edit Invoice Number"
+                        className="text-white font-bold cursor-pointer hover:text-[#FF5A1F] transition-colors text-right font-mono"
+                      >
+                        {invoiceNumber || getInitialInvoiceNo(client?.clientCode, client?.lastInvoiceNumber) || '001'}
+                      </strong>
                     </div>
                   </div>
+
+                  {/* Row 2: Client Name on left, Invoice Date on right */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-white tracking-tight">
+                      {client.companyName || client.name}
+                    </h3>
+                    <div className="flex items-center justify-between w-48 sm:w-56 text-xs">
+                      <span className="text-[#71717A]">Invoice Date:</span>
+                      <div className="relative group text-right">
+                        <input
+                          type="date"
+                          value={invoiceDate}
+                          onChange={(e) => setInvoiceDate(e.target.value)}
+                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10 [color-scheme:dark]"
+                          title="Click to set Invoice Date"
+                        />
+                        <span className="text-white font-medium cursor-pointer group-hover:text-[#FF5A1F] transition-colors whitespace-nowrap">
+                          {invoiceDate
+                            ? new Date(invoiceDate + 'T00:00:00').toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                            : new Date().toLocaleDateString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Row 3 (Optional): GSTIN */}
+                  {client.gstNumber && (
+                    <div className="flex items-center justify-end text-xs pt-1 border-t border-white/5">
+                      <div className="flex items-center justify-between w-48 sm:w-56">
+                        <span className="text-[#71717A]">GSTIN:</span>
+                        <span className="font-bold bg-gradient-to-r from-[#FF5A1F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F] font-mono text-right">
+                          {client.gstNumber}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Table of Deliverables */}

@@ -88,9 +88,8 @@ function calculateStatementHeight(
   y += logoH + headerGap; // Logo bottom to divider line
   y += headerGap; // Divider line to Billed To card
 
-  const hasContact = Boolean(data.contactPerson);
   const hasGstin = Boolean(data.gstNumber);
-  const billedCardH = (hasContact && hasGstin) ? 72 : (hasContact || hasGstin) ? 68 : 64;
+  const billedCardH = hasGstin ? 72 : 56;
   y += billedCardH + 20;
 
   y += 22; // Table header
@@ -270,57 +269,45 @@ export function generateClientStatementPdfStream(data: ClientStatementPdfData, r
 
   // 3. Billed To & Invoice Details Card (Same spacing as above divider)
   cursorY += headerGap;
-  const hasContact = Boolean(data.contactPerson);
   const hasGstin = Boolean(data.gstNumber);
-  const billedCardH = (hasContact && hasGstin) ? 72 : (hasContact || hasGstin) ? 68 : 64;
+  const billedCardH = hasGstin ? 72 : 56;
 
   doc.roundedRect(contentX, cursorY, contentW, billedCardH, 8).fill('#111111');
   doc.roundedRect(contentX, cursorY, contentW, billedCardH, 8).strokeColor('#202020').lineWidth(0.8).stroke();
 
-  // Left side: Billed To/Client (Centered on Y-axis)
+  // Left & Right columns setup
   const col1X = contentX + 18;
-  if (hasContact) {
-    const leftStartY = cursorY + 13;
-    doc.fillColor('#666666').fontSize(7.5).font(boldFont).text('BILLED TO/CLIENT', col1X, leftStartY, { characterSpacing: 0.6 });
-    doc.fillColor('#FFFFFF').fontSize(11).font(boldFont).text(data.companyName || data.clientName, col1X, leftStartY + 14, { width: 240, ellipsis: true });
-
-  } else {
-    const leftStartY = cursorY + Math.round((billedCardH - 26) / 2);
-    doc.fillColor('#666666').fontSize(7.5).font(boldFont).text('BILLED TO/CLIENT', col1X, leftStartY, { characterSpacing: 0.6 });
-    doc.fillColor('#FFFFFF').fontSize(11).font(boldFont).text(data.companyName || data.clientName, col1X, leftStartY + 14, { width: 240, ellipsis: true });
-  }
-
-  // Right side: Metadata (Invoice No, Date, GSTIN shifted right and vertically centered)
   const col2W = 195;
   const col2X = contentX + contentW - col2W - 18;
-  const rightItemCount = 2 + (hasGstin ? 1 : 0);
-  const rightRowGap = 15;
-  const rightTotalH = (rightItemCount - 1) * rightRowGap + 10;
-  let rowMetaY = cursorY + Math.round((billedCardH - rightTotalH) / 2);
 
-  // Invoice No
+  const row1Y = cursorY + 14;
+  const row2Y = cursorY + 31;
+
+  // Invoice No calculation
   const digits = data.clientCode?.match(/\d+/g);
   const defaultNum = digits && digits.length > 0
     ? (digits[digits.length - 1].length === 4 && digits[digits.length - 1].startsWith('0') ? digits[digits.length - 1].substring(1) : digits[digits.length - 1])
     : '001';
   const displayInvoiceNo = data.invoiceNumber || defaultNum;
 
-  doc.fillColor('#777777').fontSize(8).font(regularFont).text('Invoice No:', col2X, rowMetaY);
-  doc.fillColor('#FFFFFF').fontSize(8.5).font(boldFont).text(displayInvoiceNo, col2X, rowMetaY, { align: 'right', width: col2W });
-  rowMetaY += rightRowGap;
+  // Row 1: Left = 'BILLED TO/CLIENT', Right = 'Invoice No:' [gap] 'displayInvoiceNo'
+  doc.fillColor('#666666').fontSize(7.5).font(boldFont).text('BILLED TO/CLIENT', col1X, row1Y, { characterSpacing: 0.6 });
+  doc.fillColor('#777777').fontSize(8.5).font(regularFont).text('Invoice No:', col2X, row1Y);
+  doc.fillColor('#FFFFFF').fontSize(8.5).font(boldFont).text(displayInvoiceNo, col2X, row1Y, { align: 'right', width: col2W });
 
-  // Date
-  doc.fillColor('#777777').fontSize(8).font(regularFont).text('Invoice Date:', col2X, rowMetaY);
-  doc.fillColor('#FFFFFF').fontSize(8.5).font(regularFont).text(data.statementDate, col2X, rowMetaY, { align: 'right', width: col2W });
-  rowMetaY += rightRowGap;
+  // Row 2: Left = Company/Client Name, Right = 'Invoice Date:' [gap] 'statementDate'
+  doc.fillColor('#FFFFFF').fontSize(11).font(boldFont).text(data.companyName || data.clientName, col1X, row2Y, { width: 240, ellipsis: true });
+  doc.fillColor('#777777').fontSize(8.5).font(regularFont).text('Invoice Date:', col2X, row2Y);
+  doc.fillColor('#FFFFFF').fontSize(8.5).font(regularFont).text(data.statementDate, col2X, row2Y, { align: 'right', width: col2W });
 
-  // GSTIN (if applicable with orange gradient)
+  // Row 3 (Optional): GSTIN if applicable
   if (hasGstin) {
-    const gstinGrad = doc.linearGradient(col2X + 50, rowMetaY, col2X + col2W, rowMetaY);
+    const row3Y = cursorY + 48;
+    const gstinGrad = doc.linearGradient(col2X + 50, row3Y, col2X + col2W, row3Y);
     gstinGrad.stop(0, '#FF5A1F');
     gstinGrad.stop(1, '#FFA05C');
-    doc.fillColor('#777777').fontSize(8).font(regularFont).text('GSTIN:', col2X, rowMetaY);
-    doc.fillColor(gstinGrad).fontSize(8.5).font(boldFont).text(data.gstNumber!, col2X, rowMetaY, { align: 'right', width: col2W });
+    doc.fillColor('#777777').fontSize(8.5).font(regularFont).text('GSTIN:', col2X, row3Y);
+    doc.fillColor(gstinGrad).fontSize(8.5).font(boldFont).text(data.gstNumber!, col2X, row3Y, { align: 'right', width: col2W });
   }
 
   // 4. Deliverables Table
