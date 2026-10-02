@@ -104,7 +104,8 @@ test('client advance exists even when the client has no projects', () => {
   assert.equal(block.credit, 250);
   assert.equal(block.pending, 0);
   const requests = buildClientSheetRequests(1, [block]);
-  assert.ok(JSON.stringify(requests).includes('Advance / Credit'));
+  assert.ok(!JSON.stringify(requests).includes('CLIENT SUMMARY'));
+  assert.ok(!JSON.stringify(requests).includes('Advance / Credit'));
 });
 
 test('includes assigned team members in client project sheet requests without merge overlaps and excludes status column', () => {

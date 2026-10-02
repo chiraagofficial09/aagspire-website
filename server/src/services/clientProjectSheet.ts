@@ -54,20 +54,21 @@ export type ClientBlock = ReturnType<typeof buildClientBlocks>[number];
 
 /** Four columns per client, with three blank spacer columns. */
 export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[], previousRows = 1, previousColumns = 1, rowOffset = 0) {
-  const orange = { red: 1, green: 0.35, blue: 0.12 };
-  const pendingText = { red: 0.85, green: 0.30, blue: 0.05 };
-  const pendingBg = { red: 1, green: 0.96, blue: 0.93 };
-  const cardBg = { red: 0.97, green: 0.98, blue: 0.99 };
-  const headerBg = { red: 0.94, green: 0.95, blue: 0.97 };
-  const stripe = { red: 0.98, green: 0.99, blue: 1.0 };
+  const orangeDark = { red: 0.98, green: 0.32, blue: 0.05 }; // #FA520D Deep vibrant orange
+  const gradientCols = [
+    { red: 1, green: 0.36, blue: 0.10 }, // Col 0: #FF5C1A
+    { red: 1, green: 0.44, blue: 0.18 }, // Col 1: #FF702E
+    { red: 1, green: 0.52, blue: 0.26 }, // Col 2: #FF8542
+    { red: 1, green: 0.60, blue: 0.35 }, // Col 3: #FF9959
+  ];
   const darkNavy = { red: 0.08, green: 0.12, blue: 0.20 };
-  const receivedBlue = { red: 0.11, green: 0.35, blue: 0.72 };
+  const orange = { red: 1, green: 0.38, blue: 0.10 };
   const slateText = { red: 0.09, green: 0.12, blue: 0.17 };
-  const mutedText = { red: 0.40, green: 0.45, blue: 0.53 };
+  const stripe = { red: 0.98, green: 0.99, blue: 1.0 };
   const background = { red: 1, green: 1, blue: 1 };
   const border = { red: 0.88, green: 0.90, blue: 0.93 };
   const currency = { type: 'NUMBER', pattern: '"₹"#,##0.00' };
-  const rows = rowOffset + Math.max(14, ...blocks.map(b => Math.max(1, b.projects.length) + 11));
+  const rows = rowOffset + Math.max(8, ...blocks.map(b => (b.projects.length || 1) + 4));
   const columns = Math.max(rowOffset ? 11 : 4, blocks.length ? blocks.length * 7 - 3 : 4);
   if (columns > 18278) throw new Error('Too many clients for one horizontal Google Sheet. Split clients into multiple spreadsheets.');
   const gridRows = Math.max(rows, previousRows);
@@ -101,39 +102,23 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
       [block.name],
       ['Project Date', 'Project', 'Assigned Team', 'Net Value'],
       ...(block.projects.length ? block.projects.map(p => [p.date, p.name, p.assignedTo, p.value]) : [['', 'No projects yet', '', '']]),
-      ['Total Project Value', '', block.total, ''], [], ['CLIENT SUMMARY'],
-      ['RECEIVED', '', 'PENDING', ''], [block.received, '', block.pending, ''],
-      ...(block.credit > 0 ? [['Advance / Credit', '', block.credit, '']] : []),
+      ['Total Project Value', '', block.total, ''],
     ];
     requests.push({ updateCells: { start: { sheetId, rowIndex: rowOffset, columnIndex: col }, rows: data.map(values => ({ values: values.map(value => ({ userEnteredValue: typeof value === 'number' ? { numberValue: value } : { stringValue: value } })) })), fields: 'userEnteredValue' } });
-    merge(0, col, 4); merge(totalRow + 2, col, 4);
-    style(0, 1, col, col + 4, { textFormat: { bold: true, fontSize: 16, foregroundColor: background }, backgroundColor: darkNavy, horizontalAlignment: 'CENTER' });
-    style(1, 2, col, col + 4, { backgroundColor: headerBg, textFormat: { bold: true, foregroundColor: slateText, fontSize: 11 } });
+    merge(0, col, 4);
+    style(0, 1, col, col + 4, { textFormat: { bold: true, fontSize: 16, foregroundColor: background }, backgroundColor: orangeDark, horizontalAlignment: 'CENTER' });
+    gradientCols.forEach((color, i) => {
+      style(1, 2, col + i, col + i + 1, { backgroundColor: color, textFormat: { bold: true, foregroundColor: background, fontSize: 11 }, horizontalAlignment: i === 1 ? 'LEFT' : 'CENTER' });
+    });
     block.projects.forEach((_, i) => {
       if (i % 2 === 1) style(2 + i, 3 + i, col, col + 4, { backgroundColor: stripe });
     });
     style(2, totalRow, col + 3, col + 4, { numberFormat: currency, textFormat: { bold: true, foregroundColor: slateText } });
-    for (const offset of [0, ...(block.credit > 0 ? [5] : [])]) {
-      const row = totalRow + offset;
-      merge(row, col, 2); merge(row, col + 2, 2);
-      style(row, row + 1, col, col + 4, { backgroundColor: offset === 0 ? darkNavy : cardBg, textFormat: { bold: true, foregroundColor: offset === 0 ? background : slateText, fontSize: 13 } });
-      style(row, row + 1, col + 2, col + 4, { numberFormat: currency });
-      if (offset === 0) style(row, row + 1, col + 2, col + 4, { textFormat: { bold: true, foregroundColor: orange, fontSize: 20 } });
-      tableBorders(row, row + 1, col, col + 2);
-      tableBorders(row, row + 1, col + 2, col + 4);
-    }
-    style(totalRow + 2, totalRow + 3, col, col + 4, { textFormat: { bold: true, fontSize: 13, foregroundColor: slateText } });
-    // Two adjacent summary cards: labels above numeric, editable amounts.
-    for (const side of [0, 2]) {
-      const start = col + side;
-      merge(totalRow + 3, start, 2);
-      merge(totalRow + 4, start, 2);
-      style(totalRow + 3, totalRow + 5, start, start + 2, { backgroundColor: side === 0 ? cardBg : pendingBg, horizontalAlignment: 'CENTER' });
-      style(totalRow + 3, totalRow + 4, start, start + 2, { textFormat: { bold: true, fontSize: 11, foregroundColor: side === 0 ? mutedText : pendingText } });
-      style(totalRow + 4, totalRow + 5, start, start + 2, { numberFormat: currency, textFormat: { bold: true, fontSize: 22, foregroundColor: side === 0 ? receivedBlue : pendingText } });
-      tableBorders(totalRow + 3, totalRow + 5, start, start + 2);
-      requests.push({ updateBorders: { range: range(totalRow + 3, totalRow + 5, start, start + 2), left: { style: 'SOLID_THICK', color: side === 0 ? receivedBlue : orange } } });
-    }
+    merge(totalRow, col, 2); merge(totalRow, col + 2, 2);
+    style(totalRow, totalRow + 1, col, col + 4, { backgroundColor: darkNavy, textFormat: { bold: true, foregroundColor: background, fontSize: 13 } });
+    style(totalRow, totalRow + 1, col + 2, col + 4, { numberFormat: currency, textFormat: { bold: true, foregroundColor: orange, fontSize: 20 } });
+    tableBorders(totalRow, totalRow + 1, col, col + 2);
+    tableBorders(totalRow, totalRow + 1, col + 2, col + 4);
     tableBorders(0, 1, col, col + 4);
     tableBorders(1, totalRow, col, col + 4, true);
     [140, 260, 220, 160].forEach((width, offset) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + offset, endIndex: col + offset + 1 }, properties: { pixelSize: width }, fields: 'pixelSize' } }));
@@ -142,12 +127,10 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
     }
   });
   // Rows are shared by all side-by-side clients; take the tallest requirement.
-  const rowHeights = new Map<number, number>([[0, 46], [1, 38]]);
+  const rowHeights = new Map<number, number>([[0, 48], [1, 38]]);
   for (const block of blocks) {
     const total = 2 + Math.max(1, block.projects.length);
-    for (const [row, height] of [[total, 48], [total + 2, 36], [total + 3, 32], [total + 4, 48]]) {
-      rowHeights.set(row, Math.max(rowHeights.get(row) || 36, height));
-    }
+    rowHeights.set(total, Math.max(rowHeights.get(total) || 36, 48));
   }
   for (const [row, height] of rowHeights) requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: row + rowOffset, endIndex: row + rowOffset + 1 }, properties: { pixelSize: height }, fields: 'pixelSize' } });
   return requests;
