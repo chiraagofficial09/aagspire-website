@@ -49,12 +49,15 @@ export function buildDashboardData(blocks: ClientBlock[], clients: { _id: unknow
 
 export function buildDashboardRequests(sheetId: number, dataSheetId: number, data: ReturnType<typeof buildDashboardData>, oldChartIds: number[] = []): sheets_v4.Schema$Request[] {
   const requests: sheets_v4.Schema$Request[] = oldChartIds.map(objectId => ({ deleteEmbeddedObject: { objectId } }));
-  const orange = { red: 1, green: 0.39, blue: 0.04 };
-  const green = { red: 0.02, green: 0.48, blue: 0.3 };
-  const dark = { red: 0.1, green: 0.14, blue: 0.22 };
+  const orange = { red: 1, green: 0.35, blue: 0.12 };
+  const darkNavy = { red: 0.08, green: 0.12, blue: 0.20 };
+  const slateText = { red: 0.09, green: 0.12, blue: 0.17 };
+  const mutedText = { red: 0.40, green: 0.45, blue: 0.53 };
+  const receivedBlue = { red: 0.11, green: 0.35, blue: 0.72 };
   const white = { red: 1, green: 1, blue: 1 };
-  const pale = { red: 1, green: 0.95, blue: 0.91 };
-  const line = { style: 'SOLID', color: { red: 0.87, green: 0.89, blue: 0.92 } };
+  const cardBg = { red: 0.97, green: 0.98, blue: 0.99 };
+  const headerBg = { red: 0.94, green: 0.95, blue: 0.97 };
+  const line = { style: 'SOLID', color: { red: 0.88, green: 0.90, blue: 0.93 } };
   const currency = { type: 'NUMBER', pattern: '"₹"#,##0.00' };
   const range = (row: number, end: number, col: number, endCol: number) => ({ sheetId, startRowIndex: row, endRowIndex: end, startColumnIndex: col, endColumnIndex: endCol });
   const write = (targetId: number, row: number, col: number, values: (string | number)[][]) => requests.push({ updateCells: {
@@ -69,23 +72,23 @@ export function buildDashboardRequests(sheetId: number, dataSheetId: number, dat
     write(sheetId, row, col, [[value]]);
   };
   // Also size these columns when there are fewer than two clients.
-  [145, 240, 190, 155, 14, 14, 14, 145, 240, 190, 155].forEach((pixelSize, col) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col, endIndex: col + 1 }, properties: { pixelSize }, fields: 'pixelSize' } }));
+  [140, 260, 220, 160, 26, 26, 26, 140, 260, 220, 160].forEach((pixelSize, col) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col, endIndex: col + 1 }, properties: { pixelSize }, fields: 'pixelSize' } }));
   merged(0, 0, 11, 'AAGSPIRE | BUSINESS DASHBOARD');
-  format(0, 1, 0, 11, { backgroundColor: orange, textFormat: { bold: true, fontSize: 23, foregroundColor: white } });
+  format(0, 1, 0, 11, { backgroundColor: darkNavy, textFormat: { bold: true, fontSize: 18, foregroundColor: white } });
   merged(1, 0, 11, `All-time overview · Last synced: ${data.updated} IST · Monthly charts: last 6 months`);
-  format(1, 2, 0, 11, { textFormat: { fontSize: 11, foregroundColor: dark } });
+  format(1, 2, 0, 11, { backgroundColor: cardBg, textFormat: { fontSize: 11, foregroundColor: mutedText } });
   const cards: [string, number, number, number, number, boolean][] = [
     ['Total Clients', data.clientCount, 3, 0, 2, false], ['Total Projects', data.projectCount, 3, 2, 4, false], ['Active Projects', data.activeCount, 3, 7, 11, false],
     ['Total Project Value', data.total, 6, 0, 2, true], ['Total Received', data.received, 6, 2, 4, true], ['Total Pending', data.pending, 6, 7, 11, true],
   ];
   for (const [label, value, row, col, endCol, money] of cards) {
     merged(row, col, endCol, label); merged(row + 1, col, endCol, value);
-    format(row, row + 2, col, endCol, { backgroundColor: pale, horizontalAlignment: 'CENTER', textFormat: { bold: true, foregroundColor: dark } });
-    format(row + 1, row + 2, col, endCol, { textFormat: { bold: true, fontSize: 23, foregroundColor: label === 'Total Received' ? green : dark }, ...(money ? { numberFormat: currency } : {}) });
+    format(row, row + 2, col, endCol, { backgroundColor: cardBg, horizontalAlignment: 'CENTER', textFormat: { bold: true, fontSize: 11, foregroundColor: mutedText } });
+    format(row + 1, row + 2, col, endCol, { textFormat: { bold: true, fontSize: 22, foregroundColor: label === 'Total Received' ? receivedBlue : label === 'Total Pending' ? orange : darkNavy }, ...(money ? { numberFormat: currency } : {}) });
     requests.push({ updateBorders: { range: range(row, row + 2, col, endCol), top: line, bottom: line, left: line, right: line } });
   }
   merged(9, 0, 11, `Advance / Credit: ₹${data.credit.toLocaleString('en-IN', { minimumFractionDigits: 2 })} · Client advances do not reduce another client's pending balance.`);
-  format(9, 10, 0, 11, { textFormat: { fontSize: 10, foregroundColor: green } });
+  format(9, 10, 0, 11, { textFormat: { fontSize: 10, foregroundColor: mutedText } });
 
   // Hidden supporting tab contains names and aggregates only; charts include hidden data.
   requests.push({ updateSheetProperties: { properties: { sheetId: dataSheetId, hidden: true, gridProperties: { rowCount: 20, columnCount: 16 } }, fields: 'hidden,gridProperties.rowCount,gridProperties.columnCount' } });
@@ -105,13 +108,13 @@ export function buildDashboardRequests(sheetId: number, dataSheetId: number, dat
   chart('Monthly Project Value & Collection (INR)', 10, 0, { basicChart: {
     chartType: 'COLUMN', headerCount: 1, legendPosition: 'BOTTOM_LEGEND',
     domains: [{ domain: source(0, monthly.length) }],
-    series: [{ series: source(1, monthly.length), targetAxis: 'LEFT_AXIS', color: orange }, { series: source(2, monthly.length), targetAxis: 'LEFT_AXIS', color: green }],
+    series: [{ series: source(1, monthly.length), targetAxis: 'LEFT_AXIS', color: orange }, { series: source(2, monthly.length), targetAxis: 'LEFT_AXIS', color: receivedBlue }],
     axis: [{ position: 'LEFT_AXIS', title: 'INR' }],
   } });
   chart(`Client Received & Pending${data.clientCount > 10 ? ' — Top 10 by Value' : ''} (INR)`, 10, 7, { basicChart: {
     chartType: 'BAR', stackedType: 'STACKED', headerCount: 1, legendPosition: 'BOTTOM_LEGEND',
     domains: [{ domain: source(5, clients.length) }],
-    series: [{ series: source(6, clients.length), targetAxis: 'BOTTOM_AXIS', color: green }, { series: source(7, clients.length), targetAxis: 'BOTTOM_AXIS', color: orange }],
+    series: [{ series: source(6, clients.length), targetAxis: 'BOTTOM_AXIS', color: receivedBlue }, { series: source(7, clients.length), targetAxis: 'BOTTOM_AXIS', color: orange }],
     axis: [{ position: 'BOTTOM_AXIS', title: 'INR' }],
   } });
   chart(data.projectCount ? 'Project Status' : 'Project Status — No projects yet', 21, 0, { subtitle: `Total Projects: ${data.projectCount}`, pieChart: { legendPosition: 'RIGHT_LEGEND', pieHole: 0.65, domain: source(10, statuses.length), series: source(11, statuses.length) } });
@@ -121,17 +124,17 @@ export function buildDashboardRequests(sheetId: number, dataSheetId: number, dat
   } });
 
   merged(32, 0, 4, 'TOP PENDING CLIENTS');
-  format(32, 34, 0, 4, { backgroundColor: pale, textFormat: { bold: true, foregroundColor: dark } });
+  format(32, 34, 0, 4, { backgroundColor: headerBg, textFormat: { bold: true, foregroundColor: slateText, fontSize: 12 } });
   merged(33, 0, 2, 'Client'); merged(33, 2, 4, 'Pending Amount');
   for (let i = 0; i < 5; i++) {
     const pending = data.pendingClients[i];
     merged(34 + i, 0, 2, pending?.name || (i === 0 ? 'No pending balances' : ''));
     merged(34 + i, 2, 4, pending?.pending ?? '');
   }
-  format(34, 39, 2, 4, { numberFormat: currency });
+  format(34, 39, 2, 4, { numberFormat: currency, textFormat: { bold: true, foregroundColor: orange } });
   requests.push({ updateBorders: { range: range(33, 39, 0, 4), top: line, bottom: line, left: line, right: line, innerHorizontal: line } });
   merged(40, 0, 11, 'CLIENT PROJECTS');
-  format(40, 41, 0, 11, { textFormat: { bold: true, fontSize: 22, foregroundColor: dark } });
-  for (const [row, size] of [[0, 64], [4, 50], [7, 50]]) requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: row, endIndex: row + 1 }, properties: { pixelSize: size }, fields: 'pixelSize' } });
+  format(40, 41, 0, 11, { textFormat: { bold: true, fontSize: 20, foregroundColor: darkNavy } });
+  for (const [row, size] of [[0, 52], [4, 46], [7, 46]]) requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: row, endIndex: row + 1 }, properties: { pixelSize: size }, fields: 'pixelSize' } });
   return requests;
 }

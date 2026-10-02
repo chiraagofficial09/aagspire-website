@@ -38,11 +38,14 @@ export async function syncClientProjectsToSheet(rawSpreadsheetId?: string) {
     usedIds.add(sheetId);
     let dataSheetId = dataTab?.sheetId ?? 0;
     if (!dataTab) while (usedIds.has(dataSheetId)) dataSheetId++;
-    const requests = buildClientSheetRequests(sheetId, blocks, existing?.gridProperties?.rowCount || 1, existing?.gridProperties?.columnCount || 1, CLIENT_REPORT_START_ROW);
+    const requests = buildClientSheetRequests(sheetId, blocks, existing?.gridProperties?.rowCount || 1, existing?.gridProperties?.columnCount || 1, 0);
     if (!existing) requests.unshift({ addSheet: { properties: { sheetId, title: tabTitle } } });
-    if (!dataTab) requests.unshift({ addSheet: { properties: { sheetId: dataSheetId, title: DASHBOARD_DATA_TITLE } } });
-    const dashboard = buildDashboardData(blocks, clients, projects, payments);
-    requests.push(...buildDashboardRequests(sheetId, dataSheetId, dashboard, (reportTab?.charts || []).flatMap(chart => chart.chartId == null ? [] : [chart.chartId])));
+    for (const chart of reportTab?.charts || []) {
+      if (chart.chartId != null) requests.push({ deleteEmbeddedObject: { objectId: chart.chartId } });
+    }
+    if (dataTab?.sheetId != null) {
+      requests.push({ deleteSheet: { sheetId: dataTab.sheetId } });
+    }
     await sheets.spreadsheets.batchUpdate({ spreadsheetId, requestBody: { requests } });
     return { success: true, spreadsheetId, tabTitle, sheetId, syncedCount: projects.length, clientCount: blocks.length, syncedAt: new Date().toISOString() };
   } finally {

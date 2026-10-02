@@ -54,16 +54,18 @@ export type ClientBlock = ReturnType<typeof buildClientBlocks>[number];
 
 /** Four columns per client, with three blank spacer columns. */
 export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[], previousRows = 1, previousColumns = 1, rowOffset = 0) {
-  const orange = { red: 1, green: 0.39, blue: 0.04 };
-  const pendingText = { red: 0.8, green: 0.24, blue: 0.01 };
-  const peach = { red: 1, green: 0.94, blue: 0.9 };
-  const mint = { red: 0.91, green: 0.98, blue: 0.95 };
-  const stripe = { red: 0.96, green: 0.97, blue: 0.98 };
-  const black = { red: 0.12, green: 0.12, blue: 0.12 };
-  const green = { red: 0.02, green: 0.43, blue: 0.28 };
-  const text = { red: 0.12, green: 0.14, blue: 0.18 };
+  const orange = { red: 1, green: 0.35, blue: 0.12 };
+  const pendingText = { red: 0.85, green: 0.30, blue: 0.05 };
+  const pendingBg = { red: 1, green: 0.96, blue: 0.93 };
+  const cardBg = { red: 0.97, green: 0.98, blue: 0.99 };
+  const headerBg = { red: 0.94, green: 0.95, blue: 0.97 };
+  const stripe = { red: 0.98, green: 0.99, blue: 1.0 };
+  const darkNavy = { red: 0.08, green: 0.12, blue: 0.20 };
+  const receivedBlue = { red: 0.11, green: 0.35, blue: 0.72 };
+  const slateText = { red: 0.09, green: 0.12, blue: 0.17 };
+  const mutedText = { red: 0.40, green: 0.45, blue: 0.53 };
   const background = { red: 1, green: 1, blue: 1 };
-  const border = { red: 0.86, green: 0.88, blue: 0.9 };
+  const border = { red: 0.88, green: 0.90, blue: 0.93 };
   const currency = { type: 'NUMBER', pattern: '"₹"#,##0.00' };
   const rows = rowOffset + Math.max(14, ...blocks.map(b => Math.max(1, b.projects.length) + 11));
   const columns = Math.max(rowOffset ? 11 : 4, blocks.length ? blocks.length * 7 - 3 : 4);
@@ -74,11 +76,11 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
   const range = (r1: number, r2: number, c1: number, c2: number): sheets_v4.Schema$GridRange => ({ sheetId, startRowIndex: r1 + rowOffset, endRowIndex: r2 + rowOffset, startColumnIndex: c1, endColumnIndex: c2 });
   const all = range(-rowOffset, gridRows - rowOffset, 0, gridColumns);
   const requests: sheets_v4.Schema$Request[] = [
-    { updateSheetProperties: { properties: { sheetId, gridProperties: { rowCount: gridRows, columnCount: gridColumns, frozenRowCount: rowOffset ? 1 : 3, hideGridlines: true } }, fields: 'gridProperties' } },
+    { updateSheetProperties: { properties: { sheetId, gridProperties: { rowCount: gridRows, columnCount: gridColumns, frozenRowCount: rowOffset ? 1 : 2, hideGridlines: true } }, fields: 'gridProperties' } },
     { unmergeCells: { range: all } },
     // Clear the generated tab inside the same atomic batch as its replacement.
     { updateCells: { range: all, fields: 'userEnteredValue,userEnteredFormat,note' } },
-    { repeatCell: { range: all, cell: { userEnteredFormat: { backgroundColor: background, textFormat: { foregroundColor: text, fontFamily: 'Arial', fontSize: 11 }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat' } },
+    { repeatCell: { range: all, cell: { userEnteredFormat: { backgroundColor: background, textFormat: { foregroundColor: slateText, fontFamily: 'Arial', fontSize: 11 }, verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP' } }, fields: 'userEnteredFormat' } },
     { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: gridRows }, properties: { pixelSize: 36 }, fields: 'pixelSize' } },
   ];
   const style = (r1: number, r2: number, c1: number, c2: number, format: sheets_v4.Schema$CellFormat) => {
@@ -94,9 +96,9 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
   blocks.forEach((block, index) => {
     const col = index * 7;
     const projectRows = block.projects.length || 1;
-    const totalRow = 3 + projectRows;
+    const totalRow = 2 + projectRows;
     const data: (string | number)[][] = [
-      [block.name], [block.contact ? `PROJECT SUMMARY · ${block.contact}` : 'PROJECT SUMMARY'],
+      [block.name],
       ['Project Date', 'Project', 'Assigned Team', 'Net Value'],
       ...(block.projects.length ? block.projects.map(p => [p.date, p.name, p.assignedTo, p.value]) : [['', 'No projects yet', '', '']]),
       ['Total Project Value', '', block.total, ''], [], ['CLIENT SUMMARY'],
@@ -104,50 +106,50 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
       ...(block.credit > 0 ? [['Advance / Credit', '', block.credit, '']] : []),
     ];
     requests.push({ updateCells: { start: { sheetId, rowIndex: rowOffset, columnIndex: col }, rows: data.map(values => ({ values: values.map(value => ({ userEnteredValue: typeof value === 'number' ? { numberValue: value } : { stringValue: value } })) })), fields: 'userEnteredValue' } });
-    merge(0, col, 4); merge(1, col, 4); merge(totalRow + 2, col, 4);
-    style(0, 1, col, col + 4, { textFormat: { bold: true, fontSize: 23, foregroundColor: background }, backgroundColor: orange });
-    style(1, 2, col, col + 4, { textFormat: { bold: true, fontSize: 12, foregroundColor: text } });
-    style(2, 3, col, col + 4, { backgroundColor: peach, textFormat: { bold: true, foregroundColor: text } });
+    merge(0, col, 4); merge(totalRow + 2, col, 4);
+    style(0, 1, col, col + 4, { textFormat: { bold: true, fontSize: 16, foregroundColor: background }, backgroundColor: darkNavy, horizontalAlignment: 'CENTER' });
+    style(1, 2, col, col + 4, { backgroundColor: headerBg, textFormat: { bold: true, foregroundColor: slateText, fontSize: 11 } });
     block.projects.forEach((_, i) => {
-      if (i % 2 === 1) style(3 + i, 4 + i, col, col + 4, { backgroundColor: stripe });
+      if (i % 2 === 1) style(2 + i, 3 + i, col, col + 4, { backgroundColor: stripe });
     });
-    style(3, totalRow + 1, col + 3, col + 4, { numberFormat: currency, textFormat: { bold: true, foregroundColor: text } });
+    style(2, totalRow, col + 3, col + 4, { numberFormat: currency, textFormat: { bold: true, foregroundColor: slateText } });
     for (const offset of [0, ...(block.credit > 0 ? [5] : [])]) {
       const row = totalRow + offset;
       merge(row, col, 2); merge(row, col + 2, 2);
-      style(row, row + 1, col, col + 4, { backgroundColor: offset === 0 ? black : mint, textFormat: { bold: true, foregroundColor: offset === 0 ? background : green, fontSize: 14 } });
+      style(row, row + 1, col, col + 4, { backgroundColor: offset === 0 ? darkNavy : cardBg, textFormat: { bold: true, foregroundColor: offset === 0 ? background : slateText, fontSize: 13 } });
       style(row, row + 1, col + 2, col + 4, { numberFormat: currency });
-      if (offset === 0) style(row, row + 1, col + 2, col + 4, { textFormat: { bold: true, foregroundColor: orange, fontSize: 22 } });
+      if (offset === 0) style(row, row + 1, col + 2, col + 4, { textFormat: { bold: true, foregroundColor: orange, fontSize: 20 } });
       tableBorders(row, row + 1, col, col + 2);
       tableBorders(row, row + 1, col + 2, col + 4);
     }
-    style(totalRow + 2, totalRow + 3, col, col + 4, { textFormat: { bold: true, fontSize: 15, foregroundColor: text } });
+    style(totalRow + 2, totalRow + 3, col, col + 4, { textFormat: { bold: true, fontSize: 13, foregroundColor: slateText } });
     // Two adjacent summary cards: labels above numeric, editable amounts.
     for (const side of [0, 2]) {
       const start = col + side;
       merge(totalRow + 3, start, 2);
       merge(totalRow + 4, start, 2);
-      style(totalRow + 3, totalRow + 5, start, start + 2, { backgroundColor: side === 0 ? mint : peach, horizontalAlignment: 'CENTER' });
-      style(totalRow + 3, totalRow + 4, start, start + 2, { textFormat: { bold: true, fontSize: 12, foregroundColor: text } });
-      style(totalRow + 4, totalRow + 5, start, start + 2, { numberFormat: currency, textFormat: { bold: true, fontSize: 23, foregroundColor: side === 0 ? green : pendingText } });
+      style(totalRow + 3, totalRow + 5, start, start + 2, { backgroundColor: side === 0 ? cardBg : pendingBg, horizontalAlignment: 'CENTER' });
+      style(totalRow + 3, totalRow + 4, start, start + 2, { textFormat: { bold: true, fontSize: 11, foregroundColor: side === 0 ? mutedText : pendingText } });
+      style(totalRow + 4, totalRow + 5, start, start + 2, { numberFormat: currency, textFormat: { bold: true, fontSize: 22, foregroundColor: side === 0 ? receivedBlue : pendingText } });
       tableBorders(totalRow + 3, totalRow + 5, start, start + 2);
-      requests.push({ updateBorders: { range: range(totalRow + 3, totalRow + 5, start, start + 2), left: { style: 'SOLID_THICK', color: side === 0 ? green : orange } } });
+      requests.push({ updateBorders: { range: range(totalRow + 3, totalRow + 5, start, start + 2), left: { style: 'SOLID_THICK', color: side === 0 ? receivedBlue : orange } } });
     }
     tableBorders(0, 1, col, col + 4);
-    tableBorders(2, totalRow, col, col + 4, true);
-    [145, 240, 190, 155].forEach((width, offset) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + offset, endIndex: col + offset + 1 }, properties: { pixelSize: width }, fields: 'pixelSize' } }));
+    tableBorders(1, totalRow, col, col + 4, true);
+    [140, 260, 220, 160].forEach((width, offset) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + offset, endIndex: col + offset + 1 }, properties: { pixelSize: width }, fields: 'pixelSize' } }));
     if (index < blocks.length - 1) {
-      requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + 4, endIndex: col + 7 }, properties: { pixelSize: 14 }, fields: 'pixelSize' } });
+      requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + 4, endIndex: col + 7 }, properties: { pixelSize: 26 }, fields: 'pixelSize' } });
     }
   });
   // Rows are shared by all side-by-side clients; take the tallest requirement.
-  const rowHeights = new Map<number, number>([[0, 64], [1, 38], [2, 44]]);
+  const rowHeights = new Map<number, number>([[0, 46], [1, 38]]);
   for (const block of blocks) {
-    const total = 3 + Math.max(1, block.projects.length);
-    for (const [row, height] of [[total, 56], [total + 2, 40], [total + 3, 36], [total + 4, 58]]) {
+    const total = 2 + Math.max(1, block.projects.length);
+    for (const [row, height] of [[total, 48], [total + 2, 36], [total + 3, 32], [total + 4, 48]]) {
       rowHeights.set(row, Math.max(rowHeights.get(row) || 36, height));
     }
   }
   for (const [row, height] of rowHeights) requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: row + rowOffset, endIndex: row + rowOffset + 1 }, properties: { pixelSize: height }, fields: 'pixelSize' } });
   return requests;
 }
+
