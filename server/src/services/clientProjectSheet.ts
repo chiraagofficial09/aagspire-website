@@ -66,7 +66,7 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
   const border = { red: 0.86, green: 0.88, blue: 0.9 };
   const currency = { type: 'NUMBER', pattern: '"₹"#,##0.00' };
   const rows = rowOffset + Math.max(14, ...blocks.map(b => Math.max(1, b.projects.length) + 11));
-  const columns = Math.max(rowOffset ? 11 : 5, blocks.length ? blocks.length * 7 - 2 : 5);
+  const columns = Math.max(rowOffset ? 12 : 5, blocks.length ? blocks.length * 7 - 2 : 5);
   if (columns > 18278) throw new Error('Too many clients for one horizontal Google Sheet. Split clients into multiple spreadsheets.');
   const gridRows = Math.max(rows, previousRows);
   const gridColumns = Math.max(columns, previousColumns);
@@ -108,6 +108,7 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
     style(0, 1, col, col + 5, { textFormat: { bold: true, fontSize: 23, foregroundColor: background }, backgroundColor: orange });
     style(1, 2, col, col + 5, { textFormat: { bold: true, fontSize: 12, foregroundColor: text } });
     style(2, 3, col, col + 5, { backgroundColor: peach, textFormat: { bold: true, foregroundColor: text } });
+    style(2, 3, col + 4, col + 5, { wrapStrategy: 'CLIP', horizontalAlignment: 'CENTER' });
     block.projects.forEach((_, i) => {
       if (i % 2 === 1) style(3 + i, 4 + i, col, col + 5, { backgroundColor: stripe });
     });
@@ -132,7 +133,7 @@ export function buildClientSheetRequests(sheetId: number, blocks: ClientBlock[],
       tableBorders(totalRow + 3, totalRow + 5, start, start + 2);
       requests.push({ updateBorders: { range: range(totalRow + 3, totalRow + 5, start, start + 2), left: { style: 'SOLID_THICK', color: side === 0 ? green : orange } } });
     }
-    block.projects.forEach((project, i) => style(3 + i, 4 + i, col + 4, col + 5, { backgroundColor: project.status === 'Delivered' ? mint : peach, horizontalAlignment: 'CENTER', textFormat: { bold: true, foregroundColor: project.status === 'Delivered' ? green : pendingText } }));
+    block.projects.forEach((project, i) => style(3 + i, 4 + i, col + 4, col + 5, { backgroundColor: project.status === 'Delivered' ? mint : peach, horizontalAlignment: 'CENTER', wrapStrategy: 'CLIP', textFormat: { bold: true, foregroundColor: project.status === 'Delivered' ? green : pendingText } }));
     tableBorders(0, 1, col, col + 5);
     tableBorders(2, totalRow, col, col + 5, true);
     [130, 220, 180, 140, 130].forEach((width, offset) => requests.push({ updateDimensionProperties: { range: { sheetId, dimension: 'COLUMNS', startIndex: col + offset, endIndex: col + offset + 1 }, properties: { pixelSize: width }, fields: 'pixelSize' } }));
