@@ -677,7 +677,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onChange={handleSourceChange}
             placeholder="Edit raw HTML code..."
             style={{ minHeight }}
-            className="w-full bg-white font-mono text-xs text-zinc-900 leading-relaxed p-6 rounded-xl border border-zinc-300 focus:outline-none focus:border-[#FF5A1F] focus:ring-2 focus:ring-[#FF5A1F]/20 custom-scrollbar resize-y shadow-sm"
+            className="w-full bg-[#0a0b10] font-mono text-xs text-zinc-200 leading-relaxed p-6 rounded-xl border border-white/[0.08] focus:outline-none focus:border-[#FF5A1F] focus:ring-2 focus:ring-[#FF5A1F]/20 custom-scrollbar resize-y"
           />
         ) : (
           <div
@@ -692,7 +692,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             onMouseUp={detectActiveBlock}
             style={{ minHeight }}
             data-placeholder={placeholder}
-            className="outline-none text-sm text-zinc-900 leading-relaxed p-6 sm:p-8 rounded-xl bg-white border border-zinc-200 shadow-md rich-text-content rich-text-content-light focus:ring-2 focus:ring-[#FF5A1F]/30 focus:border-[#FF5A1F] transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-400 empty:before:pointer-events-none"
+            className="outline-none text-sm text-zinc-100 leading-relaxed p-6 sm:p-8 rounded-xl bg-[#0a0b10] border-0 focus:outline-none rich-text-content focus:ring-1 focus:ring-[#FF5A1F]/30 focus:border-[#FF5A1F]/50 transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-zinc-600 empty:before:pointer-events-none"
           />
         )}
       </div>
