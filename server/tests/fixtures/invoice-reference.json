@@ -1,0 +1,373 @@
+{
+  "invoiceNumber": "1887",
+  "clientCode": "reference",
+  "clientName": "Shashvat Sanatan Navratri 2026",
+  "companyName": "Shashvat Sanatan Navratri 2026",
+  "statementDate": "02 Oct 2026",
+  "subtotal": 7875,
+  "totalRevenue": 7875,
+  "totalPaid": 0,
+  "pendingBalance": 7875,
+  "projects": [
+    {
+      "projectCode": "P1",
+      "projectName": "Sanatan Navratri All Artist Banner 20-10 ft",
+      "grossProjectValue": 1000,
+      "discountAmount": 725,
+      "projectValue": 275,
+      "paidAmount": 0,
+      "balance": 275,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P2",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 01",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P3",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 02",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P4",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 03",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P5",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 04",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P6",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 05",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P7",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 06",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P8",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 07",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P9",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 08",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P10",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 09",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P11",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 01",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P12",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 02",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P13",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 03",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P14",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 04",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P15",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 05",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P16",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 06",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P17",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 07",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P18",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 07",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P19",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 09",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P20",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 01",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P21",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 02",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P22",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 03",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P23",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 04",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P24",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 05",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P25",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 06",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P26",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 07",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P27",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 08",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P28",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 09",
+      "grossProjectValue": 400,
+      "discountAmount": 200,
+      "projectValue": 200,
+      "paidAmount": 0,
+      "balance": 200,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P29",
+      "projectName": "Sanatan Navratri Photo Banner 8-6 ft",
+      "grossProjectValue": 750,
+      "discountAmount": 475,
+      "projectValue": 275,
+      "paidAmount": 0,
+      "balance": 275,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P30",
+      "projectName": "Sanatan Navratri Photo Banner 5-3.5 ft",
+      "grossProjectValue": 750,
+      "discountAmount": 475,
+      "projectValue": 275,
+      "paidAmount": 0,
+      "balance": 275,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P31",
+      "projectName": "Sanatan Selfe Booth 12-8 ft",
+      "grossProjectValue": 750,
+      "discountAmount": 475,
+      "projectValue": 275,
+      "paidAmount": 0,
+      "balance": 275,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P32",
+      "projectName": "Family Pass Design 8.5-3.75 in Day 10",
+      "grossProjectValue": 750,
+      "discountAmount": 475,
+      "projectValue": 275,
+      "paidAmount": 0,
+      "balance": 275,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P33",
+      "projectName": "Single Pass Design 8.5-3.75 in Day 10",
+      "grossProjectValue": 750,
+      "discountAmount": 475,
+      "projectValue": 275,
+      "paidAmount": 0,
+      "balance": 275,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P34",
+      "projectName": "Couple Pass Design 8.5-3.75 in Day 10",
+      "grossProjectValue": 750,
+      "discountAmount": 475,
+      "projectValue": 275,
+      "paidAmount": 0,
+      "balance": 275,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P35",
+      "projectName": "Kum Kum Pagle Madi Padharo",
+      "grossProjectValue": 500,
+      "discountAmount": 225,
+      "projectValue": 275,
+      "paidAmount": 0,
+      "balance": 275,
+      "status": "in_process"
+    },
+    {
+      "projectCode": "P36",
+      "projectName": "Anjvadi Rataladi Ma Tarano Chamkar Post",
+      "grossProjectValue": 500,
+      "discountAmount": 225,
+      "projectValue": 275,
+      "paidAmount": 0,
+      "balance": 275,
+      "status": "in_process"
+    }
+  ]
+}

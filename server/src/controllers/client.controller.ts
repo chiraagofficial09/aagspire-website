@@ -7,9 +7,12 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
 import { createNotification } from '../services/notification.service.js';
 import { fromDecimal, round2 } from '../utils/decimalHelper.js';
-import { generateClientStatementPdfStream } from '../services/clientStatementPdf.service.js';
+import { renderInvoiceHtml } from '../services/invoiceHtml.service.js';
+import { deliverInvoice } from '../services/invoiceDelivery.service.js';
+import { InvoicePreview } from '../models/InvoicePreview.js';
+import { allocateInvoicePayments } from '../services/invoiceCalculations.service.js';
 import { InvoiceCounter } from '../models/InvoiceCounter.js';
-import { calculateFinancialMetrics } from '../services/dashboardFinance.js';
+import { calculateFinancialMetrics, getNetProjectValue } from '../services/dashboardFinance.js';
 import { getMonthDateRange } from '../utils/dateHelper.js';
 
 export async function listClients(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -498,13 +501,33 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       return;
     }
 
+    if (req.body?.previewId) {
+      const snapshot = await InvoicePreview.findOne({ _id: req.body.previewId, clientId: client._id, userId: req.user!._id, expiresAt: { $gt: new Date() } });
+      if (!snapshot) {
+        res.status(409).json({ success: false, message: 'Invoice preview expired. Open Preview again before downloading.' });
+        return;
+      }
+      await deliverInvoice(client._id, snapshot.data, snapshot.html, snapshot.fileName, res);
+      return;
+    }
+
     const selectedIds = req.query.projectIds
       ? (req.query.projectIds as string).split(',').filter(Boolean)
       : (req.body?.projectIds || []);
+    if (!Array.isArray(selectedIds) || selectedIds.some((value: unknown) => typeof value !== 'string') ||
+      (req.path.endsWith('/invoice-preview') && selectedIds.length === 0)) {
+      res.status(400).json({ success: false, message: 'Select at least one valid project for the invoice.' });
+      return;
+    }
 
     let rawProjects = await Project.find({ clientId: client._id }).sort({ createdAt: -1 });
     if (selectedIds.length > 0) {
       rawProjects = rawProjects.filter((p) => selectedIds.includes(p._id.toString()));
+      rawProjects.sort((a, b) => selectedIds.indexOf(a._id.toString()) - selectedIds.indexOf(b._id.toString()));
+      if (rawProjects.length !== new Set(selectedIds).size) {
+        res.status(400).json({ success: false, message: 'A selected project is no longer available for this client. Refresh the project list.' });
+        return;
+      }
     }
 
     let rawPayments = await ClientPayment.find({
@@ -610,6 +633,10 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
     const invoiceNumber = (req.query.invoiceNumber as string) || req.body?.invoiceNumber || defaultNum;
     const taxPercent = Number(req.query.taxPercent || req.body?.taxPercent || 0);
     const discountAmount = Number(req.query.discountAmount || req.body?.discountAmount || 0);
+    if (!Number.isFinite(taxPercent) || taxPercent < 0 || !Number.isFinite(discountAmount) || discountAmount < 0) {
+      res.status(400).json({ success: false, message: 'Tax and discount must be non-negative numbers.' });
+      return;
+    }
     const notes = (req.query.notes as string) || req.body?.notes || '';
 
     let customDiscounts: Record<string, number> = {};
@@ -631,43 +658,24 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         customDescriptions = {};
       }
     }
-
-    // Allocate client payments across projects
-    const projectPaymentsMap = new Map<string, number>();
-    for (const pm of rawPayments) {
-      if (pm.projectId) {
-        const pid = pm.projectId.toString();
-        projectPaymentsMap.set(pid, round2((projectPaymentsMap.get(pid) || 0) + fromDecimal(pm.amount)));
-      }
+    if (!customDiscounts || Array.isArray(customDiscounts) || typeof customDiscounts !== 'object' ||
+      Object.values(customDiscounts).some(value => !Number.isFinite(Number(value)) || Number(value) < 0) ||
+      !customDescriptions || Array.isArray(customDescriptions) || typeof customDescriptions !== 'object' ||
+      Object.values(customDescriptions).some(value => !Array.isArray(value) || value.some(item => typeof item !== 'string'))) {
+      res.status(400).json({ success: false, message: 'Invalid invoice discounts or descriptions.' });
+      return;
     }
 
-    let generalPaymentsPool = round2(
-      rawPayments
-        .filter((pm) => !pm.projectId)
-        .reduce((sum, pm) => sum + fromDecimal(pm.amount), 0)
-    );
-
-    // Fetch all client projects sorted chronologically to allocate general client payments
-    const allClientProjects = await Project.find({ clientId: client._id }).sort({ createdAt: 1, startDate: 1 });
-    for (const p of allClientProjects) {
-      if (generalPaymentsPool <= 0) break;
-      const pid = p._id.toString();
-      const val = fromDecimal(p.projectValue);
-      const cur = projectPaymentsMap.get(pid) || 0;
-      const take = Math.min(generalPaymentsPool, Math.max(0, round2(val - cur)));
-      if (take > 0) {
-        projectPaymentsMap.set(pid, round2(cur + take));
-        generalPaymentsPool = round2(generalPaymentsPool - take);
-      }
-    }
+    const allClientProjects = await Project.find({ clientId: client._id });
+    const projectPaymentsMap = allocateInvoicePayments(allClientProjects, rawPayments);
 
     const projects = rawProjects.map((p) => {
       const pIdStr = String(p._id);
       const paid = projectPaymentsMap.get(pIdStr) || 0;
-      const val = fromDecimal(p.projectValue);
+      const val = getNetProjectValue(p);
       const manualDiscount = customDiscounts[pIdStr] !== undefined
         ? Number(customDiscounts[pIdStr]) || 0
-        : (p.discountAmount ? fromDecimal(p.discountAmount) : 0);
+        : round2(fromDecimal(p.projectValue) - val);
       const grossPrice = round2(val + manualDiscount);
       const manualSubProjects = customDescriptions[pIdStr] || (p.description ? p.description.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean) : []);
       return {
@@ -690,7 +698,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       projects.reduce((sum, p) => sum + p.projectValue, 0)
     );
     const taxAmount = round2((subtotal * taxPercent) / 100);
-    const totalRevenue = round2(subtotal + taxAmount - discountAmount);
+    const totalRevenue = Math.max(0, round2(subtotal + taxAmount - discountAmount));
 
     const totalPaid = Math.min(
       totalRevenue,
@@ -699,9 +707,10 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
 
     // Deductions handling
     let deductionsList: any[] = [];
-    if (req.query.deductions) {
+    if (req.query.deductions !== undefined || req.body?.deductions !== undefined) {
       try {
-        const parsed = JSON.parse(req.query.deductions as string);
+        const raw = req.query.deductions ?? req.body.deductions;
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
         if (Array.isArray(parsed)) deductionsList = parsed;
       } catch {}
     } else if (client.deductions && client.deductions.length > 0) {
@@ -731,36 +740,9 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       });
     }
 
-    // Bad debts handling for statement
-    let badDebtsList: any[] = [];
-    if (client.badDebts && client.badDebts.length > 0) {
-      badDebtsList = client.badDebts.map((d: any) => ({
-        projectName: `[Bad Debt] ${d.projectName || 'General Bad Debt'}${d.reason ? ` (${d.reason})` : ''}`,
-        date: d.date ? new Date(d.date).toLocaleDateString('en-IN') : undefined,
-        rawDate: d.date,
-        amount: Number(d.amount) || 0,
-      }));
-    }
-
-    if (monthTokens.length > 0 && !monthTokens.includes('all')) {
-      badDebtsList = badDebtsList.filter((d: any) => {
-        const raw = d.rawDate || d.date;
-        if (!raw) return true;
-        const dStr = typeof raw === 'string' ? raw : new Date(raw).toISOString().slice(0, 10);
-        const matchesToken = monthTokens.some((token) => dStr.startsWith(token));
-        if (matchesToken) return true;
-        if (monthRange) {
-          const dt = new Date(raw);
-          if (!isNaN(dt.getTime())) {
-            return dt >= monthRange.startOfMonth && dt <= monthRange.endOfMonth;
-          }
-        }
-        return false;
-      });
-    }
-
-    const combinedDeductions = [...deductionsList, ...badDebtsList];
-    const totalDeductionsAmount = round2(combinedDeductions.reduce((sum, d) => sum + (Number(d.amount) || 0), 0));
+    // Bad debt is an internal write-off, not a customer invoice deduction.
+    const invoiceDeductions = deductionsList.filter(d => Number.isFinite(Number(d.amount)) && Number(d.amount) > 0);
+    const totalDeductionsAmount = round2(invoiceDeductions.reduce((sum, d) => sum + (Number(d.amount) || 0), 0));
     const pendingBalance = Math.max(0, round2(totalRevenue - totalPaid - totalDeductionsAmount));
 
     const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec'];
@@ -781,49 +763,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       fileName = `Aagspire_invoice_${monthSlug}_${yearSlug}.pdf`;
     }
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${fileName}"`
-    );
-
-    // Save client's lastInvoiceNumber in MongoDB
-    client.lastInvoiceNumber = invoiceNumber;
-    await client.save().catch(() => {});
-
-    // Advance global invoice counter in MongoDB and compute next invoice number on every download
-    let nextInvoiceNumber = getNextInvoiceNumber(invoiceNumber, 1);
-    try {
-      let counter = await InvoiceCounter.findOne({ key: 'client_invoice_sequence' });
-      const step = counter?.step || 1;
-      nextInvoiceNumber = getNextInvoiceNumber(invoiceNumber, step);
-      const curNum = parseInt(String(invoiceNumber).replace(/\D/g, ''), 10) || 0;
-      const nextNum = curNum + step;
-      if (counter) {
-        counter.currentNumber = nextNum;
-        counter.lastIssuedAt = new Date();
-        await counter.save();
-      } else {
-        await InvoiceCounter.create({
-          key: 'client_invoice_sequence',
-          currentNumber: nextNum,
-          step: 1,
-          lastIssuedAt: new Date(),
-        });
-      }
-    } catch (cntErr) {
-      console.error('Failed to advance database invoice counter:', cntErr);
-    }
-
-    res.setHeader(
-      'Access-Control-Expose-Headers',
-      'Content-Disposition, X-Next-Invoice-Number, X-Invoice-Number'
-    );
-    res.setHeader('X-Invoice-Number', invoiceNumber);
-    res.setHeader('X-Next-Invoice-Number', nextInvoiceNumber);
-
-    generateClientStatementPdfStream(
-      {
+    const invoiceData = {
         invoiceNumber,
         clientCode: client.clientCode,
         clientName: client.name,
@@ -845,10 +785,19 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         pendingBalance,
         notes,
         projects,
-        deductions: combinedDeductions,
-      },
-      res
-    );
+        deductions: invoiceDeductions,
+      };
+    const html = renderInvoiceHtml(invoiceData);
+    if (req.path.endsWith('/invoice-preview')) {
+      const snapshot = await InvoicePreview.create({
+        clientId: client._id, userId: req.user!._id, data: invoiceData, html, fileName,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+      res.json({ success: true, previewId: snapshot._id, html, fileName,
+        totals: { subtotal, taxAmount, totalPaid, pendingBalance, totalRevenue } });
+      return;
+    }
+    await deliverInvoice(client._id, invoiceData, html, fileName, res);
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

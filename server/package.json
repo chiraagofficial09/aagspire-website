@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsc && node scripts/copyAssets.mjs",
+    "install:browser": "playwright install --with-deps chromium",
     "start": "node dist/server.js",
     "seed": "tsx src/scripts/seed.ts",
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
@@ -35,6 +36,7 @@
     "mongoose": "^8.9.5",
     "morgan": "^1.10.0",
     "pdfkit": "^0.16.0",
+    "playwright": "^1.63.0",
     "qrcode": "^1.5.4",
     "resend": "^6.28.1",
     "typescript": "^5.7.3"

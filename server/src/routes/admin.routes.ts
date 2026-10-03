@@ -124,6 +124,8 @@ router.get('/clients', listClients);
 router.post('/clients', createClient);
 router.get('/clients/:id', getClientById);
 router.get('/clients/:id/pdf', downloadClientStatementPdf);
+router.post('/clients/:id/pdf', downloadClientStatementPdf);
+router.post('/clients/:id/invoice-preview', downloadClientStatementPdf);
 router.get('/clients/:id/statement-pdf', downloadClientStatementPdf);
 router.put('/clients/:id', updateClient);
 router.patch('/clients/:id', updateClient);

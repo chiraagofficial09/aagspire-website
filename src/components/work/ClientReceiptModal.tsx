@@ -10,32 +10,13 @@ import {
   ArrowLeft,
   Calendar,
 } from 'lucide-react';
-import { FaPhoneAlt, FaRegEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
 import { api } from '../../services/api';
 import { useToast } from './Toast';
 import { formatINR, parseAmount } from '../../utils/formatters';
 import { CustomSelect } from './CustomSelect';
 import { MonthMultiSelect } from './MonthMultiSelect';
 import { CustomDatePicker } from './CustomDatePicker';
-
-const TERMS_LIST = [
-  'All prices listed are average estimates and may vary based on project complexity, scope of work, and client requirements.',
-  '2 revisions are included in the base price. Additional revisions will be chargeable.',
-  'A 50% deposit is required to initiate the project.',
-  'The final payment is due upon project completion and client approval.',
-  'Late payments may incur interest charges.',
-  'Clients are responsible for providing all necessary content for the project.',
-  'We offer custom packages tailored to specific client needs and budgets.',
-  'If the project is canceled by the client before completion, the client will be responsible for paying fees incurred up to the date of cancellation.',
-  'Upon full payment, clients will receive ownership of the final project deliverables.',
-  'Project delivery timeline will be discussed and finalized before project start. Delays caused by client-side (late content, feedback) may extend the timeline.',
-  'Urgent or priority projects may incur an additional 25%–50% charge depending on the deadline.',
-  'All printing designs (banner, visiting card, brochure, etc.) will be delivered in print-ready formats only.',
-  'In digital designs, open/editable source files (such as PSD, AI, CDR, etc.) will not be provided.',
-  'Final deliverables are for intended use only. Resale or redistribution without permission is not allowed.',
-  'We reserve the right to showcase completed work in our portfolio and social media unless agreed otherwise.',
-  'Final files will be delivered only after 100% payment clearance.',
-];
+import { InvoiceDocumentPreview, type InvoiceSnapshot } from './InvoiceDocumentPreview';
 
 interface ClientReceiptModalProps {
   isOpen?: boolean;
@@ -91,6 +72,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
 
   // Always default to 'select' tab when opening from "Combine Projects" so user sees checkboxes
   const [activeTab, setActiveTab] = useState<'select' | 'preview'>('select');
+  const [invoicePreview, setInvoicePreview] = useState<InvoiceSnapshot | null>(null);
   const [taxPercent, setTaxPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [projectDiscounts, setProjectDiscounts] = useState<Record<string, number>>({});
@@ -217,10 +199,6 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     if (typeof window !== 'undefined') {
       localStorage.setItem('aagspire_next_invoice_no', val);
     }
-    // Sync to MongoDB database
-    api
-      .post('/admin/clients/invoice-counter', { currentNumber: val })
-      .catch((err) => console.error('Failed to sync invoice counter to MongoDB:', err));
   };
 
   const [downloading, setDownloading] = useState(false);
@@ -554,6 +532,16 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     };
   }, [selectedMonths, billingMonthOptions]);
 
+  const invoiceRequestKey = JSON.stringify({
+    projectIds: selectedProjects.map(p => p._id), invoiceNumber, invoiceDate,
+    taxPercent, discountAmount,
+    month: selectedMonths.includes('all') ? '' : selectedMonths.join(','),
+    projectDiscounts, projectDescriptions: projectSubProjects,
+    deductions: activeDeductions.map((d: any) => ({
+      projectName: d.projectName || d.label || 'Project', amount: parseAmount(d.amount), date: d.date,
+    })),
+  });
+
   const handleDownloadPdf = async () => {
     if (selectedProjects.length === 0) {
       toast.error('Please select at least one project deliverable.');
@@ -561,50 +549,18 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     }
     try {
       setDownloading(true);
-      const params = new URLSearchParams();
-      const activeIds = selectedProjects.map((p) => p._id);
-      params.append('projectIds', activeIds.join(','));
-      if (invoiceNumber) params.append('invoiceNumber', invoiceNumber);
-      if (invoiceDate) params.append('invoiceDate', invoiceDate);
-      if (taxPercent) params.append('taxPercent', taxPercent.toString());
-      if (discountAmount) params.append('discountAmount', discountAmount.toString());
-      if (!selectedMonths.includes('all') && selectedMonths.length > 0) {
-        params.append('month', selectedMonths.join(','));
+      if (!invoicePreview || invoicePreview.requestKey !== invoiceRequestKey) {
+        toast.warning('Wait for the invoice preview to finish loading.');
+        return;
       }
-      if (Object.keys(projectDiscounts).length > 0) {
-        params.append('projectDiscounts', JSON.stringify(projectDiscounts));
-      }
-      if (activeDeductions.length > 0) {
-        params.append('deductions', JSON.stringify(activeDeductions.map((d: any) => ({
-          projectName: d.projectName || d.label || 'Project',
-          amount: parseAmount(d.amount) || 0,
-          date: d.date,
-        }))));
-      }
-      if (Object.keys(projectSubProjects).length > 0) {
-        params.append('projectDescriptions', JSON.stringify(projectSubProjects));
-      }
-
-      const res = await api.get(`/admin/clients/${client._id}/pdf?${params.toString()}`, {
-        responseType: 'blob',
-      });
+      const res = await api.post(`/admin/clients/${client._id}/pdf`, {
+        previewId: invoicePreview.previewId,
+      }, { responseType: 'blob' });
       const blob = new Blob([res.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sept', 'oct', 'nov', 'dec'];
-      let targetDate = new Date();
-      if (!selectedMonths.includes('all') && selectedMonths.length > 0) {
-        const sorted = [...selectedMonths].sort();
-        const [y, m] = sorted[sorted.length - 1].split('-').map(Number);
-        if (y && m) targetDate = new Date(y, m - 1, 1);
-      } else if (invoiceDate) {
-        const parsed = new Date(invoiceDate.includes('T') ? invoiceDate : `${invoiceDate}T00:00:00`);
-        if (!isNaN(parsed.getTime())) targetDate = parsed;
-      }
-      const monthSlug = monthNames[targetDate.getMonth()];
-      const yearSlug = targetDate.getFullYear();
-      const fileName = `Aagspire_invoice_${monthSlug}_${yearSlug}.pdf`;
+      const fileName = invoicePreview.fileName;
       link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
@@ -616,7 +572,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
       const nextNum = serverNext || getNextInvoiceNumber(downloadedNo, 1);
 
       // Auto-advance invoice sequence on every download
-      handleSetInvoiceNumber(nextNum);
+      setInvoiceNumber(nextNum);
       if (onRefreshClient) {
         onRefreshClient();
       }
@@ -1100,293 +1056,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
               </div>
             </div>
           ) : (
-            <>
-              {/* Official Receipt / Invoice Preview - Page 1 */}
-              <div className="receipt-printable space-y-6 bg-[#080808] border border-white/10 rounded-2xl p-6 sm:p-8 text-white shadow-inner">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-6">
-                  <div className="w-[160px] sm:w-[190px]">
-                    <img
-                      src="/Aagspire%20Logo%20.svg"
-                      alt="Aagspire"
-                      className="w-full h-auto object-contain block"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/Aagspire_Logo.png';
-                      }}
-                    />
-                  </div>
-
-                  <div className="text-right">
-                    <h1 className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-[#FF5A1F] via-[#FF7A2F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F] tracking-tight leading-none">
-                      Invoice
-                    </h1>
-                  </div>
-                </div>
-
-                {/* Billed To & Invoice Details Card */}
-                <div className="p-4 rounded-xl bg-[#111111] border border-[#202020] space-y-2">
-                  {/* Row 1: BILLED TO/CLIENT on left, Invoice No on right */}
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[10px] text-[#71717A] uppercase font-bold tracking-wider">
-                      Billed To/Client
-                    </span>
-                    <div className="flex items-center justify-between w-48 sm:w-56">
-                      <span className="text-[#71717A]">Invoice No:</span>
-                      <strong
-                        onClick={() => {
-                          const val = window.prompt('Enter Custom Invoice Number:', invoiceNumber);
-                          if (val !== null && val.trim()) handleSetInvoiceNumber(val.trim());
-                        }}
-                        title="Click to edit Invoice Number"
-                        className="text-white font-bold cursor-pointer hover:text-[#FF5A1F] transition-colors text-right font-mono"
-                      >
-                        {invoiceNumber || getInitialInvoiceNo(client?.clientCode, client?.lastInvoiceNumber) || '001'}
-                      </strong>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Client Name on left, Invoice Date on right */}
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-white tracking-tight">
-                      {client.companyName || client.name}
-                    </h3>
-                    <div className="flex items-center justify-between w-48 sm:w-56 text-xs">
-                      <span className="text-[#71717A]">Invoice Date:</span>
-                      <div className="relative group text-right">
-                        <input
-                          type="date"
-                          value={invoiceDate}
-                          onChange={(e) => setInvoiceDate(e.target.value)}
-                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10 [color-scheme:dark]"
-                          title="Click to set Invoice Date"
-                        />
-                        <span className="text-white font-medium cursor-pointer group-hover:text-[#FF5A1F] transition-colors whitespace-nowrap">
-                          {invoiceDate
-                            ? new Date(invoiceDate + 'T00:00:00').toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })
-                            : new Date().toLocaleDateString('en-IN', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 3 (Optional): GSTIN */}
-                  {client.gstNumber && (
-                    <div className="flex items-center justify-end text-xs pt-1 border-t border-white/5">
-                      <div className="flex items-center justify-between w-48 sm:w-56">
-                        <span className="text-[#71717A]">GSTIN:</span>
-                        <span className="font-bold bg-gradient-to-r from-[#FF5A1F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F] font-mono text-right">
-                          {client.gstNumber}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Table of Deliverables */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-[#111111] text-[#71717A] text-[10.5px] uppercase font-bold tracking-wider rounded-lg">
-                      <tr>
-                        <th className="py-2.5 px-3 w-10">NO.</th>
-                        <th className="py-2.5 px-3">PROJECT / DELIVERABLE</th>
-                        <th className="py-2.5 pl-6 pr-3 sm:pl-8 sm:pr-3 w-28 sm:w-32 text-left whitespace-nowrap">PRICE (₹)</th>
-                        <th className="py-2.5 pl-8 pr-3 sm:pl-10 sm:pr-3 w-28 sm:w-32 text-left whitespace-nowrap">DISCOUNT (₹)</th>
-                        <th className="py-2.5 pl-12 pr-2 sm:pl-16 sm:pr-3 w-32 sm:w-36 text-left whitespace-nowrap">TOTAL (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {selectedProjects.length > 0 ? (
-                        selectedProjects.map((p, idx) => {
-                          const targetTotal = parseAmount(
-                            p.projectValue ?? p.totalAmount
-                          );
-                          const pDiscount =
-                            projectDiscounts[p._id] !== undefined
-                              ? projectDiscounts[p._id]
-                              : (parseAmount(p.discountAmount) || 0);
-                          const pPrice = targetTotal + pDiscount;
-                          const pTotal = targetTotal;
-                          return (
-                            <tr key={p._id} className="hover:bg-white/[0.01]">
-                              <td className="py-3 px-3 text-[#71717A] align-top">{idx + 1}</td>
-                              <td className="py-3 px-3 align-top">
-                                <div className="font-semibold text-white">
-                                  {p.projectName || p.title}
-                                </div>
-                                {(projectSubProjects[p._id] || []).length > 0 && (
-                                  <ul className="mt-1.5 space-y-1">
-                                    {(projectSubProjects[p._id] || []).map((sub: string, sIdx: number) => (
-                                      <li key={sIdx} className="flex items-start gap-1.5 text-[11px] text-zinc-300 leading-tight">
-                                        <span className="text-[#FF5A1F] font-bold text-xs select-none leading-none">•</span>
-                                        <span>{sub}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </td>
-                              <td className="py-3 pl-6 pr-3 sm:pl-8 sm:pr-3 font-bold text-white w-28 sm:w-32 text-left align-top">
-                                {formatINR(pPrice)}
-                              </td>
-                              <td className="py-3 pl-8 pr-3 sm:pl-10 sm:pr-3 text-zinc-300 w-28 sm:w-32 text-left align-top">
-                                {pDiscount > 0 ? `-${formatINR(pDiscount)}` : '₹0'}
-                              </td>
-                              <td className="py-3 pl-12 pr-2 sm:pl-16 sm:pr-3 font-bold text-white w-32 sm:w-36 text-left align-top">
-                                {formatINR(pTotal)}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="py-6 text-center text-white/40 font-mono">
-                            No deliverables selected. Switch to Step 1 to check deliverables.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Divider between Table and Summary */}
-                <div className="border-t border-white/10 pt-4" />
-
-                {/* Summary Section matching reference screenshot */}
-                <div className="flex justify-end pt-1">
-                  <div className="w-full sm:w-[360px] space-y-2 text-xs pr-4">
-                    <div className="flex justify-between items-center text-white/60">
-                      <span>Combined Subtotal:</span>
-                      <span className="text-white font-bold">{formatINR(subtotal)}</span>
-                    </div>
-
-                    {taxAmount > 0 && (
-                      <div className="flex justify-between items-center text-white/60">
-                        <span>GST ({taxPercent}%):</span>
-                        <span className="text-white font-bold">+{formatINR(taxAmount)}</span>
-                      </div>
-                    )}
-
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between items-center text-white/60">
-                        <span className="text-zinc-400">Extra Special Discount:</span>
-                        <span className="text-zinc-300 font-bold">-{formatINR(discountAmount)}</span>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-center text-white/60">
-                      <span>Paid Money:</span>
-                      <span className="text-white font-bold">-{formatINR(totalPaid)}</span>
-                    </div>
-
-                    {activeDeductions.length > 0 && activeDeductions.map((d: any, idx: number) => {
-                      const dVal = parseAmount(d.amount) || 0;
-                      if (dVal <= 0) return null;
-                      const dName = d.projectName || d.label || 'Project';
-                      return (
-                        <div key={idx} className="flex justify-between items-start text-white/60 gap-4">
-                          <span className="break-words flex-1 text-left">{dName.endsWith(':') ? dName : `${dName}:`}</span>
-                          <span className="text-white font-bold whitespace-nowrap shrink-0 text-right">-{formatINR(dVal)}</span>
-                        </div>
-                      );
-                    })}
-
-                    {/* Total Card */}
-                    <div className="p-3.5 rounded-xl bg-[#1F1008] border border-[#FF5A1F]/50 flex justify-between items-center text-sm font-bold mt-3 shadow-[0_0_20px_rgba(255,90,31,0.12)]">
-                      <span className="text-white">Total:</span>
-                      <span className="text-base font-black bg-gradient-to-r from-[#FF5A1F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F]">{formatINR(netBalanceDue)}</span>
-                    </div>
-
-                    {/* *T&C apply. */}
-                    <div className="text-right text-[11px] font-mono text-zinc-500 tracking-wide pt-1 select-none">
-                      *T&amp;C apply.
-                    </div>
-                  </div>
-                </div>
-
-                {/* Divider between Deliverables & Terms */}
-                <div className="border-t border-white/10 my-6 pt-2" />
-
-                {/* Title & Intro (Enlarged Header) */}
-                <div className="space-y-1.5 pt-1">
-                  <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-[#FF5A1F] via-[#FF7A2F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F] tracking-tight uppercase font-mono">
-                    Terms and Conditions
-                  </h2>
-                  
-                </div>
-
-                {/* 15 Terms in ONE SINGLE COLUMN */}
-                <div className="space-y-3.5 pt-2">
-                  {TERMS_LIST.map((term, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <span className="bg-gradient-to-b from-[#FFA05C] to-[#FF5A1F] bg-clip-text text-transparent print:text-[#FF5A1F] shrink-0 font-bold text-sm leading-snug select-none">•</span>
-                      <span className="text-[13px] sm:text-sm text-white/85 leading-relaxed flex-1">
-                        {term}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Contact Us & Trust Section (Matching PDF 2-Card Design) */}
-                <div className="space-y-4 pt-6">
-                  {/* Top Header */}
-                  
-
-                  {/* 2 Cards Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Card 1: Phone / WhatsApp */}
-                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#111111] border border-white/10">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFA05C] via-[#FF5A1F] to-[#D84315] flex items-center justify-center shrink-0 select-none shadow-md shadow-[#FF5A1F]/20">
-                        <FaPhoneAlt className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-[9.5px] font-bold text-white/40 uppercase tracking-wider block">
-                          Phone / WhatsApp
-                        </span>
-                        <div className="text-xs font-bold text-white leading-tight mt-0.5">
-                          +91 90812 50040
-                        </div>
-                        
-                      </div>
-                    </div>
-
-                    {/* Card 2: Email */}
-                    <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#111111] border border-white/10">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFA05C] via-[#FF5A1F] to-[#D84315] flex items-center justify-center shrink-0 select-none shadow-md shadow-[#FF5A1F]/20">
-                        <FaRegEnvelope className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-[9.5px] font-bold text-white/40 uppercase tracking-wider block">
-                          Email
-                        </span>
-                        <a
-                          href="mailto:aagspire@gmail.com"
-                          className="text-xs font-bold text-white hover:text-[#FFA05C] transition-colors leading-tight mt-0.5 block truncate"
-                        >
-                          aagspire@gmail.com
-                        </a>
-                      </div>
-                    </div>
-
-                   
-                  </div>
-
-                 
-                </div>
-
-                {/* Continuous Invoice Footer */}
-                <div className="border-t border-white/10 pt-4 flex justify-between items-center text-[10.5px] text-white/40">
-                  <span>Aagspire</span>
-                  <span className="font-mono">End of Agreement</span>
-                </div>
-              </div>
-            </>
+            <InvoiceDocumentPreview clientId={client._id} requestKey={invoiceRequestKey} onReady={setInvoicePreview} />
           )}
         </div>
 
@@ -1394,8 +1064,8 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-white/[0.08] bg-[#090a0f] shrink-0">
           <div className="text-xs text-white/50">
             {selectedProjects.length} deliverables combined &bull; Total Value:{' '}
-            <span className="text-white font-bold">{formatINR(grandTotal)}</span> &bull; Total:{' '}
-            <span className="bg-gradient-to-r from-[#FF5A1F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F] font-bold">{formatINR(netBalanceDue)}</span>
+            <span className="text-white font-bold">{formatINR(activeTab === 'preview' ? invoicePreview?.totals.totalRevenue ?? 0 : grandTotal)}</span> &bull; Total:{' '}
+            <span className="bg-gradient-to-r from-[#FF5A1F] to-[#FFA05C] bg-clip-text text-transparent print:text-[#FF5A1F] font-bold">{formatINR(activeTab === 'preview' ? invoicePreview?.totals.pendingBalance ?? 0 : netBalanceDue)}</span>
           </div>
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -1424,7 +1094,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  disabled={downloading || selectedProjects.length === 0}
+                  disabled={downloading || selectedProjects.length === 0 || !invoicePreview || invoicePreview.requestKey !== invoiceRequestKey}
                   className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-gradient-to-r from-[#FF5A1F] via-[#FF6E30] to-[#E04810] hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shadow-lg shadow-[#FF5A1F]/25"
                 >
                   <Download className="w-3.5 h-3.5" />
