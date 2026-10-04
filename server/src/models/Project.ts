@@ -4,7 +4,8 @@ export type ProjectStatus =
   | 'start_process'
   | 'in_process'
   | 'in_changes'
-  | 'delivered';
+  | 'delivered'
+  | 'completed';
 
 export interface IProject extends Document {
   projectCode: string;
@@ -42,7 +43,7 @@ const ProjectSchema = new Schema<IProject>(
     deliveredAt: { type: Date },
     status: {
       type: String,
-      enum: ['start_process', 'in_process', 'in_changes', 'delivered'],
+      enum: ['start_process', 'in_process', 'in_changes', 'delivered', 'completed'],
       default: 'start_process',
       index: true,
     },

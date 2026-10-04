@@ -157,15 +157,6 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                       <Star className="w-3.5 h-3.5 fill-[#FF5A1F] text-[#FF5A1F] shrink-0" />
                     )}
                     <span className="truncate">{opt.label}</span>
-                    {opt.sublabel && (
-                      <span
-                        className={`text-[10px] font-mono shrink-0 ${
-                          isSelected ? 'text-white/80' : 'text-zinc-500'
-                        }`}
-                      >
-                        {opt.sublabel}
-                      </span>
-                    )}
                     {opt.isStar && (
                       <span
                         className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded font-bold shrink-0 ${
@@ -197,11 +188,6 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-[#FF5A1F] shrink-0" />
               )}
               <span className="font-medium text-white">{opt.label}</span>
-              {opt.sublabel && (
-                <span className="text-[10px] text-zinc-500 font-mono">
-                  {opt.sublabel}
-                </span>
-              )}
               <button
                 type="button"
                 onClick={(e) => removeValue(opt.value, e)}

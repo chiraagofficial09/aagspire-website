@@ -17,6 +17,7 @@ export interface ProjectModalProps {
   onClientAdded?: (client: any) => void;
   defaultClientId?: string;
   disableClientSelect?: boolean;
+  onSwitchToBulk?: () => void;
 }
 
 export const ProjectModal: React.FC<ProjectModalProps> = ({
@@ -29,6 +30,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   onClientAdded,
   defaultClientId,
   disableClientSelect = false,
+  onSwitchToBulk,
 }) => {
   const toast = useToast();
   const [submitting, setSubmitting] = useState(false);
@@ -413,10 +415,27 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
       <div className="relative w-full max-w-xl bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-5 sm:p-8 space-y-5 text-white text-xs my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
-          <div>
+          <div className="flex items-center gap-3">
             <h3 className="font-bold text-base tracking-tight text-white">
               {project ? 'Edit Project' : 'New Project'}
             </h3>
+            {!project && onSwitchToBulk && (
+              <div className="inline-flex items-center h-8 sm:h-9 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.08]">
+                <button
+                  type="button"
+                  className="h-full px-3 rounded-lg text-xs font-semibold bg-[#FF5A1F] text-white shadow-sm transition-all cursor-default"
+                >
+                  Single Project
+                </button>
+                <button
+                  type="button"
+                  onClick={onSwitchToBulk}
+                  className="h-full px-3 rounded-lg text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-all cursor-pointer"
+                >
+                  Multiple Projects
+                </button>
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -590,7 +609,6 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               options={employees.map((emp) => ({
                 value: emp._id,
                 label: emp.fullName || emp.name,
-                sublabel: emp.employeeCode ? `(${emp.employeeCode})` : undefined,
                 isStar: Boolean(emp.isStar),
               }))}
             />

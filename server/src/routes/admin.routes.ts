@@ -34,6 +34,9 @@ import {
   updateProject,
   deleteProject,
   updateEmployeeAllocations,
+  bulkUpdateProjects,
+  bulkDeleteProjects,
+  bulkCreateProjects,
 } from '../controllers/project.controller.js';
 
 import {
@@ -134,6 +137,9 @@ router.delete('/clients/:id', deleteClient);
 // Projects
 router.get('/projects', listProjects);
 router.post('/projects', createProject);
+router.post('/projects/bulk-create', bulkCreateProjects);
+router.patch('/projects/bulk', bulkUpdateProjects);
+router.delete('/projects/bulk', bulkDeleteProjects);
 router.get('/projects/:id', getProjectById);
 router.put('/projects/:id', updateProject);
 router.patch('/projects/:id', updateProject);

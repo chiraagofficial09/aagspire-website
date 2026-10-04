@@ -465,6 +465,179 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
   }
 }
 
+export async function bulkCreateProjects(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { clientId, projects, defaultCommissionSplit, startDate, deadline, status } = req.body;
+
+    if (!clientId) {
+      res.status(400).json({ success: false, message: 'Client is required.' });
+      return;
+    }
+
+    if (!Array.isArray(projects) || projects.length === 0) {
+      res.status(400).json({ success: false, message: 'At least one project is required.' });
+      return;
+    }
+
+    // Validate all items first
+    for (let i = 0; i < projects.length; i++) {
+      const p = projects[i];
+      const pName = (p.projectName || p.title || '').trim();
+      const pVal = round2(parseFloat(String(p.projectValue ?? p.totalAmount ?? 0)));
+      if (!pName) {
+        res.status(400).json({ success: false, message: `Project #${i + 1} name is required.` });
+        return;
+      }
+      if (isNaN(pVal) || pVal < 0) {
+        res.status(400).json({ success: false, message: `Project #${i + 1} value must be a valid number >= 0.` });
+        return;
+      }
+    }
+
+    // Determine starting sequence for unique projectCode generation
+    const currentYear = new Date().getFullYear();
+    const prefix = `AAG-PRJ-${currentYear}-`;
+    const existingProjects = await Project.find(
+      { projectCode: { $regex: `^${prefix}` } },
+      { projectCode: 1 }
+    ).lean();
+
+    let maxSeq = 0;
+    for (const p of existingProjects) {
+      if (p.projectCode) {
+        const parts = p.projectCode.split('-');
+        const seq = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+
+    let nextSeq = maxSeq;
+    const createdProjects: any[] = [];
+
+    for (let i = 0; i < projects.length; i++) {
+      const p = projects[i];
+      const pName = (p.projectName || p.title || '').trim();
+      const numValue = round2(parseFloat(String(p.projectValue ?? p.totalAmount ?? 0)));
+      const discountPercent = Math.max(0, Math.min(100, Number(p.discountPercent) || 0));
+      const discountAmount = p.discountAmount !== undefined
+        ? round2(parseFloat(String(p.discountAmount)))
+        : round2((numValue * discountPercent) / 100);
+
+      // Generate guaranteed unique projectCode
+      nextSeq++;
+      let projectCode = generateProjectCode(nextSeq, currentYear);
+      while (await Project.exists({ projectCode })) {
+        nextSeq++;
+        projectCode = generateProjectCode(nextSeq, currentYear);
+      }
+
+      const productionCost = p.productionCost !== undefined ? Math.max(0, round2(parseFloat(String(p.productionCost)) || 0)) : 0;
+      const productionCostNotes = p.productionCostNotes ? String(p.productionCostNotes).trim() : undefined;
+      const assignedEmployees = Array.isArray(p.assignedEmployees) ? p.assignedEmployees : [];
+      const projectStartDate = p.startDate !== undefined ? (p.startDate ? p.startDate : undefined) : startDate;
+      const projectDeadline = p.deadline !== undefined ? (p.deadline ? p.deadline : undefined) : (p.endDate || deadline);
+      const rawStatus = String(p.status !== undefined && p.status ? p.status : (status || 'start_process')).toLowerCase().trim();
+      let projectStatus: any = rawStatus;
+      if (rawStatus === 'in_progress' || rawStatus === 'review') projectStatus = 'in_process';
+      if (rawStatus === 'revision') projectStatus = 'in_changes';
+      if (!['start_process', 'in_process', 'in_changes', 'delivered', 'completed'].includes(projectStatus)) {
+        projectStatus = 'start_process';
+      }
+
+      // 1. Create Project
+      const project = await Project.create({
+        projectCode,
+        clientId: p.clientId || clientId,
+        projectName: pName,
+        description: p.description ? String(p.description).trim() : undefined,
+        projectValue: toDecimal(numValue),
+        discountPercent,
+        discountAmount: toDecimal(discountAmount),
+        productionCost: toDecimal(productionCost),
+        productionCostNotes,
+        startDate: projectStartDate ? new Date(projectStartDate) : undefined,
+        deadline: projectDeadline ? new Date(projectDeadline) : undefined,
+        status: projectStatus,
+        assignedEmployees: assignedEmployees.map((id: string) => new Types.ObjectId(id)),
+        createdBy: req.user!._id,
+      });
+
+      // 2. Compute Commission Distribution
+      const splitToUse = p.commissionSplit || defaultCommissionSplit;
+      const hasNoEmployees = assignedEmployees.length === 0;
+      const split = (hasNoEmployees || Number(splitToUse?.adminPercent) === 100)
+        ? {
+            brokerPercent: 0,
+            employeePercent: 0,
+            officePercent: 0,
+            adminPercent: 100,
+            settlementPercent: 0,
+          }
+        : {
+            brokerPercent: Number(splitToUse?.brokerPercent ?? 10),
+            employeePercent: Number(splitToUse?.employeePercent ?? 40),
+            officePercent: Number(splitToUse?.officePercent ?? 10),
+            adminPercent: Number(splitToUse?.adminPercent ?? 35),
+            settlementPercent: Number(splitToUse?.settlementPercent ?? 5),
+          };
+
+      const commissionAmounts = calculateCommissionAmounts(numValue, split, discountPercent, productionCost);
+
+      const projectCommission = await ProjectCommission.create({
+        projectId: project._id,
+        ...commissionAmounts,
+        createdBy: req.user!._id,
+      });
+
+      // 3. Allocate Employee Pool
+      if (assignedEmployees.length > 0) {
+        const equalShare = round2(100 / assignedEmployees.length);
+        const sharesToUse = assignedEmployees.map((empId: string, idx: number) => {
+          const share = idx === assignedEmployees.length - 1 ? round2(100 - equalShare * (assignedEmployees.length - 1)) : equalShare;
+          return { employeeId: empId, sharePercent: share };
+        });
+
+        await allocateEmployeePool(
+          project._id,
+          fromDecimal(projectCommission.employeeAmount),
+          sharesToUse
+        );
+      }
+
+      await logAudit({
+        userId: req.user!._id,
+        action: 'CREATE_PROJECT',
+        entityType: 'Project',
+        entityId: project._id,
+        newValue: { projectCode, projectName: pName, projectValue: numValue },
+      });
+
+      createdProjects.push(project);
+    }
+
+    // Notify Admin
+    createNotification({
+      role: 'admin',
+      type: 'project',
+      title: 'Multiple Projects Created',
+      message: `${createdProjects.length} new projects were created.`,
+      link: '/admin/projects',
+    }).catch(() => {});
+
+    res.status(201).json({
+      success: true,
+      message: `${createdProjects.length} project(s) created successfully.`,
+      count: createdProjects.length,
+      projects: createdProjects,
+      data: createdProjects,
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 export async function getProjectById(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const id = req.params.id || req.params.projectId;
@@ -696,7 +869,7 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
       } else if (!isNowFinished) {
         project.deliveredAt = undefined;
       }
-      project.status = newStatus;
+      project.status = newStatus === 'completed' ? 'delivered' : newStatus;
     }
     if (req.body.clientId) {
       project.clientId = new Types.ObjectId(req.body.clientId);
@@ -1020,6 +1193,276 @@ export async function deleteProject(req: AuthenticatedRequest, res: Response): P
   }
 }
 
+export async function bulkUpdateProjects(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const {
+      ids,
+      status,
+      assignedEmployees,
+      clientId,
+      startDate,
+      deadline,
+      description,
+      projectValue,
+      productionCost,
+      productionCostNotes,
+      commissionSplit,
+      resetDiscount,
+      discountPercent,
+    } = req.body as {
+      ids: string[];
+      status?: string;
+      assignedEmployees?: string[];
+      clientId?: string;
+      startDate?: string | null;
+      deadline?: string | null;
+      description?: string;
+      projectValue?: number | string;
+      productionCost?: number | string;
+      productionCostNotes?: string;
+      commissionSplit?: {
+        brokerPercent?: number;
+        employeePercent?: number;
+        officePercent?: number;
+        adminPercent?: number;
+        settlementPercent?: number;
+        brokerPercentage?: number;
+        employeePercentage?: number;
+        officeExpensePercentage?: number;
+        adminSharePercentage?: number;
+        settlementReservePercentage?: number;
+      };
+      resetDiscount?: boolean;
+      discountPercent?: number | string | null;
+    };
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ success: false, message: 'No project IDs provided.' });
+      return;
+    }
+
+    const validIds = ids.filter((id) => typeof id === 'string' && Types.ObjectId.isValid(id));
+    if (validIds.length === 0) {
+      res.status(400).json({ success: false, message: 'No valid project IDs provided.' });
+      return;
+    }
+
+    const projects = await Project.find({ _id: { $in: validIds } });
+    if (projects.length === 0) {
+      res.status(404).json({ success: false, message: 'No projects found.' });
+      return;
+    }
+
+    for (const project of projects) {
+      if (status) {
+        const wasFinished = project.status === 'delivered' || (project.status as any) === 'completed';
+        const isNowFinished = status === 'delivered' || status === 'completed';
+        if (isNowFinished && !wasFinished) {
+          project.deliveredAt = new Date();
+        } else if (!isNowFinished) {
+          project.deliveredAt = undefined;
+        }
+        project.status = (status === 'completed' ? 'delivered' : status) as any;
+      }
+
+      if (clientId && Types.ObjectId.isValid(clientId)) {
+        project.clientId = new Types.ObjectId(clientId);
+      }
+
+      if (startDate !== undefined) {
+        if (startDate && !isNaN(new Date(startDate).getTime())) {
+          project.startDate = new Date(startDate);
+        } else {
+          project.set('startDate', undefined);
+        }
+      }
+
+      if (deadline !== undefined) {
+        if (deadline && !isNaN(new Date(deadline).getTime())) {
+          project.deadline = new Date(deadline);
+        } else {
+          project.set('deadline', undefined);
+        }
+      }
+
+      if (description !== undefined) {
+        project.description = typeof description === 'string' ? description.trim() : '';
+      }
+
+      // Financials updates
+      let projectFinancialsChanged = false;
+      if (projectValue !== undefined && projectValue !== null && projectValue !== '') {
+        const newNum = Math.max(0, round2(parseFloat(String(projectValue)) || 0));
+        project.projectValue = toDecimal(newNum);
+        projectFinancialsChanged = true;
+      }
+      if (resetDiscount === true) {
+        project.discountPercent = 0;
+        project.discountAmount = toDecimal(0);
+        projectFinancialsChanged = true;
+      } else if (discountPercent !== undefined && discountPercent !== null && discountPercent !== '') {
+        const discNum = Math.max(0, Math.min(100, Number(discountPercent) || 0));
+        project.discountPercent = discNum;
+        const currentGross = fromDecimal(project.projectValue);
+        project.discountAmount = toDecimal(round2((currentGross * discNum) / 100));
+        projectFinancialsChanged = true;
+      }
+      if (productionCost !== undefined && productionCost !== null && productionCost !== '') {
+        const newProdCost = Math.max(0, round2(parseFloat(String(productionCost)) || 0));
+        project.productionCost = toDecimal(newProdCost);
+        projectFinancialsChanged = true;
+      }
+      if (productionCostNotes !== undefined) {
+        project.productionCostNotes = productionCostNotes ? String(productionCostNotes).trim() : '';
+      }
+
+      if (commissionSplit) {
+        const currentGross = fromDecimal(project.projectValue);
+        const currentDiscPercent = Number(project.discountPercent) || 0;
+        const calcDiscAmount = round2((currentGross * currentDiscPercent) / 100);
+        project.discountAmount = toDecimal(calcDiscAmount);
+        const currentProdCost = project.productionCost ? fromDecimal(project.productionCost) : 0;
+
+        const rawSplit = commissionSplit as any;
+        const split = {
+          brokerPercent: Math.max(0, Number(rawSplit.brokerPercent ?? rawSplit.brokerPercentage ?? 10)),
+          employeePercent: Math.max(0, Number(rawSplit.employeePercent ?? rawSplit.employeePercentage ?? 40)),
+          officePercent: Math.max(0, Number(rawSplit.officePercent ?? rawSplit.officeExpensePercentage ?? 10)),
+          adminPercent: Math.max(0, Number(rawSplit.adminPercent ?? rawSplit.adminSharePercentage ?? 35)),
+          settlementPercent: Math.max(0, Number(rawSplit.settlementPercent ?? rawSplit.settlementReservePercentage ?? 5)),
+        };
+
+        const updatedAmounts = calculateCommissionAmounts(currentGross, split, currentDiscPercent, currentProdCost);
+        let commission = await ProjectCommission.findOne({ projectId: project._id });
+        if (commission) {
+          Object.assign(commission, updatedAmounts);
+          await commission.save();
+        } else {
+          await ProjectCommission.create({
+            projectId: project._id,
+            ...updatedAmounts,
+            createdBy: req.user?._id,
+          });
+        }
+
+        // Re-scale employee allocations
+        const allocations = await ProjectEmployee.find({ projectId: project._id });
+        const employeeTotal = fromDecimal(updatedAmounts.employeeAmount);
+        for (const alloc of allocations) {
+          const share = alloc.sharePercent ?? alloc.sharePercentage ?? 100;
+          alloc.sharePercent = share;
+          alloc.sharePercentage = share;
+          alloc.allocatedCommission = toDecimal(round2((employeeTotal * share) / 100));
+          await alloc.save();
+        }
+      } else if (projectFinancialsChanged) {
+        const currentGross = fromDecimal(project.projectValue);
+        const currentDiscPercent = Number(project.discountPercent) || 0;
+        const calcDiscAmount = round2((currentGross * currentDiscPercent) / 100);
+        project.discountAmount = toDecimal(calcDiscAmount);
+        const currentProdCost = project.productionCost ? fromDecimal(project.productionCost) : 0;
+
+        let commission = await ProjectCommission.findOne({ projectId: project._id });
+        let updatedAmounts: any;
+        if (commission) {
+          updatedAmounts = calculateCommissionAmounts(currentGross, {
+            brokerPercent: commission.brokerPercent,
+            employeePercent: commission.employeePercent,
+            officePercent: commission.officePercent,
+            adminPercent: commission.adminPercent,
+            settlementPercent: commission.settlementPercent,
+          }, currentDiscPercent, currentProdCost);
+          Object.assign(commission, updatedAmounts);
+          await commission.save();
+        } else {
+          const defaultSplit = { brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 };
+          updatedAmounts = calculateCommissionAmounts(currentGross, defaultSplit, currentDiscPercent, currentProdCost);
+          await ProjectCommission.create({
+            projectId: project._id,
+            ...updatedAmounts,
+            createdBy: req.user?._id,
+          });
+        }
+
+        // Re-scale employee allocations
+        const allocations = await ProjectEmployee.find({ projectId: project._id });
+        const employeeTotal = fromDecimal(updatedAmounts.employeeAmount);
+        for (const alloc of allocations) {
+          const share = alloc.sharePercent ?? alloc.sharePercentage ?? 100;
+          alloc.sharePercent = share;
+          alloc.sharePercentage = share;
+          alloc.allocatedCommission = toDecimal(round2((employeeTotal * share) / 100));
+          await alloc.save();
+        }
+      }
+
+      if (assignedEmployees !== undefined) {
+        const rawIds = Array.isArray(assignedEmployees) ? assignedEmployees : [];
+        const uniqueEmpIds = Array.from(new Set(rawIds.filter((id) => typeof id === 'string' && Types.ObjectId.isValid(id))));
+        project.assignedEmployees = uniqueEmpIds.map((id) => new Types.ObjectId(id));
+        const commission = await ProjectCommission.findOne({ projectId: project._id });
+        const employeeTotal = commission ? fromDecimal(commission.employeeAmount) : 0;
+        const count = project.assignedEmployees.length;
+        if (count > 0) {
+          const equalShare = round2(100 / count);
+          for (let idx = 0; idx < count; idx++) {
+            const empId = project.assignedEmployees[idx];
+            const share = idx === count - 1 ? round2(100 - equalShare * (count - 1)) : equalShare;
+            await ProjectEmployee.findOneAndUpdate(
+              { projectId: project._id, employeeId: empId },
+              { $set: { sharePercent: share, sharePercentage: share, allocatedCommission: toDecimal(round2((employeeTotal * share) / 100)) } },
+              { upsert: true }
+            );
+          }
+          await ProjectEmployee.deleteMany({ projectId: project._id, employeeId: { $nin: project.assignedEmployees } });
+        } else {
+          await ProjectEmployee.deleteMany({ projectId: project._id });
+        }
+      }
+
+      await project.save();
+
+      if (status) {
+        const effectiveStatus = (status === 'delivered' || status === 'completed') ? 'delivered' : status;
+        await WorkLog.updateMany(
+          { 'projectsWorked.projectId': project._id },
+          { $set: { 'projectsWorked.$[elem].status': effectiveStatus } },
+          { arrayFilters: [{ 'elem.projectId': project._id }] }
+        ).catch(() => {});
+      }
+    }
+
+    res.json({ success: true, message: `${projects.length} project(s) updated successfully.`, updatedCount: projects.length });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function bulkDeleteProjects(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { ids } = req.body as { ids: string[] };
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ success: false, message: 'No project IDs provided.' });
+      return;
+    }
+
+    const objectIds = ids.map((id) => new Types.ObjectId(id));
+
+    await Promise.all([
+      ProjectCommission.deleteMany({ projectId: { $in: objectIds } }),
+      ProjectEmployee.deleteMany({ projectId: { $in: objectIds } }),
+      ClientPayment.deleteMany({ projectId: { $in: objectIds } }),
+      WorkLog.deleteMany({ projectId: { $in: objectIds } }),
+      Project.deleteMany({ _id: { $in: objectIds } }),
+    ]);
+
+    res.json({ success: true, message: `${ids.length} project(s) deleted successfully.`, deletedCount: ids.length });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 export async function updateProjectStatusByEmployee(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const id = req.params.id || req.params.projectId;
@@ -1030,6 +1473,7 @@ export async function updateProjectStatusByEmployee(req: AuthenticatedRequest, r
       'in_process',
       'in_changes',
       'delivered',
+      'completed',
     ];
 
     if (!status || !allowedStatuses.includes(status)) {
@@ -1070,9 +1514,10 @@ export async function updateProjectStatusByEmployee(req: AuthenticatedRequest, r
     }
 
     const oldStatus = project.status;
-    project.status = status;
+    const normalizedStatus = status === 'completed' ? 'delivered' : status;
+    project.status = normalizedStatus;
     const wasFinished = oldStatus === 'delivered' || (oldStatus as any) === 'completed';
-    const isNowFinished = status === 'delivered' || (status as any) === 'completed';
+    const isNowFinished = normalizedStatus === 'delivered';
     if (isNowFinished && !wasFinished) {
       project.deliveredAt = new Date();
     } else if (!isNowFinished) {
