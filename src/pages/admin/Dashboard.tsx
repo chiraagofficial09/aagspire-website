@@ -22,6 +22,8 @@ import {
   Clock,
   Wallet,
   TrendingUp,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { MonthSelectDropdown } from '../../components/work/MonthSelectDropdown';
 import {
@@ -79,6 +81,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [pendingTab, setPendingTab] = useState<'workLogs' | 'payments'>('workLogs');
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
+  const [showMoreCards, setShowMoreCards] = useState(false);
 
   const fetchDashboardData = async (monthVal?: string) => {
     try {
@@ -142,7 +145,8 @@ export const AdminDashboard: React.FC = () => {
   const openingReceivable = Number(kpis.openingReceivable ?? finMetrics.openingReceivable ?? 0);
   const closingReceivable = Number(kpis.closingReceivable ?? finMetrics.closingReceivable ?? kpis.outstandingAmount ?? 0);
   const totalBadDebt = Number(kpis.totalBadDebt ?? finMetrics.totalBadDebt ?? 0);
-  const netPending = Math.max(0, closingReceivable - totalBadDebt);
+  const totalDeduction = Number(kpis.totalDeductions ?? finMetrics.totalDeductions ?? kpis.totalDeduction ?? finMetrics.totalDeduction ?? 0);
+  const netPending = Math.max(0, closingReceivable - totalBadDebt - totalDeduction);
 
   // Supporting Cash Accounting
   const appliedCollections = Number(kpis.appliedCollections ?? finMetrics.appliedCollections ?? 0);
@@ -341,8 +345,40 @@ export const AdminDashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* Right Header Toolbar: Month Filter & Admin Profile */}
+        {/* Right Header Toolbar: Month Filter, Toggle Cards Button & Admin Profile */}
         <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowMoreCards(!showMoreCards)}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer ${
+              showMoreCards
+                ? ' text-white border border-white/[0.08] bg-[#0c0d12]/80 hover:bg-[#0c0d12]'
+                : ' text-white  border border-white/[0.08] bg-[#0c0d12] hover:bg-[#0c0d12]/80'
+            }`}
+            title="Toggle Bad Debt & 5-Tier Allocation Shares"
+          >
+            <PieIcon className="w-4 h-4 text-white" />
+            <span className="hidden sm:inline text-white">
+              {showMoreCards ? 'Show 4 boxes Only' : 'Show All Data'}
+            </span>
+            <span className="sm:hidden">{showMoreCards ? '4 Cards' : 'Shares'}</span>
+            {showMoreCards ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+            {totalDeduction > 0 && !showMoreCards && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 font-mono border border-amber-500/30">
+                Ded
+              </span>
+            )}
+            {totalBadDebt > 0 && !showMoreCards && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500/20 text-rose-300 font-mono border border-rose-500/30">
+                Bad Debt
+              </span>
+            )}
+          </button>
+
           <MonthSelectDropdown
             value={selectedMonth}
             onChange={setSelectedMonth}
@@ -392,10 +428,17 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* 2. PRIMARY FINANCIAL EQUATION OVERVIEW */}
-      <div className="space-y-4">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 lg:gap-3.5">
-          {/* Card 1: New Projects */}
-          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-white/40 font-mono">
+            {showMoreCards ? 'All Financial Cards & Allocation' : 'Primary Financial Overview'}
+          </span>
+        </div>
+
+        {/* Top Cards: 4 cards by default, 6 cards (with Total Deduction & Total Bad Debt) when toggled */}
+        <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ${showMoreCards ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-3 lg:gap-3.5`}>
+          {/* Card 1: Total This month */}
+          <div className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
             <div className="flex items-center justify-between">
               <span className="text-[11px] sm:text-xs font-medium text-white/50">Total This month</span>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
@@ -409,8 +452,8 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 2: Previous Month Due */}
-          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+          {/* Card 2: Previous Month Pending */}
+          <div className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
             <div className="flex items-center justify-between">
               <span className="text-[11px] sm:text-xs font-medium text-white/50">Previous Month Pending</span>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
@@ -425,7 +468,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           {/* Card 3: Money Received This Month */}
-          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+          <div className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
             <div className="flex items-center justify-between">
               <span className="text-[11px] sm:text-xs font-medium text-white/50">Money Received This Month</span>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
@@ -439,27 +482,46 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Card 4: Total Bad Debt */}
-          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Bad Debt</span>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-rose-400 border border-white/10">
-                <AlertCircle className="w-4 h-4 text-white" />
+          {/* Card 4: Total Deduction (Shown ONLY when toggled) */}
+          {showMoreCards && (
+            <div className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg} animate-in fade-in duration-200`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Deduction</span>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-amber-400 border border-white/10">
+                  <Scissors className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FF5A1F]">
+                  {formatINR(totalDeduction)}
+                </div>
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FF5A1F]">
-                {formatINR(totalBadDebt)}
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* Card 5: Total Pending */}
-          <div className={`flex-1 p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+          {/* Card 5: Total Bad Debt (Shown ONLY when toggled) */}
+          {showMoreCards && (
+            <div className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg} animate-in fade-in duration-200`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Bad Debt</span>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-rose-400 border border-white/10">
+                  <AlertCircle className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#FF5A1F]">
+                  {formatINR(totalBadDebt)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Card 6: Total Pending */}
+          <div className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Pending</span>
-                {totalBadDebt > 0 && (
+                {(totalBadDebt > 0 || totalDeduction > 0) && (
                   <span className="text-[9px] text-[#FF5A1F] font-mono px-1 rounded bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">Net</span>
                 )}
               </div>
@@ -474,109 +536,106 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* 2.5 ALLOCATION SHARE CARDS: 5-TIER PROJECT-VALUE-WEIGHTED COMMISSION SPLIT */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 mt-4 sm:mt-5">
-        {/* Card 1: EMPLOYEE SHARE */}
-        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
-              Team Commission
-            </span>
-            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
-              {formatSplitPercent(employeeSharePercent)}
-            </span>
-          </div>
-          <div className="mt-3">
-            <div>
-              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
-                {formatINR(employeeShareAmount)}
-              </span>
+        {/* 2.5 ALLOCATION SHARE CARDS: 5-TIER COMMISSION SPLIT (SHOWN ONLY WHEN TOGGLED - PEHLA HATU EVU) */}
+        {showMoreCards && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4 mt-4 sm:mt-5 animate-in fade-in duration-200">
+            {/* Card 1: EMPLOYEE SHARE */}
+            <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
+                  Team Commission
+                </span>
+                <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+                  {formatSplitPercent(employeeSharePercent)}
+                </span>
+              </div>
+              <div className="mt-3">
+                <div>
+                  <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
+                    {formatINR(employeeShareAmount)}
+                  </span>
+                </div>
+              </div>
             </div>
-         
-          </div>
-        </div>
 
-        {/* Card 2: ADMIN SHARE */}
-        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400  tracking-wider block">
-              Admin Share
-            </span>
-            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
-              {formatSplitPercent(adminSharePercent)}
-            </span>
-          </div>
-          <div className="mt-3">
-            <div>
-              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
-                {formatINR(adminShareAmount)}
-              </span>
+            {/* Card 2: ADMIN SHARE */}
+            <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
+                  Admin Share
+                </span>
+                <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+                  {formatSplitPercent(adminSharePercent)}
+                </span>
+              </div>
+              <div className="mt-3">
+                <div>
+                  <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
+                    {formatINR(adminShareAmount)}
+                  </span>
+                </div>
+              </div>
             </div>
-           
-          </div>
-        </div>
 
-        {/* Card 3: OFFICE EXPENSE */}
-        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400  tracking-wider block">
-              Office Expense
-            </span>
-            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
-              {formatSplitPercent(officeExpensePercent)}
-            </span>
-          </div>
-          <div className="mt-3">
-            <div>
-              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
-                {formatINR(officeExpenseAmount)}
-              </span>
+            {/* Card 3: OFFICE EXPENSE */}
+            <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
+                  Office Expense
+                </span>
+                <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+                  {formatSplitPercent(officeExpensePercent)}
+                </span>
+              </div>
+              <div className="mt-3">
+                <div>
+                  <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
+                    {formatINR(officeExpenseAmount)}
+                  </span>
+                </div>
+              </div>
             </div>
-          
-          </div>
-        </div>
 
-        {/* Card 4: BROKER SHARE */}
-        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
-              Broker Share
-            </span>
-            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
-              {formatSplitPercent(brokerSharePercent)}
-            </span>
-          </div>
-          <div className="mt-3">
-            <div>
-              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
-                {formatINR(brokerShareAmount)}
-              </span>
+            {/* Card 4: BROKER SHARE */}
+            <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
+                  Broker Share
+                </span>
+                <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+                  {formatSplitPercent(brokerSharePercent)}
+                </span>
+              </div>
+              <div className="mt-3">
+                <div>
+                  <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
+                    {formatINR(brokerShareAmount)}
+                  </span>
+                </div>
+              </div>
             </div>
-          
-          </div>
-        </div>
 
-        {/* Card 5: RESERVE FUND */}
-        <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
-              Reserve Fund
-            </span>
-            <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
-              {formatSplitPercent(reserveFundPercent)}
-            </span>
-          </div>
-          <div className="mt-3">
-            <div>
-              <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
-                {formatINR(reserveFundAmount)}
-              </span>
+            {/* Card 5: RESERVE FUND */}
+            <div className={`rounded-2xl ${isLight ? 'bg-white border border-slate-200' : 'bg-[#0e1017] border border-white/[0.06] hover:border-[#FF5A1F]/30'} p-4 sm:p-5 relative transition-colors flex flex-col justify-between`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-[11px] font-bold text-zinc-400 tracking-wider block">
+                  Reserve Fund
+                </span>
+                <span className="text-[10px] sm:text-xs font-mono font-bold text-[#FF5A1F] px-2 py-0.5 rounded-full bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">
+                  {formatSplitPercent(reserveFundPercent)}
+                </span>
+              </div>
+              <div className="mt-3">
+                <div>
+                  <span className="text-xl sm:text-2xl font-extrabold text-[#FF5A1F] tracking-tight font-sans">
+                    {formatINR(reserveFundAmount)}
+                  </span>
+                </div>
+              </div>
             </div>
-          
           </div>
-        </div>
+        )}
       </div>
 
       {/* 3. RECENT PROJECTS & PENDING APPROVALS (2 COLUMNS) */}

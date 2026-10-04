@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar, ChevronDown, Check } from 'lucide-react';
+import { financeToday } from '../../utils/financeDate';
 
 export interface MonthOption {
   key: string;
@@ -27,11 +28,11 @@ export const MonthSelectDropdown: React.FC<MonthSelectDropdownProps> = ({
   // Dynamic current month key & label
   const now = useMemo(() => new Date(), []);
   const currentMonthKey = useMemo(
-    () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    () => financeToday().slice(0, 7),
     [now]
   );
   const currentMonthLabel = useMemo(
-    () => now.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
+    () => now.toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }),
     [now]
   );
 
@@ -91,6 +92,7 @@ export const MonthSelectDropdown: React.FC<MonthSelectDropdownProps> = ({
       {/* Dropdown Trigger Button */}
       <button
         type="button"
+        aria-label="Select financial month"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -140,7 +142,7 @@ export const MonthSelectDropdown: React.FC<MonthSelectDropdownProps> = ({
                   className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs cursor-pointer flex items-center justify-between transition-colors select-none ${
                     isSelected
                       ? 'bg-[#FF5A1F] text-white shadow-sm font-semibold'
-                      : 'bg-transparent text-zinc-300 hover:bg-white/[0.06] hover:text-white font-medium'
+                      : 'bg-[#0c0d12] text-zinc-300 hover:bg-[#191a1e] hover:text-white font-medium'
                   }`}
                 >
                   <span className="truncate">{opt.label}</span>

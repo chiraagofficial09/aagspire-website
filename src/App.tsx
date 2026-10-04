@@ -46,6 +46,7 @@ const AdminProjects = lazy(() => import('./pages/admin/Projects').then((m) => ({
 const AdminProjectDetails = lazy(() => import('./pages/admin/ProjectDetails').then((m) => ({ default: m.AdminProjectDetails })));
 const AdminWorkLogs = lazy(() => import('./pages/admin/WorkLogs').then((m) => ({ default: m.AdminWorkLogs })));
 const AdminAttendance = lazy(() => import('./pages/admin/Attendance').then((m) => ({ default: m.AdminAttendance })));
+const AdminCashBankBalance = lazy(() => import('./pages/admin/CashBankBalance').then((m) => ({ default: m.AdminCashBankBalance })));
 const AdminPayments = lazy(() => import('./pages/admin/Payments').then((m) => ({ default: m.AdminPayments })));
 const AdminCommissions = lazy(() => import('./pages/admin/Commissions').then((m) => ({ default: m.AdminCommissions })));
 const AdminOfficeExpenses = lazy(() => import('./pages/admin/OfficeExpenses').then((m) => ({ default: m.AdminOfficeExpenses })));
@@ -191,6 +192,7 @@ export default function App() {
                     <Route path="work-logs" element={<AdminWorkLogs />} />
                     <Route path="attendance" element={<AdminAttendance />} />
                     <Route path="payments" element={<AdminPayments />} />
+                    <Route path="cash-bank-balance" element={<AdminCashBankBalance />} />
                     <Route path="commissions" element={<AdminCommissions />} />
                     <Route path="expenses" element={<AdminOfficeExpenses />} />
                     <Route path="settlements" element={<Navigate to="/admin/dashboard" replace />} />

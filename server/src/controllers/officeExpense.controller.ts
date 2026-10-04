@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 import { OfficeExpense } from '../models/OfficeExpense.js';
 import { toDecimal, fromDecimal, round2 } from '../utils/decimalHelper.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
-import { getMonthDateRange } from '../utils/dateHelper.js';
+import { financeMonth, financeMonthRange, validMoney, validFinanceDate } from '../services/cashBankBalance.js';
 import { logAudit } from '../services/audit.service.js';
 import { appendRowSafely } from '../services/googleSheets.service.js';
 
@@ -12,14 +12,20 @@ export async function listOfficeExpenses(req: AuthenticatedRequest, res: Respons
     const { month, search } = req.query;
     const filter: any = {};
 
-    const monthRange = getMonthDateRange(month as string);
-    if (monthRange) {
-      const { startOfMonth, endOfMonth } = monthRange;
-      filter.expenseDate = { $gte: startOfMonth, $lte: endOfMonth };
+    if (month && month !== 'all') {
+      let range;
+      try { range = financeMonthRange(String(month)); } catch {
+        res.status(400).json({ success: false, message: 'Invalid month; use YYYY-MM' });
+        return;
+      }
+      filter.$expr = { $and: [
+        { $gte: [{ $ifNull: ['$expenseDate', '$createdAt'] }, range.start] },
+        { $lt: [{ $ifNull: ['$expenseDate', '$createdAt'] }, range.end] },
+      ] };
     }
 
     if (search) {
-      filter.title = { $regex: String(search).trim(), $options: 'i' };
+      filter.title = { $regex: String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
     }
 
     const [expenses, allSumResult, thisMonthSumResult, monthlyBreakdownResult] = await Promise.all([
@@ -34,12 +40,11 @@ export async function listOfficeExpenses(req: AuthenticatedRequest, res: Respons
       ]),
       (() => {
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const { start: startOfMonth, end: endOfMonth } = financeMonthRange(financeMonth(now));
         return OfficeExpense.aggregate([
           {
             $match: {
-              expenseDate: { $gte: startOfMonth, $lte: endOfMonth },
+              expenseDate: { $gte: startOfMonth, $lt: endOfMonth },
             },
           },
           {
@@ -54,7 +59,7 @@ export async function listOfficeExpenses(req: AuthenticatedRequest, res: Respons
         {
           $group: {
             _id: {
-              $dateToString: { format: '%Y-%m', date: '$expenseDate' },
+              $dateToString: { format: '%Y-%m', date: { $ifNull: ['$expenseDate', '$createdAt'] }, timezone: 'Asia/Kolkata' },
             },
             totalAmount: { $sum: { $toDouble: '$amount' } },
             count: { $sum: 1 },
@@ -98,24 +103,29 @@ export async function createOfficeExpense(req: AuthenticatedRequest, res: Respon
   try {
     const { title, amount, expenseDate, paymentMethod, notes } = req.body;
 
-    if (!title || !String(title).trim()) {
+    if (typeof title !== 'string' || !title.trim()) {
       res.status(400).json({ success: false, message: 'Expense title/name is required' });
       return;
     }
 
     const numAmount = parseFloat(String(amount));
-    if (isNaN(numAmount) || numAmount <= 0) {
+    if (!validMoney(amount)) {
       res.status(400).json({ success: false, message: 'Amount must be greater than 0' });
       return;
     }
 
+    if (!['bank_transfer', 'cash'].includes(paymentMethod) ||
+        (expenseDate !== undefined && !validFinanceDate(expenseDate))) {
+      res.status(400).json({ success: false, message: 'Select Bank or Cash and enter a valid expense date' });
+      return;
+    }
     const dateVal = expenseDate ? new Date(expenseDate) : new Date();
 
     const expense = await OfficeExpense.create({
       title: String(title).trim(),
       amount: toDecimal(numAmount),
-      expenseDate: isNaN(dateVal.getTime()) ? new Date() : dateVal,
-      paymentMethod: paymentMethod || 'cash',
+      expenseDate: dateVal,
+      paymentMethod,
       notes: notes ? String(notes).trim() : undefined,
       createdBy: req.user!._id,
     });
@@ -125,7 +135,7 @@ export async function createOfficeExpense(req: AuthenticatedRequest, res: Respon
       action: 'CREATE_OFFICE_EXPENSE',
       entityType: 'OfficeExpense',
       entityId: expense._id,
-      newValue: { title: expense.title, amount: numAmount },
+      newValue: { title: expense.title, amount: numAmount, paymentMethod: expense.paymentMethod },
     });
 
     // Auto-append to Google Sheets (non-blocking)
@@ -156,6 +166,13 @@ export async function updateOfficeExpense(req: AuthenticatedRequest, res: Respon
     const { id } = req.params;
     const { title, amount, expenseDate, paymentMethod, notes } = req.body;
 
+    if (!Types.ObjectId.isValid(id) ||
+        (title !== undefined && (typeof title !== 'string' || !title.trim())) ||
+        (expenseDate !== undefined && !validFinanceDate(expenseDate)) ||
+        (paymentMethod !== undefined && !['cash', 'bank_transfer', 'upi', 'cheque', 'other'].includes(paymentMethod))) {
+      res.status(400).json({ success: false, message: 'Invalid expense ID, title, date or payment method' });
+      return;
+    }
     const expense = await OfficeExpense.findById(id);
     if (!expense) {
       res.status(404).json({ success: false, message: 'Expense not found' });
@@ -165,7 +182,7 @@ export async function updateOfficeExpense(req: AuthenticatedRequest, res: Respon
     if (title !== undefined) expense.title = String(title).trim();
     if (amount !== undefined) {
       const numAmount = parseFloat(String(amount));
-      if (isNaN(numAmount) || numAmount <= 0) {
+      if (!validMoney(amount)) {
         res.status(400).json({ success: false, message: 'Amount must be greater than 0' });
         return;
       }
@@ -187,7 +204,7 @@ export async function updateOfficeExpense(req: AuthenticatedRequest, res: Respon
       action: 'UPDATE_OFFICE_EXPENSE',
       entityType: 'OfficeExpense',
       entityId: expense._id,
-      newValue: { title: expense.title, amount: fromDecimal(expense.amount) },
+      newValue: { title: expense.title, amount: fromDecimal(expense.amount), paymentMethod: expense.paymentMethod },
     });
 
     res.json({

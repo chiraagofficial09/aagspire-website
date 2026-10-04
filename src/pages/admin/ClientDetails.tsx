@@ -80,6 +80,8 @@ export const AdminClientDetails: React.FC = () => {
   const [badDebts, setBadDebts] = useState<BadDebtEntry[]>([]);
   const [isBadDebtModalOpen, setIsBadDebtModalOpen] = useState(false);
   const [badDebtAmount, setBadDebtAmount] = useState('');
+  const [badDebtDate, setBadDebtDate] = useState(new Date().toISOString().split('T')[0]);
+  const [badDebtReason, setBadDebtReason] = useState('');
 
   const handleAddDeduction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,24 +146,19 @@ export const AdminClientDetails: React.FC = () => {
     const amt = parseFloat(badDebtAmount);
     if (!amt || amt <= 0) return;
 
-    let defDate = new Date().toISOString().split('T')[0];
-    if (selectedMonth && selectedMonth !== 'all') {
-      const todayStr = new Date().toISOString().split('T')[0];
-      defDate = todayStr.startsWith(selectedMonth) ? todayStr : `${selectedMonth}-01`;
-    }
-
     const newEntry: BadDebtEntry = {
       id: Date.now().toString(),
       label: 'Bad Debt',
       projectName: 'Bad Debt',
-      date: defDate,
+      date: badDebtDate || new Date().toISOString().split('T')[0],
       amount: amt,
-      reason: '',
+      reason: badDebtReason.trim(),
     };
     const updated = [...badDebts, newEntry];
     setBadDebts(updated);
     setShowBadDebtCard(true);
     setBadDebtAmount('');
+    setBadDebtReason('');
     setIsBadDebtModalOpen(false);
 
     if (id) {
@@ -175,6 +172,7 @@ export const AdminClientDetails: React.FC = () => {
           })),
         });
         toast.success('Bad debt recorded successfully');
+        fetchClient();
       } catch (err) {
         console.error('Failed to persist bad debt:', err);
         toast.error('Failed to save bad debt to server');
@@ -244,6 +242,16 @@ export const AdminClientDetails: React.FC = () => {
     return filteredBadDebts.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
   }, [filteredBadDebts]);
 
+  // Reset manual card open toggles whenever the month changes
+  useEffect(() => {
+    setShowBadDebtCard(false);
+    setShowDeductionCard(false);
+  }, [selectedMonth]);
+
+  // Only show cards if there are records in the active month or user manually opened to add one
+  const isBadDebtVisible = Boolean((totalBadDebts > 0 || filteredBadDebts.length > 0) || showBadDebtCard);
+  const isDeductionVisible = Boolean((totalDeductions > 0 || filteredDeductions.length > 0) || showDeductionCard);
+
   const openAddDeductionModal = () => {
     setDeductionProjectName('');
     let defDate = new Date().toISOString().split('T')[0];
@@ -258,6 +266,13 @@ export const AdminClientDetails: React.FC = () => {
 
   const openAddBadDebtModal = () => {
     setBadDebtAmount('');
+    setBadDebtReason('');
+    let defDate = new Date().toISOString().split('T')[0];
+    if (selectedMonth && selectedMonth !== 'all') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      defDate = todayStr.startsWith(selectedMonth) ? todayStr : `${selectedMonth}-01`;
+    }
+    setBadDebtDate(defDate);
     setIsBadDebtModalOpen(true);
   };
 
@@ -323,10 +338,8 @@ export const AdminClientDetails: React.FC = () => {
             amount: Number(d.amount) || 0,
           }));
           setDeductions(loaded);
-          setShowDeductionCard(loaded.length > 0);
         } else {
           setDeductions([]);
-          setShowDeductionCard(false);
         }
         if (Array.isArray(c.badDebts) && c.badDebts.length > 0) {
           const loadedBad: BadDebtEntry[] = c.badDebts.map((d: any) => ({
@@ -338,10 +351,8 @@ export const AdminClientDetails: React.FC = () => {
             reason: d.reason || '',
           }));
           setBadDebts(loadedBad);
-          setShowBadDebtCard(loadedBad.length > 0);
         } else {
           setBadDebts([]);
-          setShowBadDebtCard(false);
         }
       }
     } catch (err) {
@@ -514,6 +525,18 @@ export const AdminClientDetails: React.FC = () => {
     return Math.max(0, allTimeContractVal - allTimePaidVal);
   }, [allTimeContractVal, allTimePaidVal]);
 
+  const totalAllDeductions = useMemo(() => {
+    return (deductions || []).reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  }, [deductions]);
+
+  const totalAllBadDebts = useMemo(() => {
+    return (badDebts || []).reduce((sum, bd) => sum + (Number(bd.amount) || 0), 0);
+  }, [badDebts]);
+
+  const allTimeNetRemainingDue = useMemo(() => {
+    return Math.max(0, allTimeContractVal - allTimePaidVal - totalAllDeductions - totalAllBadDebts);
+  }, [allTimeContractVal, allTimePaidVal, totalAllDeductions, totalAllBadDebts]);
+
   // Projects belonging specifically to the selected month (or all if All Months)
   const filteredProjects = useMemo(() => {
     if (isAllMonths || !startOfMonth || !endOfMonth) return allProjects;
@@ -573,8 +596,22 @@ export const AdminClientDetails: React.FC = () => {
       })
       .reduce((s: number, pm: any) => s + getPaymentAmount(pm), 0);
 
-    return Math.max(0, totalValBefore - totalPaidBefore);
-  }, [allProjects, allPayments, isAllMonths, startOfMonth]);
+    const totalDeductionsBefore = (deductions || [])
+      .filter((d: any) => {
+        const dDate = new Date(d.date || 0);
+        return !isNaN(dDate.getTime()) && dDate < startOfMonth;
+      })
+      .reduce((s: number, d: any) => s + (Number(d.amount) || 0), 0);
+
+    const totalBadDebtsBefore = (badDebts || [])
+      .filter((bd: any) => {
+        const bdDate = new Date(bd.date || 0);
+        return !isNaN(bdDate.getTime()) && bdDate < startOfMonth;
+      })
+      .reduce((s: number, bd: any) => s + (Number(bd.amount) || 0), 0);
+
+    return Math.max(0, totalValBefore - totalPaidBefore - totalDeductionsBefore - totalBadDebtsBefore);
+  }, [allProjects, allPayments, deductions, badDebts, isAllMonths, startOfMonth]);
 
   const openingReceivable = Number(
     finSummary.openingReceivable !== undefined
@@ -619,12 +656,12 @@ export const AdminClientDetails: React.FC = () => {
       return;
     }
 
-    if (allTimeContractVal > 0 && allTimeRemainingDue <= 0) {
-      toast.error('This client account is already fully paid. Cannot add further payments.');
+    if (allTimeContractVal > 0 && allTimeNetRemainingDue <= 0) {
+      toast.error('This client account is already fully settled. Cannot add further payments.');
       return;
     }
-    if (allTimeContractVal > 0 && entered > allTimeRemainingDue) {
-      toast.error(`Cannot record more than remaining client balance (${formatINR(allTimeRemainingDue)}).`);
+    if (allTimeContractVal > 0 && entered > allTimeNetRemainingDue) {
+      toast.error(`Cannot record more than remaining client balance (${formatINR(allTimeNetRemainingDue)}).`);
       return;
     }
 
@@ -837,7 +874,7 @@ export const AdminClientDetails: React.FC = () => {
             <h2 className="text-lg font-bold text-[#FF5A1F] tracking-tight">Financial Overview</h2>
           </div>
           <div className="flex items-center gap-2">
-            {!showBadDebtCard && (
+            {!isBadDebtVisible && (
               <button
                 type="button"
                 onClick={() => {
@@ -851,7 +888,7 @@ export const AdminClientDetails: React.FC = () => {
                 <span>Bad Debt</span>
               </button>
             )}
-            {!showDeductionCard && (
+            {!isDeductionVisible && (
               <button
                 type="button"
                 onClick={() => {
@@ -915,12 +952,12 @@ export const AdminClientDetails: React.FC = () => {
           </div>
 
           {/* Card 4 (Item 5): Bad Debt */}
-          {showBadDebtCard && (
+          {isBadDebtVisible && (
             <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between xl:flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-medium text-white/50">Bad Debt</span>
-                  {badDebts.length === 0 && totalBadDebts === 0 && (
+                  {filteredBadDebts.length === 0 && totalBadDebts === 0 && (
                     <button
                       type="button"
                       onClick={() => setShowBadDebtCard(false)}
@@ -949,12 +986,12 @@ export const AdminClientDetails: React.FC = () => {
           )}
 
           {/* Card 5 (Item 4): Deductions */}
-          {showDeductionCard && (
+          {isDeductionVisible && (
             <div className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between xl:flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-medium text-white/50">Deductions</span>
-                  {deductions.length === 0 && totalDeductions === 0 && (
+                  {filteredDeductions.length === 0 && totalDeductions === 0 && (
                     <button
                       type="button"
                       onClick={() => setShowDeductionCard(false)}
@@ -1001,7 +1038,7 @@ export const AdminClientDetails: React.FC = () => {
         </div>
 
         {/* Bad Debts List */}
-        {showBadDebtCard && (
+        {isBadDebtVisible && (
           <div className="space-y-2 pt-2 border-t border-white/5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1055,7 +1092,7 @@ export const AdminClientDetails: React.FC = () => {
         )}
 
         {/* Deductions List */}
-        {showDeductionCard && (
+        {isDeductionVisible && (
           <div className="space-y-2 pt-2 border-t border-white/5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1711,7 +1748,7 @@ export const AdminClientDetails: React.FC = () => {
       {/* Add Bad Debt Modal */}
       {isBadDebtModalOpen && (
         <div className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="premium-modal animate-modal-scale relative w-full max-w-xs p-5 sm:p-6 space-y-4 text-white text-xs my-auto shadow-2xl">
+          <div className="premium-modal animate-modal-scale relative w-full max-w-sm p-5 sm:p-6 space-y-4 text-white text-xs my-auto shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
                 <h3 className="font-bold text-sm">Record Bad Debt</h3>
@@ -1726,9 +1763,19 @@ export const AdminClientDetails: React.FC = () => {
               </button>
             </div>
 
-            <form onSubmit={handleAddBadDebt} className="space-y-4">
+            <form onSubmit={handleAddBadDebt} className="space-y-3">
               <div>
-                <label className="text-white/70 font-medium block mb-1.5">Amount (₹) *</label>
+                <label className="text-white/60 block mb-1">Date *</label>
+                <CustomDatePicker
+                  value={badDebtDate}
+                  onChange={(val) => setBadDebtDate(val)}
+                  placeholder="Select date"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-white/60 block mb-1">Amount (₹) *</label>
                 <input
                   type="number"
                   required
@@ -1738,7 +1785,18 @@ export const AdminClientDetails: React.FC = () => {
                   placeholder="0"
                   value={badDebtAmount}
                   onChange={(e) => setBadDebtAmount(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white font-mono text-base focus:border-[#FF5A1F] focus:outline-none"
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white font-mono focus:border-[#FF5A1F] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-white/60 block mb-1">Reason / Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Client unreachable, disputed"
+                  value={badDebtReason}
+                  onChange={(e) => setBadDebtReason(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white focus:border-[#FF5A1F] focus:outline-none"
                 />
               </div>
 
@@ -1746,13 +1804,13 @@ export const AdminClientDetails: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsBadDebtModalOpen(false)}
-                  className="px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 cursor-pointer text-xs"
+                  className="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 cursor-pointer text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white font-medium cursor-pointer shadow-sm text-xs"
+                  className="px-4 py-1.5 rounded-lg bg-[#FF5A1F] hover:bg-[#e04810] text-white font-medium cursor-pointer shadow-sm text-xs"
                 >
                   Record Bad Debt
                 </button>

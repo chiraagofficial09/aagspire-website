@@ -1,3 +1,4 @@
+import { getCashBankSummary } from '../controllers/cashBank.controller.js';
 import { Router } from 'express';
 import { Types } from 'mongoose';
 import { authenticate } from '../middleware/auth.middleware.js';
@@ -294,6 +295,7 @@ router.put('/commissions/projects/:projectId', updateProjectCommission);
 router.get('/commissions/projects/:projectId/history', getCommissionHistory);
 
 // Client Payments
+router.get('/cash-bank-summary', getCashBankSummary);
 router.get('/payments', listPayments);
 router.post('/payments', createPayment);
 router.delete('/payments/:id', deletePayment);

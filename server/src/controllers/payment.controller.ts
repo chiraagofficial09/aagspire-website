@@ -6,7 +6,7 @@ import { toDecimal, fromDecimal, round2 } from '../utils/decimalHelper.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
 import { createNotification } from '../services/notification.service.js';
-import { getMonthDateRange } from '../utils/dateHelper.js';
+import { financeMonthRange, validMoney, validFinanceDate } from '../services/cashBankBalance.js';
 import { appendRowSafely } from '../services/googleSheets.service.js';
 
 export async function listPayments(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -16,24 +16,16 @@ export async function listPayments(req: AuthenticatedRequest, res: Response): Pr
     if (projectId) filter.projectId = projectId;
     if (clientId) filter.clientId = clientId;
 
-    const monthRange = getMonthDateRange(month as string);
-    if (monthRange) {
-      const { startOfMonth, endOfMonth } = monthRange;
-      const dateMatch = {
-        $or: [
-          { paymentDate: { $gte: startOfMonth, $lte: endOfMonth } },
-          { createdAt: { $gte: startOfMonth, $lte: endOfMonth } },
-        ],
-      };
-
-      if (filter.$and) {
-        filter.$and.push(dateMatch);
-      } else if (filter.$or) {
-        filter.$and = [{ $or: filter.$or }, dateMatch];
-        delete filter.$or;
-      } else {
-        filter.$or = dateMatch.$or;
+    if (month && month !== 'all') {
+      let range;
+      try { range = financeMonthRange(String(month)); } catch {
+        res.status(400).json({ success: false, message: 'Invalid month; use YYYY-MM' });
+        return;
       }
+      filter.$expr = { $and: [
+        { $gte: [{ $ifNull: ['$paymentDate', '$createdAt'] }, range.start] },
+        { $lt: [{ $ifNull: ['$paymentDate', '$createdAt'] }, range.end] },
+      ] };
     }
 
     const payments = await ClientPayment.find(filter)
@@ -57,6 +49,11 @@ export async function createPayment(req: AuthenticatedRequest, res: Response): P
   try {
     const { clientId, projectId, amount, paymentDate, paymentMethod, transactionReference, notes } = req.body;
 
+    if (!validMoney(amount) || (paymentDate !== undefined && !validFinanceDate(paymentDate)) ||
+        (paymentMethod !== undefined && !['bank_transfer', 'upi', 'cash', 'cheque', 'other'].includes(paymentMethod))) {
+      res.status(400).json({ success: false, message: 'Enter a positive amount with at most 2 decimals, a valid date and payment method.' });
+      return;
+    }
     let targetClientId = clientId;
     let projectDoc = null;
 

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   LayoutDashboard,
   Users,
@@ -8,7 +8,7 @@ import {
   Briefcase,
   FileCheck2,
   CalendarCheck,
-  CreditCard, 
+  CreditCard,
   Percent,
   WalletCards,
   Settings,
@@ -20,17 +20,20 @@ import {
   Folder,
   Calendar,
   User,
-} from 'lucide-react';
-import { NotificationBell } from './NotificationBell';
+  IndianRupee,
+} from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 
 interface SidebarProps {
-  role: 'admin' | 'employee';
+  role: "admin" | "employee";
 }
 
 // Section label for grouping nav items
 const SectionLabel: React.FC<{ text: string }> = ({ text }) => (
   <div className="pt-6 pb-2 px-3.5">
-    <span className="text-[10px] font-semibold tracking-wider uppercase text-zinc-500">{text}</span>
+    <span className="text-[10px] font-semibold tracking-wider uppercase text-zinc-500">
+      {text}
+    </span>
   </div>
 );
 
@@ -47,8 +50,8 @@ const NavItem: React.FC<{
       className={({ isActive }) =>
         `relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 ${
           isActive
-            ? 'before:absolute before:left-0 before:inset-y-1.5 before:w-1 before:bg-[#FF5A1F] before:rounded-r bg-[#181313] text-[#FF5A1F] font-semibold'
-            : 'text-zinc-400 hover:text-white hover:bg-white/[0.03]'
+            ? "before:absolute before:left-0 before:inset-y-1.5 before:w-1 before:bg-[#FF5A1F] before:rounded-r bg-[#181313] text-[#FF5A1F] font-semibold"
+            : "text-zinc-400 hover:text-white hover:bg-white/[0.03]"
         }`
       }
     >
@@ -65,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/work/login');
+    navigate("/work/login");
   };
 
   const navContent = (
@@ -73,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       {/* Brand Header */}
       <div className="h-20 px-6 flex items-center justify-between shrink-0">
         <NavLink
-          to={role === 'admin' ? '/admin/dashboard' : '/employee/dashboard'}
+          to={role === "admin" ? "/admin/dashboard" : "/employee/dashboard"}
           className="flex items-center gap-2 select-none group py-1"
         >
           <img
@@ -94,37 +97,157 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
 
       {/* Nav Items Scrollable List */}
       <div className="flex-1 overflow-y-auto px-3.5 py-2 space-y-1 custom-scrollbar">
-        {role === 'admin' ? (
+        {role === "admin" ? (
           <>
             {/* Primary Navigation */}
-            <NavItem item={{ label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Team Members', path: '/admin/employees', icon: Users }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Clients', path: '/admin/clients', icon: Building2 }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Projects', path: '/admin/projects', icon: Briefcase }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Work logs', path: '/admin/work-logs', icon: FileCheck2 }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Attendance', path: '/admin/attendance', icon: CalendarCheck }} onNavigate={() => setMobileOpen(false)} />
+            <NavItem
+              item={{
+                label: "Dashboard",
+                path: "/admin/dashboard",
+                icon: LayoutDashboard,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "Team Members",
+                path: "/admin/employees",
+                icon: Users,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "Clients",
+                path: "/admin/clients",
+                icon: Building2,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "Projects",
+                path: "/admin/projects",
+                icon: Briefcase,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "Work logs",
+                path: "/admin/work-logs",
+                icon: FileCheck2,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "Attendance",
+                path: "/admin/attendance",
+                icon: CalendarCheck,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
 
             {/* FINANCE */}
             <SectionLabel text="FINANCE" />
-            <NavItem item={{ label: 'Payments', path: '/admin/payments', icon: CreditCard }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Commission', path: '/admin/commissions', icon: Percent }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Office Expenses', path: '/admin/expenses', icon: WalletCards }} onNavigate={() => setMobileOpen(false)} />
+            <NavItem
+              item={{
+                label: "Payments",
+                path: "/admin/payments",
+                icon: CreditCard,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
 
+            <NavItem
+              item={{
+                label: "Office Expenses",
+                path: "/admin/expenses",
+                icon: WalletCards,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+
+            <NavItem
+              item={{
+                label: "Final Balance",
+                path: "/admin/cash-bank-balance",
+                icon: IndianRupee,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "Commission",
+                path: "/admin/commissions",
+                icon: Percent,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
             {/* SYSTEM */}
-            <div className="pt-2 space-y-1">
-              <NavItem item={{ label: 'Terms & Conditions', path: '/admin/terms', icon: ScrollText }} onNavigate={() => setMobileOpen(false)} />
-              <NavItem item={{ label: 'Settings', path: '/admin/settings', icon: Settings }} onNavigate={() => setMobileOpen(false)} />
+            <div>
+              <NavItem
+                item={{
+                  label: "Terms & Conditions",
+                  path: "/admin/terms",
+                  icon: ScrollText,
+                }}
+                onNavigate={() => setMobileOpen(false)}
+              />
+              <NavItem
+                item={{
+                  label: "Settings",
+                  path: "/admin/settings",
+                  icon: Settings,
+                }}
+                onNavigate={() => setMobileOpen(false)}
+              />
             </div>
           </>
         ) : (
           /* Employee Links matching exact mockup */
           <>
-            <NavItem item={{ label: 'Dashboard', path: '/employee/dashboard', icon: LayoutDashboard }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'My Projects', path: '/employee/projects', icon: Folder }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Work Logs', path: '/employee/work', icon: Clock }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Attendance', path: '/employee/attendance', icon: Calendar }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Profile', path: '/employee/profile', icon: User }} onNavigate={() => setMobileOpen(false)} />
-            <NavItem item={{ label: 'Terms & Conditions', path: '/employee/terms', icon: ScrollText }} onNavigate={() => setMobileOpen(false)} />
+            <NavItem
+              item={{
+                label: "Dashboard",
+                path: "/employee/dashboard",
+                icon: LayoutDashboard,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "My Projects",
+                path: "/employee/projects",
+                icon: Folder,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{ label: "Work Logs", path: "/employee/work", icon: Clock }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "Attendance",
+                path: "/employee/attendance",
+                icon: Calendar,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{ label: "Profile", path: "/employee/profile", icon: User }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "Terms & Conditions",
+                path: "/employee/terms",
+                icon: ScrollText,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
           </>
         )}
       </div>

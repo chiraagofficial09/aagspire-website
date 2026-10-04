@@ -16,6 +16,7 @@ export interface FinancialMetrics {
   openingReceivable: number;
   closingReceivable: number;
   totalBadDebt: number;
+  totalDeductions?: number;
 
   // Supporting Cash Accounting
   appliedCollections: number;
@@ -129,9 +130,19 @@ export async function calculateFinancialMetrics(options: {
     paymentQuery.clientId = cId;
   }
 
-  const [allProjects, allPayments] = await Promise.all([
+  const clientFilter: any = clientId
+    ? { _id: typeof clientId === 'string' ? new Types.ObjectId(clientId) : clientId }
+    : {
+        $or: [
+          { 'badDebts.0': { $exists: true } },
+          { 'deductions.0': { $exists: true } },
+        ],
+      };
+
+  const [allProjects, allPayments, clientsWithAdjustments] = await Promise.all([
     Project.find(projectQuery).lean(),
     ClientPayment.find(paymentQuery).sort({ paymentDate: 1, createdAt: 1 }).lean(),
+    Client.find(clientFilter, 'deductions badDebts').lean(),
   ]);
 
   const projectMap = new Map<string, any>();
@@ -312,11 +323,13 @@ export async function calculateFinancialMetrics(options: {
   }
 
   // 4. Calculate Opening Receivable
-  // Sum of outstanding balances across all clients before month start (equals prior month closing receivable)
+  // Sum of outstanding balances across all clients before month start (equals prior month closing receivable after write-offs and deductions)
   let openingReceivable = 0;
   if (!isAllMonths && startDate) {
     const clientValuesBefore = new Map<string, number>();
     const clientPaymentsBefore = new Map<string, number>();
+    const clientDeductionsBefore = new Map<string, number>();
+    const clientBadDebtsBefore = new Map<string, number>();
 
     for (const p of allProjects) {
       const pDate = new Date(p.startDate || p.createdAt || 0);
@@ -336,15 +349,41 @@ export async function calculateFinancialMetrics(options: {
       }
     }
 
+    for (const c of clientsWithAdjustments) {
+      const cId = c._id.toString();
+      if (Array.isArray(c.deductions)) {
+        for (const d of c.deductions) {
+          if (!d.amount) continue;
+          const dDate = new Date(d.date || 0);
+          if (dDate < startDate) {
+            clientDeductionsBefore.set(cId, round2((clientDeductionsBefore.get(cId) || 0) + Number(d.amount)));
+          }
+        }
+      }
+      if (Array.isArray(c.badDebts)) {
+        for (const bd of c.badDebts) {
+          if (!bd.amount) continue;
+          const bdDate = new Date(bd.date || 0);
+          if (bdDate < startDate) {
+            clientBadDebtsBefore.set(cId, round2((clientBadDebtsBefore.get(cId) || 0) + Number(bd.amount)));
+          }
+        }
+      }
+    }
+
     const allClientIds = new Set([
       ...clientValuesBefore.keys(),
       ...clientPaymentsBefore.keys(),
+      ...clientDeductionsBefore.keys(),
+      ...clientBadDebtsBefore.keys(),
     ]);
 
     for (const cId of allClientIds) {
       const cVal = clientValuesBefore.get(cId) || 0;
       const cPaid = clientPaymentsBefore.get(cId) || 0;
-      const cDue = Math.max(0, round2(cVal - cPaid));
+      const cDed = clientDeductionsBefore.get(cId) || 0;
+      const cBad = clientBadDebtsBefore.get(cId) || 0;
+      const cDue = Math.max(0, round2(cVal - cPaid - cDed - cBad));
       openingReceivable = round2(openingReceivable + cDue);
     }
   }
@@ -391,6 +430,21 @@ export async function calculateFinancialMetrics(options: {
     : '';
 
   // 10. All-time cumulative numbers
+  let allTimeDeductions = 0;
+  let allTimeBadDebts = 0;
+  for (const c of clientsWithAdjustments) {
+    if (Array.isArray(c.deductions)) {
+      for (const d of c.deductions) {
+        allTimeDeductions = round2(allTimeDeductions + (Number(d.amount) || 0));
+      }
+    }
+    if (Array.isArray(c.badDebts)) {
+      for (const bd of c.badDebts) {
+        allTimeBadDebts = round2(allTimeBadDebts + (Number(bd.amount) || 0));
+      }
+    }
+  }
+
   const totalAllTimeProjectValue = round2(
     allProjects.reduce((sum, p) => sum + getNetProjectValue(p), 0)
   );
@@ -399,21 +453,17 @@ export async function calculateFinancialMetrics(options: {
   );
   const totalAllTimeReceivable = Math.max(
     0,
-    round2(totalAllTimeProjectValue - totalAllTimeCashCollected)
+    round2(totalAllTimeProjectValue - totalAllTimeCashCollected - allTimeDeductions - allTimeBadDebts)
   );
 
   const activeProjectsCount = currentMonthProjects.filter((p) =>
     ['start_process', 'in_process', 'in_changes'].includes(p.status)
   ).length;
 
-  // 11. Bad Debt calculation (scoped to client or all clients)
-  const clientFilter: any = clientId
-    ? { _id: typeof clientId === 'string' ? new Types.ObjectId(clientId) : clientId }
-    : { 'badDebts.0': { $exists: true } };
-
-  const clientsWithBadDebt = await Client.find(clientFilter, 'badDebts').lean();
+  // 11. Bad Debt and Deductions calculation (scoped to month/period)
   let totalBadDebt = 0;
-  for (const c of clientsWithBadDebt) {
+  let totalDeductions = 0;
+  for (const c of clientsWithAdjustments) {
     if (Array.isArray(c.badDebts)) {
       for (const bd of c.badDebts) {
         if (!bd.amount) continue;
@@ -428,6 +478,20 @@ export async function calculateFinancialMetrics(options: {
         }
       }
     }
+    if (Array.isArray(c.deductions)) {
+      for (const d of c.deductions) {
+        if (!d.amount) continue;
+        const dAmt = Number(d.amount) || 0;
+        if (isAllMonths || !startDate || !endDate) {
+          totalDeductions = round2(totalDeductions + dAmt);
+        } else {
+          const dDate = new Date(d.date || 0);
+          if (dDate >= startDate && dDate <= endDate) {
+            totalDeductions = round2(totalDeductions + dAmt);
+          }
+        }
+      }
+    }
   }
 
   return {
@@ -438,6 +502,7 @@ export async function calculateFinancialMetrics(options: {
     openingReceivable,
     closingReceivable,
     totalBadDebt,
+    totalDeductions,
     appliedCollections,
     unappliedCash,
     excessCash,

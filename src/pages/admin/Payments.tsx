@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { FinanceSummary } from '../../components/work/FinanceSummary';
+import { financeToday } from '../../utils/financeDate';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus,
   Search,
@@ -12,19 +14,21 @@ import { formatINR } from '../../utils/formatters';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { EmptyState } from '../../components/work/EmptyState';
-import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
+import { FinanceMonthSelect } from '../../components/work/FinanceMonthSelect';
 import { useAlert } from '../../context/AlertContext';
 
 export const AdminPayments: React.FC = () => {
   const toast = useToast();
   const { showConfirm } = useAlert();
+  const [summaryRevision, setSummaryRevision] = useState(0);
   const [payments, setPayments] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const requestSequence = useRef(0);
   const now = useMemo(() => new Date(), []);
   const currentMonthKey = useMemo(
-    () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    () => financeToday().slice(0, 7),
     [now]
   );
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
@@ -38,26 +42,8 @@ export const AdminPayments: React.FC = () => {
     paymentMethod: 'bank_transfer',
     transactionReference: '',
     notes: '',
-    paymentDate: new Date().toISOString().slice(0, 10),
+    paymentDate: financeToday(),
   });
-
-  const availableMonths: MonthOption[] = useMemo(() => {
-    const monthsSet = new Set<string>();
-    for (let i = 0; i <= 6; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-    }
-    return Array.from(monthsSet)
-      .sort((a, b) => b.localeCompare(a))
-      .map((key) => {
-        const [y, m] = key.split('-').map(Number);
-        const d = new Date(y, m - 1, 1);
-        return {
-          key,
-          label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
-        };
-      });
-  }, [now]);
 
   const selectedMonthLabel = useMemo(() => {
     if (selectedMonth === 'all') return 'All Months';
@@ -67,6 +53,7 @@ export const AdminPayments: React.FC = () => {
   }, [selectedMonth]);
 
   const fetchAll = async (monthVal = selectedMonth) => {
+    const request = ++requestSequence.current;
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -78,12 +65,16 @@ export const AdminPayments: React.FC = () => {
         api.get(`/admin/payments${qs}`),
         api.get('/admin/clients'),
       ]);
+      if (request !== requestSequence.current) return;
       setPayments(payRes.data.data || payRes.data.payments || []);
       setClients(cliRes.data.data || cliRes.data.clients || []);
     } catch (err) {
+      if (request !== requestSequence.current) return;
+      setPayments([]);
+      toast.error('Failed to load payments');
       console.error('Error fetching payments', err);
     } finally {
-      setLoading(false);
+      if (request === requestSequence.current) setLoading(false);
     }
   };
 
@@ -125,13 +116,14 @@ export const AdminPayments: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     if (!selClient) {
       toast.warning('Please select a valid client');
       return;
     }
 
     const entered = parseFloat(formData.amount);
-    if (isNaN(entered) || entered <= 0) {
+    if (!Number.isFinite(entered) || entered <= 0 || !/^\d+(\.\d{1,2})?$/.test(formData.amount)) {
       toast.warning('Please enter a valid amount greater than 0');
       return;
     }
@@ -160,9 +152,10 @@ export const AdminPayments: React.FC = () => {
         paymentMethod: 'bank_transfer',
         transactionReference: '',
         notes: '',
-        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentDate: financeToday(),
       });
       toast.success('Payment recorded successfully for client');
+      setSummaryRevision(value => value + 1);
       fetchAll();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to record payment');
@@ -183,6 +176,7 @@ export const AdminPayments: React.FC = () => {
     try {
       await api.delete(`/admin/payments/${id}`);
       toast.success('Payment deleted successfully');
+      setSummaryRevision(value => value + 1);
       fetchAll();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to delete payment');
@@ -217,6 +211,8 @@ export const AdminPayments: React.FC = () => {
         </button>
       </div>
 
+      <FinanceSummary kind="received" revision={summaryRevision} month={selectedMonth} />
+
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
         <div className="relative w-full sm:w-80">
@@ -231,19 +227,8 @@ export const AdminPayments: React.FC = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-          <MonthSelectDropdown
-            value={selectedMonth}
-            onChange={(val) => setSelectedMonth(val)}
-            availableMonths={availableMonths}
-            allMonthsLabel="All Months"
-            className="w-full sm:w-44"
-          />
-          <div className="flex items-center justify-between sm:justify-start gap-2 px-3.5 py-2.5 rounded-xl bg-[#0d0e14] border border-white/[0.08]">
-            <span className="text-xs text-zinc-500 uppercase tracking-wider">Total:</span>
-            <span className="text-xs font-semibold text-[#FF5A1F] font-mono">
-              {formatINR(totalCollected)}
-            </span>
-          </div>
+          <FinanceMonthSelect value={selectedMonth} onChange={setSelectedMonth} />
+
         </div>
       </div>
 
@@ -288,7 +273,7 @@ export const AdminPayments: React.FC = () => {
                       <div className="text-xs text-zinc-500 font-mono">{p.transactionReference || '-'}</div>
                     </td>
                     <td className="py-4 px-6 text-zinc-400 text-xs font-mono">
-                      {new Date(p.paymentDate || p.createdAt).toLocaleDateString('en-IN')}
+                      {new Date(p.paymentDate || p.createdAt).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}
                     </td>
                     <td className="py-4 px-6 text-zinc-400 text-xs">
                       {p.notes || '-'}

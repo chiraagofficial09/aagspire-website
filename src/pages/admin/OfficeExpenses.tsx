@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { FinanceSummary } from '../../components/work/FinanceSummary';
+import { financeToday } from '../../utils/financeDate';
+import { CustomSelect } from '../../components/work/CustomSelect';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus,
   Search,
   Pencil,
   Trash2,
-  Calendar,
   WalletCards,
   X,
 } from 'lucide-react';
@@ -12,7 +14,7 @@ import { api } from '../../services/api';
 import { formatINR } from '../../utils/formatters';
 import { useToast } from '../../components/work/Toast';
 import { EmptyState } from '../../components/work/EmptyState';
-import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
+import { FinanceMonthSelect } from '../../components/work/FinanceMonthSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { useAlert } from '../../context/AlertContext';
 
@@ -26,42 +28,20 @@ interface ExpenseItem {
   createdAt: string;
 }
 
-interface MonthBreakdownItem {
-  monthKey: string;
-  totalAmount: number;
-  count: number;
-}
-
 export const AdminOfficeExpenses: React.FC = () => {
   const toast = useToast();
   const { showConfirm } = useAlert();
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
-  const [overallTotal, setOverallTotal] = useState<number>(0);
-  const [thisMonthTotal, setThisMonthTotal] = useState<number>(0);
-  const [filteredTotal, setFilteredTotal] = useState<number>(0);
-  const [monthlyBreakdown, setMonthlyBreakdown] = useState<MonthBreakdownItem[]>([]);
+  const [summaryRevision, setSummaryRevision] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const requestSequence = useRef(0);
 
   const now = useMemo(() => new Date(), []);
   const currentMonthKey = useMemo(
-    () => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+    () => financeToday().slice(0, 7),
     [now]
   );
-  const previousMonthKey = useMemo(() => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-  }, [now]);
-
-  const currentMonthLabel = useMemo(() => {
-    return now.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-  }, [now]);
-
-  const previousMonthLabel = useMemo(() => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-  }, [now]);
-
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
 
   // Modal State
@@ -71,27 +51,9 @@ export const AdminOfficeExpenses: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     amount: '',
-    expenseDate: new Date().toISOString().split('T')[0],
+    paymentMethod: '',
+    expenseDate: financeToday(),
   });
-
-  const availableMonths: MonthOption[] = useMemo(() => {
-    const monthsSet = new Set<string>();
-    // Include last 24 months for extensive historical and month-wise viewing
-    for (let i = 0; i <= 24; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      monthsSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-    }
-    return Array.from(monthsSet)
-      .sort((a, b) => b.localeCompare(a))
-      .map((key) => {
-        const [y, m] = key.split('-').map(Number);
-        const d = new Date(y, m - 1, 1);
-        return {
-          key,
-          label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
-        };
-      });
-  }, [now]);
 
   const selectedMonthLabel = useMemo(() => {
     if (selectedMonth === 'all') return 'All Months';
@@ -101,6 +63,7 @@ export const AdminOfficeExpenses: React.FC = () => {
   }, [selectedMonth]);
 
   const fetchExpenses = async (monthVal = selectedMonth, searchVal = search) => {
+    const request = ++requestSequence.current;
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -112,18 +75,17 @@ export const AdminOfficeExpenses: React.FC = () => {
       }
       const qs = params.toString() ? `?${params.toString()}` : '';
       const res = await api.get(`/admin/expenses${qs}`);
+      if (request !== requestSequence.current) return;
       if (res.data.success) {
         setExpenses(res.data.data || []);
-        setOverallTotal(res.data.overallTotal || 0);
-        setThisMonthTotal(res.data.thisMonthTotal || 0);
-        setFilteredTotal(res.data.filteredTotal || 0);
-        setMonthlyBreakdown(res.data.monthlyBreakdown || []);
       }
     } catch (err: any) {
+      if (request !== requestSequence.current) return;
+      setExpenses([]);
       console.error('Failed to fetch office expenses', err);
       toast.error('Failed to load office expenses');
     } finally {
-      setLoading(false);
+      if (request === requestSequence.current) setLoading(false);
     }
   };
 
@@ -136,7 +98,8 @@ export const AdminOfficeExpenses: React.FC = () => {
     setFormData({
       title: '',
       amount: '',
-      expenseDate: new Date().toISOString().split('T')[0],
+      paymentMethod: '',
+      expenseDate: financeToday(),
     });
     setIsModalOpen(true);
   };
@@ -144,11 +107,12 @@ export const AdminOfficeExpenses: React.FC = () => {
   const openEditModal = (item: ExpenseItem) => {
     setEditingExpense(item);
     const dateStr = item.expenseDate
-      ? new Date(item.expenseDate).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
+      ? financeToday(new Date(item.expenseDate))
+      : financeToday();
     setFormData({
       title: item.title,
       amount: String(item.amount),
+      paymentMethod: item.paymentMethod || '',
       expenseDate: dateStr,
     });
     setIsModalOpen(true);
@@ -166,6 +130,7 @@ export const AdminOfficeExpenses: React.FC = () => {
     try {
       await api.delete(`/admin/expenses/${id}`);
       toast.success('Office expense deleted successfully');
+      setSummaryRevision(value => value + 1);
       fetchExpenses();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to delete expense');
@@ -178,8 +143,10 @@ export const AdminOfficeExpenses: React.FC = () => {
       toast.error('Please enter expense name');
       return;
     }
+    if (submitting) return;
+    if (!formData.paymentMethod) { toast.error('Please select Bank or Cash'); return; }
     const num = parseFloat(formData.amount);
-    if (isNaN(num) || num <= 0) {
+    if (!Number.isFinite(num) || num <= 0 || !/^\d+(\.\d{1,2})?$/.test(formData.amount)) {
       toast.error('Please enter a valid amount greater than 0');
       return;
     }
@@ -191,6 +158,7 @@ export const AdminOfficeExpenses: React.FC = () => {
           title: formData.title.trim(),
           amount: num,
           expenseDate: formData.expenseDate,
+          paymentMethod: formData.paymentMethod,
         });
         toast.success('Office expense updated');
       } else {
@@ -198,10 +166,12 @@ export const AdminOfficeExpenses: React.FC = () => {
           title: formData.title.trim(),
           amount: num,
           expenseDate: formData.expenseDate,
+          paymentMethod: formData.paymentMethod,
         });
         toast.success('Office expense added');
       }
       setIsModalOpen(false);
+      setSummaryRevision(value => value + 1);
       fetchExpenses();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save expense');
@@ -213,9 +183,7 @@ export const AdminOfficeExpenses: React.FC = () => {
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return 'Undated';
-    const day = d.getDate();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec'];
-    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   return (
@@ -230,13 +198,7 @@ export const AdminOfficeExpenses: React.FC = () => {
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           {/* Simple Month Filter at the Top */}
-          <MonthSelectDropdown
-            value={selectedMonth}
-            onChange={(val) => setSelectedMonth(val)}
-            availableMonths={availableMonths}
-            allMonthsLabel="All Months"
-            className="w-full sm:w-48"
-          />
+          <FinanceMonthSelect value={selectedMonth} onChange={setSelectedMonth} />
           <button
             onClick={openAddModal}
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#FF5A1F] hover:bg-[#e04810] text-white shadow-sm transition-all cursor-pointer w-full sm:w-auto shrink-0"
@@ -247,24 +209,7 @@ export const AdminOfficeExpenses: React.FC = () => {
         </div>
       </div>
 
-      {/* SUMMARY METRIC (Strictly Orange, White & Dark Palette) */}
-      <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl p-5 sm:p-6 shadow-sm flex items-center justify-between">
-        <div className="space-y-1">
-          <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-            {selectedMonth === 'all'
-              ? 'All Months Office Expense'
-              : selectedMonth === currentMonthKey
-              ? 'This Month Office Expense'
-              : selectedMonth === previousMonthKey
-              ? 'Previous Month Office Expense'
-              : `${selectedMonthLabel} Office Expense`}
-          </span>
-          <div className="text-3xl font-bold text-white tracking-tight">
-            {formatINR(selectedMonth === 'all' ? overallTotal : filteredTotal)}
-          </div>
-        </div>
-      
-      </div>
+      <FinanceSummary kind="expenses" revision={summaryRevision} month={selectedMonth} />
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
@@ -298,13 +243,14 @@ export const AdminOfficeExpenses: React.FC = () => {
                 <th className="py-4 px-6 text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
                   MONEY
                 </th>
+                <th className="py-4 px-6 text-[11px] font-semibold text-zinc-500 uppercase">Status / Paid From</th>
                 <th className="py-4 px-6 text-right" style={{width:'80px'}}></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-zinc-500 font-mono text-xs">
+                  <td colSpan={6} className="py-12 text-center text-zinc-500 font-mono text-xs">
                     Loading office expenses...
                   </td>
                 </tr>
@@ -333,6 +279,7 @@ export const AdminOfficeExpenses: React.FC = () => {
                         {formatINR(exp.amount)}
                       </td>
 
+                      <td className="py-4 px-6 text-xs text-zinc-300"><span className="rounded-lg bg-white/[0.05] px-2.5 py-1.5">{exp.paymentMethod === 'cash' ? 'Cash' : ['bank_transfer', 'upi', 'cheque'].includes(exp.paymentMethod) ? 'Bank' : 'Unclassified'}</span></td>
                       {/* ACTIONS */}
                       <td className="py-4 px-6 text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -357,7 +304,7 @@ export const AdminOfficeExpenses: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="py-8">
+                  <td colSpan={6} className="py-8">
                     <EmptyState
                       type="payments"
                       title={selectedMonth !== 'all' ? `No expenses in ${selectedMonthLabel}` : 'No office expenses recorded'}
@@ -426,6 +373,7 @@ export const AdminOfficeExpenses: React.FC = () => {
 
            
 
+              <div className="grid grid-cols-2 gap-3">
               {/* 3. Money (₹) */}
               <div>
                 <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
@@ -437,7 +385,7 @@ export const AdminOfficeExpenses: React.FC = () => {
                   </span>
                   <input
                     type="number"
-                    step="any"
+                    step="0.01"
                     min="0.01"
                     placeholder="0.00"
                     value={formData.amount}
@@ -448,6 +396,14 @@ export const AdminOfficeExpenses: React.FC = () => {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">Paid From *</label>
+                <CustomSelect value={formData.paymentMethod} onChange={(value) => setFormData({ ...formData, paymentMethod: value })} placeholder="Select Bank / Cash" options={[
+                  { value: 'bank_transfer', label: 'Bank' }, { value: 'cash', label: 'Cash' },
+                  ...(['upi', 'cheque', 'other'].includes(editingExpense?.paymentMethod || '') ? [{ value: editingExpense!.paymentMethod, label: editingExpense!.paymentMethod === 'other' ? 'Other (unclassified)' : 'Bank (' + editingExpense!.paymentMethod.toUpperCase() + ')' }] : []),
+                ]} />
+              </div>
+              </div>
               {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button

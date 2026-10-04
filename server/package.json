@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc && node scripts/copyAssets.mjs",
+    "test:finance": "npm run build && node --experimental-strip-types --test tests/cashBankBalance.test.ts tests/financeControllers.test.mjs",
+    "test:finance-ui": "node tests/financeUi.test.mjs",
     "install:browser": "playwright install --with-deps chromium",
     "start": "node dist/server.js",
     "seed": "tsx src/scripts/seed.ts",
