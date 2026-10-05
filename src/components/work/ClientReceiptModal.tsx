@@ -46,6 +46,25 @@ export function getNextInvoiceNumber(current?: string | number, step = 1): strin
   return `${prefix}${padded}${suffix}`;
 }
 
+export function getProjectDiscountVal(p: any): number {
+  if (p?.invoiceDiscount !== undefined && Number(p.invoiceDiscount) > 0) {
+    return Number(p.invoiceDiscount);
+  }
+  if (p?.discountAmount !== undefined && parseAmount(p.discountAmount) > 0) {
+    return parseAmount(p.discountAmount);
+  }
+  return 0;
+}
+
+export function getProjectActualCost(p: any): number {
+  if (p?.grossProjectValue !== undefined && p?.grossProjectValue !== null && !isNaN(Number(p.grossProjectValue)) && Number(p.grossProjectValue) > 0) {
+    return parseAmount(p.grossProjectValue);
+  }
+  const baseVal = parseAmount(p?.projectValue ?? p?.totalAmount);
+  const disc = Number(p?.invoiceDiscount) || parseAmount(p?.discountAmount) || 0;
+  return baseVal + disc;
+}
+
 export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   isOpen = true,
   onClose,
@@ -66,7 +85,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
         const next = { ...prev };
         initialProjects.forEach((p) => {
           if (prev[p._id] === undefined) {
-            const da = p.invoiceDiscount !== undefined ? Number(p.invoiceDiscount) : (p.discountAmount !== undefined ? Number(p.discountAmount) : 0);
+            const da = getProjectDiscountVal(p);
             if (da > 0) next[p._id] = da;
           }
         });
@@ -96,12 +115,27 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   // Always default to 'select' tab when opening from "Combine Projects" so user sees checkboxes
   const [activeTab, setActiveTab] = useState<'select' | 'preview'>('select');
   const [invoicePreview, setInvoicePreview] = useState<InvoiceSnapshot | null>(null);
-  const [taxPercent, setTaxPercent] = useState<number>(0);
-  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [taxPercent, setTaxPercent] = useState<number>(() => Number(client?.taxPercent) || 0);
+  const [discountAmount, setDiscountAmount] = useState<number>(
+    () => Number(client?.specialDiscount) || Number(client?.discountAmount) || 0
+  );
+
+  // Synchronize client adjustments if client changes
+  useEffect(() => {
+    if (client) {
+      if (client.specialDiscount !== undefined) {
+        setDiscountAmount(Number(client.specialDiscount) || 0);
+      }
+      if (client.taxPercent !== undefined) {
+        setTaxPercent(Number(client.taxPercent) || 0);
+      }
+    }
+  }, [client?._id, client?.specialDiscount, client?.taxPercent]);
+
   const [projectDiscounts, setProjectDiscounts] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
     (initialProjects || []).forEach((p: any) => {
-      const da = p.invoiceDiscount !== undefined ? Number(p.invoiceDiscount) : (p.discountAmount !== undefined ? Number(p.discountAmount) : 0);
+      const da = getProjectDiscountVal(p);
       if (da > 0) init[p._id] = da;
     });
     return init;
@@ -120,12 +154,46 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   const [subProjectInputs, setSubProjectInputs] = useState<Record<string, string>>({});
   // Per-project debounce timers for discount auto-save
   const discountTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const specialDiscountTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const persistDiscount = (projectId: string, val: number) => {
+  const persistDiscount = (projectId: string, val: number): Promise<any> => {
     const safe = Math.max(0, val);
-    api.put(`/admin/projects/${projectId}`, { invoiceDiscount: safe }).catch((err) => {
+    return api.put(`/admin/projects/${projectId}`, { invoiceDiscount: safe, discountAmount: safe }).catch((err) => {
       console.error('Failed to auto-save project discount:', err);
     });
+  };
+
+  const persistSpecialDiscount = (val: number): Promise<any> => {
+    const safe = Math.max(0, val);
+    if (client?._id) {
+      return api.patch(`/admin/clients/${client._id}`, { specialDiscount: safe }).catch((err) => {
+        console.error('Failed to auto-save special discount:', err);
+      });
+    }
+    return Promise.resolve();
+  };
+
+  const handleSpecialDiscountChange = (val: number) => {
+    const safe = Math.max(0, val);
+    setDiscountAmount(safe);
+    if (specialDiscountTimer.current) clearTimeout(specialDiscountTimer.current);
+    specialDiscountTimer.current = setTimeout(() => {
+      persistSpecialDiscount(safe);
+    }, 1000);
+  };
+
+  const handleSaveSpecialDiscount = (val: number) => {
+    if (specialDiscountTimer.current) clearTimeout(specialDiscountTimer.current);
+    persistSpecialDiscount(val);
+  };
+
+  const handleTaxPercentChange = (val: number) => {
+    setTaxPercent(val);
+    if (client?._id) {
+      api.patch(`/admin/clients/${client._id}`, { taxPercent: val }).catch((err) => {
+        console.error('Failed to auto-save tax percent:', err);
+      });
+    }
   };
 
   const handleProjectDiscountChange = (projectId: string, val: number) => {
@@ -144,18 +212,32 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     persistDiscount(projectId, val);
   };
 
-  const flushAllDiscounts = () => {
+  const flushAllDiscounts = async () => {
     Object.entries(discountTimers.current).forEach(([pId, timer]) => {
       clearTimeout(timer);
       delete discountTimers.current[pId];
     });
+    if (specialDiscountTimer.current) {
+      clearTimeout(specialDiscountTimer.current);
+      specialDiscountTimer.current = null;
+    }
+    const promises: Promise<any>[] = [];
     Object.entries(projectDiscounts).forEach(([pId, val]) => {
-      persistDiscount(pId, val);
+      promises.push(persistDiscount(pId, val));
     });
+    if (client?._id) {
+      promises.push(
+        api.patch(`/admin/clients/${client._id}`, {
+          specialDiscount: Number(discountAmount) || 0,
+          taxPercent: Number(taxPercent) || 0,
+        }).catch((err) => console.error('Failed to save client discounts:', err))
+      );
+    }
+    await Promise.all(promises);
   };
 
-  const handleModalClose = () => {
-    flushAllDiscounts();
+  const handleModalClose = async () => {
+    await flushAllDiscounts();
     if (onRefreshClient) onRefreshClient();
     onClose();
   };
@@ -617,6 +699,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     }
     try {
       setDownloading(true);
+      await flushAllDiscounts();
       if (!invoicePreview || invoicePreview.requestKey !== invoiceRequestKey) {
         toast.warning('Wait for the invoice preview to finish loading.');
         return;
@@ -708,7 +791,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => { flushAllDiscounts(); setActiveTab('preview'); }}
+                onClick={async () => { await flushAllDiscounts(); setActiveTab('preview'); }}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer font-medium ${activeTab === 'preview'
                     ? 'bg-gradient-to-r from-[#FF5A1F] to-[#FF7A2F] text-white shadow-sm font-semibold'
                     : 'text-white/60 hover:text-white'
@@ -847,11 +930,11 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                 {displayedProjects.length > 0 ? (
                   displayedProjects.map((p) => {
                     const isSelected = selectedProjectIds.includes(p._id);
-                    const pVal = parseAmount(p.projectValue ?? p.totalAmount);
+                    const actualCost = getProjectActualCost(p);
                     const currentDiscount =
                       projectDiscounts[p._id] !== undefined
                         ? projectDiscounts[p._id]
-                        : (Number(p.invoiceDiscount) || parseAmount(p.discountAmount) || 0);
+                        : getProjectDiscountVal(p);
 
                     return (
                       <div
@@ -877,7 +960,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                           </div>
 
                           <div className="text-right font-mono">
-                            <p className="text-sm font-bold text-white">{formatINR(pVal)}</p>
+                            <p className="text-sm font-bold text-white">{formatINR(actualCost)}</p>
                           </div>
                         </div>
 
@@ -1100,7 +1183,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                     <label className="text-white/60 block mb-1">GST / Tax Rate</label>
                     <CustomSelect<number>
                       value={taxPercent}
-                      onChange={(val) => setTaxPercent(Number(val))}
+                      onChange={(val) => handleTaxPercentChange(Number(val))}
                       options={[
                         { value: 0, label: '0% (No Tax)' },
                         { value: 5, label: '5% GST' },
@@ -1117,7 +1200,8 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                       min="0"
                       value={discountAmount || ''}
                       placeholder="0"
-                      onChange={(e) => setDiscountAmount(Number(e.target.value))}
+                      onChange={(e) => handleSpecialDiscountChange(Number(e.target.value))}
+                      onBlur={(e) => handleSaveSpecialDiscount(Number(e.target.value))}
                       className="w-full px-3 py-2 bg-black border border-white/10 rounded-xl text-white focus:border-[#FF5A1F] focus:outline-none"
                     />
                   </div>
@@ -1141,7 +1225,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
             {activeTab === 'select' ? (
               <button
                 type="button"
-                onClick={() => { flushAllDiscounts(); setActiveTab('preview'); }}
+                onClick={async () => { await flushAllDiscounts(); setActiveTab('preview'); }}
                 disabled={selectedProjects.length === 0}
                 className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#FF5A1F] via-[#FF6E30] to-[#E04810] hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#FF5A1F]/25"
               >

@@ -1,6 +1,8 @@
 import type { Response } from 'express';
 import { InvoiceCounter } from '../models/InvoiceCounter.js';
 import { Client } from '../models/Client.js';
+import { Project } from '../models/Project.js';
+import { toDecimal } from '../utils/decimalHelper.js';
 import type { ClientStatementPdfData } from './clientStatementPdf.service.js';
 import { renderInvoicePdf } from './invoiceBrowser.service.js';
 
@@ -16,7 +18,36 @@ export async function deliverInvoice(clientId: unknown, data: ClientStatementPdf
   await InvoiceCounter.updateOne({ key: 'client_invoice_sequence' }, {
     $max: { currentNumber: nextNumeric }, $set: { lastIssuedAt: new Date() }, $setOnInsert: { step },
   }, { upsert: true });
-  await Client.updateOne({ _id: clientId }, { $set: { lastInvoiceNumber: issued } });
+
+  // Permanently save lastInvoiceNumber and invoice discounts to Client
+  await Client.updateOne({ _id: clientId }, {
+    $set: {
+      lastInvoiceNumber: issued,
+      ...(data.discountAmount !== undefined ? { specialDiscount: Number(data.discountAmount) || 0 } : {}),
+      ...(data.taxPercent !== undefined ? { taxPercent: Number(data.taxPercent) || 0 } : {}),
+    },
+  });
+
+  // Permanently save per-project discounts and subprojects to Project in MongoDB
+  if (Array.isArray(data.projects) && data.projects.length > 0) {
+    for (const proj of data.projects) {
+      const pDisc = Number(proj.discountAmount) || 0;
+      const updatePayload: any = {
+        invoiceDiscount: pDisc,
+        discountAmount: toDecimal(pDisc),
+      };
+      if (Array.isArray(proj.subProjects) && proj.subProjects.length > 0) {
+        updatePayload.subProjects = proj.subProjects;
+        updatePayload.description = proj.subProjects.join('\n');
+      }
+      if (proj.projectCode) {
+        await Project.updateOne({ clientId, projectCode: proj.projectCode }, { $set: updatePayload });
+      } else if (proj.projectName) {
+        await Project.updateOne({ clientId, projectName: proj.projectName }, { $set: updatePayload });
+      }
+    }
+  }
+
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
   res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, X-Next-Invoice-Number, X-Invoice-Number');
