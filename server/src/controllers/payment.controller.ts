@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { ClientPayment } from '../models/ClientPayment.js';
 import { Project } from '../models/Project.js';
 import { Client } from '../models/Client.js';
@@ -98,7 +99,7 @@ export async function createPayment(req: AuthenticatedRequest, res: Response): P
       }, 0)
     );
 
-    // 2. Sum existing payments already recorded for this client
+    // 2. Sum existing payments already received for this client
     const existingPayments = await ClientPayment.find({ clientId: client._id });
     const paymentsAlreadyReceived = round2(
       existingPayments.reduce((sum, p) => sum + fromDecimal(p.amount), 0)
@@ -194,6 +195,11 @@ export async function createPayment(req: AuthenticatedRequest, res: Response): P
 export async function deletePayment(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      res.status(400).json({ success: false, message: 'Invalid payment ID format.' });
+      return;
+    }
+
     const payment = await ClientPayment.findById(id);
     if (!payment) {
       res.status(404).json({ success: false, message: 'Payment not found.' });
@@ -212,6 +218,122 @@ export async function deletePayment(req: AuthenticatedRequest, res: Response): P
     });
 
     res.json({ success: true, message: 'Payment record deleted successfully.' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function updatePayment(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      res.status(400).json({ success: false, message: 'Invalid payment ID format.' });
+      return;
+    }
+
+    const { amount, paymentDate, paymentMethod, transactionReference, notes, clientId, projectId } = req.body;
+
+    const payment = await ClientPayment.findById(id);
+    if (!payment) {
+      res.status(404).json({ success: false, message: 'Payment record not found.' });
+      return;
+    }
+
+    if (amount !== undefined && !validMoney(amount)) {
+      res.status(400).json({ success: false, message: 'Enter a positive amount with at most 2 decimals.' });
+      return;
+    }
+
+    if (paymentDate && !validFinanceDate(paymentDate)) {
+      res.status(400).json({ success: false, message: 'Enter a valid payment date (YYYY-MM-DD).' });
+      return;
+    }
+
+    if (paymentMethod !== undefined && !['bank_transfer', 'upi', 'cash', 'cheque', 'other'].includes(paymentMethod)) {
+      res.status(400).json({ success: false, message: 'Invalid payment method.' });
+      return;
+    }
+
+    const rawClientId = typeof clientId === 'object' && clientId?._id ? clientId._id : clientId;
+    const targetClientId = rawClientId || payment.clientId;
+    if (!mongoose.isValidObjectId(targetClientId)) {
+      res.status(400).json({ success: false, message: 'Invalid client ID format.' });
+      return;
+    }
+
+    const client = await Client.findById(targetClientId);
+    if (!client) {
+      res.status(404).json({ success: false, message: 'Client not found.' });
+      return;
+    }
+
+    let numAmount = amount !== undefined ? round2(parseFloat(amount)) : fromDecimal(payment.amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      res.status(400).json({ success: false, message: 'Payment amount must be greater than 0.' });
+      return;
+    }
+
+    // Client-level net contract value across all deliverables
+    const clientProjects = await Project.find({ clientId: client._id }).sort({ createdAt: 1 });
+    const clientNetContractValue = round2(
+      clientProjects.reduce((sum, p) => {
+        const grossVal = fromDecimal(p.projectValue);
+        const discountPercent = Number(p.discountPercent) || 0;
+        const discountAmount = p.discountAmount
+          ? fromDecimal(p.discountAmount)
+          : round2((grossVal * discountPercent) / 100);
+        return sum + Math.max(0, round2(grossVal - discountAmount));
+      }, 0)
+    );
+
+    // Sum other payments already received (excluding this payment)
+    const otherPayments = await ClientPayment.find({ clientId: client._id, _id: { $ne: payment._id } });
+    const otherPaymentsTotal = round2(
+      otherPayments.reduce((sum, p) => sum + fromDecimal(p.amount), 0)
+    );
+
+    const remainingBalance = Math.max(0, round2(clientNetContractValue - otherPaymentsTotal));
+
+    if (clientNetContractValue > 0 && numAmount > remainingBalance) {
+      res.status(400).json({
+        success: false,
+        message: `Updated payment of ₹${numAmount.toLocaleString('en-IN')} exceeds the remaining client contract balance of ₹${remainingBalance.toLocaleString('en-IN')}. (Total contract: ₹${clientNetContractValue.toLocaleString('en-IN')}, other payments: ₹${otherPaymentsTotal.toLocaleString('en-IN')}).`,
+      });
+      return;
+    }
+
+    const oldValue = payment.toObject();
+
+    if (amount !== undefined) payment.amount = toDecimal(numAmount);
+    if (paymentDate !== undefined) payment.paymentDate = new Date(paymentDate);
+    if (paymentMethod !== undefined) payment.paymentMethod = paymentMethod;
+    if (transactionReference !== undefined) payment.transactionReference = transactionReference;
+    if (notes !== undefined) payment.notes = notes;
+    if (clientId !== undefined) payment.clientId = client._id;
+    if (projectId !== undefined) payment.projectId = projectId || undefined;
+
+    await payment.save();
+
+    await logAudit({
+      userId: req.user!._id,
+      action: 'UPDATE_CLIENT_PAYMENT',
+      entityType: 'ClientPayment',
+      entityId: payment._id,
+      oldValue,
+      newValue: payment.toObject(),
+    });
+
+    const paymentData = {
+      ...payment.toObject(),
+      amount: numAmount,
+    };
+
+    res.json({
+      success: true,
+      message: `Payment updated successfully to ₹${numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}.`,
+      payment: paymentData,
+      data: paymentData,
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

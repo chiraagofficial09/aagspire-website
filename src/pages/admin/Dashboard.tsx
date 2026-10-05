@@ -297,6 +297,7 @@ export const AdminDashboard: React.FC = () => {
     amount: parseAmount(p.amount),
     date: p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-IN') : 'Recent',
     initials: (p.clientId?.companyName || p.clientId?.name || 'CL').slice(0, 2).toUpperCase(),
+    raw: p,
   }));
 
   const cardBg = isLight
@@ -367,16 +368,6 @@ export const AdminDashboard: React.FC = () => {
             ) : (
               <ChevronDown className="w-3.5 h-3.5" />
             )}
-            {totalDeduction > 0 && !showMoreCards && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 font-mono border border-amber-500/30">
-                Ded
-              </span>
-            )}
-            {totalBadDebt > 0 && !showMoreCards && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500/20 text-rose-300 font-mono border border-rose-500/30">
-                Bad Debt
-              </span>
-            )}
           </button>
 
           <MonthSelectDropdown
@@ -410,22 +401,6 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
 
-      {/* Notice if Unapplied Cash or Excess Cash exists */}
-      {(unappliedCash > 0 || excessCash > 0) && (
-        <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
-            <span>
-              {unappliedCash > 0 && `Unapplied Cash: ${formatINR(unappliedCash)} received without valid project link.`}
-              {excessCash > 0 && ` Excess Cash: ${formatINR(excessCash)} exceeding project contracted values.`}
-              {' '}These amounts do not reduce project receivables until properly reviewed and allocated.
-            </span>
-          </div>
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-200 border border-amber-500/30 shrink-0">
-            Needs Review
-          </span>
-        </div>
-      )}
 
       {/* 2. PRIMARY FINANCIAL EQUATION OVERVIEW */}
       <div className="space-y-3">

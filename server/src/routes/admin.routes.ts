@@ -50,7 +50,7 @@ import {
   setDefaultPreset,
 } from '../controllers/commission.controller.js';
 
-import { listPayments, createPayment, deletePayment } from '../controllers/payment.controller.js';
+import { listPayments, createPayment, updatePayment, deletePayment } from '../controllers/payment.controller.js';
 import { listWorkLogs, reviewWorkLog, deleteWorkLog } from '../controllers/workLog.controller.js';
 import { listAttendance, manualAdjustAttendance, deleteAttendance } from '../controllers/attendance.controller.js';
 import {
@@ -298,6 +298,8 @@ router.get('/commissions/projects/:projectId/history', getCommissionHistory);
 router.get('/cash-bank-summary', getCashBankSummary);
 router.get('/payments', listPayments);
 router.post('/payments', createPayment);
+router.put('/payments/:id', updatePayment);
+router.patch('/payments/:id', updatePayment);
 router.delete('/payments/:id', deletePayment);
 
 // Work Logs Review

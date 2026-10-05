@@ -2,6 +2,7 @@ import { FinanceSummary } from '../../components/work/FinanceSummary';
 import { financeToday } from '../../utils/financeDate';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
+  Pencil,
   Plus,
   Search,
   Trash2,
@@ -33,6 +34,7 @@ export const AdminPayments: React.FC = () => {
   );
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<any | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Form state (Direct client payment)
@@ -113,6 +115,37 @@ export const AdminPayments: React.FC = () => {
       ) / 100
     )
     : 0;
+  const editingAmount = (editingPayment && (String(editingPayment.clientId?._id || editingPayment.clientId) === String(selClient?._id)))
+    ? Number(editingPayment.amount || 0)
+    : 0;
+  const maxAllowed = Math.round((remainingDue + editingAmount) * 100) / 100;
+
+  const handleOpenCreate = () => {
+    setEditingPayment(null);
+    setFormData({
+      clientId: '',
+      amount: '',
+      paymentMethod: 'bank_transfer',
+      transactionReference: '',
+      notes: '',
+      paymentDate: financeToday(),
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (p: any) => {
+    setEditingPayment(p);
+    const cId = p.clientId?._id || p.clientId || '';
+    setFormData({
+      clientId: typeof cId === 'object' ? cId._id : String(cId),
+      amount: String(p.amount ?? ''),
+      paymentMethod: p.paymentMethod || 'bank_transfer',
+      transactionReference: p.transactionReference || '',
+      notes: p.notes || '',
+      paymentDate: p.paymentDate ? String(p.paymentDate).split('T')[0] : financeToday(),
+    });
+    setIsModalOpen(true);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,24 +161,35 @@ export const AdminPayments: React.FC = () => {
       return;
     }
 
-    if (contractVal > 0 && remainingDue <= 0) {
+    if (contractVal > 0 && maxAllowed <= 0) {
       toast.error('This client account is already fully settled. Cannot add further payments.');
       return;
     }
 
-    if (contractVal > 0 && entered > remainingDue) {
-      toast.error(`Payment cannot exceed remaining client balance of ${formatINR(remainingDue)} (Total Contract: ${formatINR(contractVal)}).`);
+    if (contractVal > 0 && entered > maxAllowed) {
+      toast.error(`Payment cannot exceed remaining client balance of ${formatINR(maxAllowed)} (Total Contract: ${formatINR(contractVal)}).`);
       return;
     }
 
     try {
       setSubmitting(true);
-      await api.post('/admin/payments', {
-        ...formData,
-        amount: entered,
-        clientId: formData.clientId,
-      });
+      if (editingPayment) {
+        await api.put(`/admin/payments/${editingPayment._id}`, {
+          ...formData,
+          amount: entered,
+          clientId: formData.clientId,
+        });
+        toast.success('Payment updated successfully');
+      } else {
+        await api.post('/admin/payments', {
+          ...formData,
+          amount: entered,
+          clientId: formData.clientId,
+        });
+        toast.success('Payment recorded successfully for client');
+      }
       setIsModalOpen(false);
+      setEditingPayment(null);
       setFormData({
         clientId: '',
         amount: '',
@@ -154,11 +198,10 @@ export const AdminPayments: React.FC = () => {
         notes: '',
         paymentDate: financeToday(),
       });
-      toast.success('Payment recorded successfully for client');
       setSummaryRevision(value => value + 1);
       fetchAll();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to record payment');
+      toast.error(err.response?.data?.message || (editingPayment ? 'Failed to update payment' : 'Failed to record payment'));
     } finally {
       setSubmitting(false);
     }
@@ -203,7 +246,7 @@ export const AdminPayments: React.FC = () => {
           <p className="text-xs text-zinc-400 mt-1">Track client payments and invoice transactions.</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreate}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-[#FF5A1F] hover:bg-[#e04810] text-white shadow-sm transition-all cursor-pointer w-full sm:w-auto shrink-0"
         >
           <Plus className="w-4 h-4" />
@@ -282,13 +325,22 @@ export const AdminPayments: React.FC = () => {
                       <StatusBadge status="paid" type="payment" />
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => handleDelete(p._id)}
-                        title="Delete Payment"
-                        className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleOpenEdit(p)}
+                          title="Edit Payment"
+                          className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-[#FF5A1F]/15 text-zinc-400 hover:text-[#FF5A1F] transition-colors cursor-pointer"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p._id)}
+                          title="Delete Payment"
+                          className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -304,7 +356,7 @@ export const AdminPayments: React.FC = () => {
                           : undefined
                       }
                       actionLabel="Record Payment"
-                      onAction={() => setIsModalOpen(true)}
+                      onAction={handleOpenCreate}
                     />
                   </td>
                 </tr>
@@ -323,9 +375,11 @@ export const AdminPayments: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
           <div className="relative w-full max-w-md bg-[#0b0c10] border border-white/[0.08] rounded-2xl p-5 sm:p-8 space-y-5 text-white text-xs my-auto max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
-              <h3 className="font-bold text-base tracking-tight text-white">Record Payment</h3>
+              <h3 className="font-bold text-base tracking-tight text-white">
+                {editingPayment ? 'Edit Payment' : 'Record Payment'}
+              </h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => { setIsModalOpen(false); setEditingPayment(null); }}
                 className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
@@ -377,14 +431,16 @@ export const AdminPayments: React.FC = () => {
                     <span className="font-mono font-semibold text-white">{formatINR(contractVal)}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-zinc-400">PAID:</span>
-                    <span className="font-mono text-white font-semibold">{formatINR(receivedVal)}</span>
+                    <span className="text-zinc-400">{editingPayment ? 'OTHER PAID:' : 'PAID:'}</span>
+                    <span className="font-mono text-white font-semibold">
+                      {formatINR(editingPayment ? Math.max(0, receivedVal - editingAmount) : receivedVal)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center text-xs pt-1.5 border-t border-white/5">
-                    <span className="text-zinc-200 font-semibold">PENDING:</span>
-                    <span className="font-mono font-bold text-base text-[#FF5A1F]">{formatINR(remainingDue)}</span>
+                    <span className="text-zinc-200 font-semibold">{editingPayment ? 'MAX ALLOWABLE:' : 'PENDING:'}</span>
+                    <span className="font-mono font-bold text-base text-[#FF5A1F]">{formatINR(maxAllowed)}</span>
                   </div>
-                  {contractVal > 0 && remainingDue <= 0 && (
+                  {contractVal > 0 && maxAllowed <= 0 && (
                     <div className="text-xs text-emerald-400 font-medium pt-1">
                       ✓ This client account is fully settled.
                     </div>
@@ -395,32 +451,32 @@ export const AdminPayments: React.FC = () => {
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="text-zinc-400 font-medium">Amount Received (₹) *</label>
-                  {selClient && remainingDue > 0 && (
+                  {selClient && maxAllowed > 0 && (
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, amount: String(remainingDue) })}
+                      onClick={() => setFormData({ ...formData, amount: String(maxAllowed) })}
                       className="text-[10px] text-[#FF5A1F] hover:underline font-mono cursor-pointer"
                     >
-                      Fill Max ({formatINR(remainingDue)})
+                      Fill Max ({formatINR(maxAllowed)})
                     </button>
                   )}
                 </div>
                 <input
                   type="number"
                   required
-                  min="1"
-                  max={selClient && remainingDue > 0 ? remainingDue : undefined}
+                  min="0.01"
+                  max={selClient && maxAllowed > 0 ? maxAllowed : undefined}
                   step="any"
-                  disabled={Boolean(selClient && contractVal > 0 && remainingDue <= 0)}
-                  placeholder={selClient ? (remainingDue > 0 ? `Max allowed: ${remainingDue}` : '0') : "e.g. 50000"}
+                  disabled={Boolean(selClient && contractVal > 0 && maxAllowed <= 0)}
+                  placeholder={selClient ? (maxAllowed > 0 ? `Max allowed: ${maxAllowed}` : '0') : "e.g. 50000"}
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className={`w-full px-3.5 py-2.5 bg-[#12131a] border rounded-xl text-white font-mono focus:outline-none ${selClient && contractVal > 0 && Number(formData.amount) > remainingDue ? 'border-red-500 focus:border-red-500' : 'border-white/[0.08] focus:border-[#FF5A1F]'
+                  className={`w-full px-3.5 py-2.5 bg-[#12131a] border rounded-xl text-white font-mono focus:outline-none ${selClient && contractVal > 0 && Number(formData.amount) > maxAllowed ? 'border-red-500 focus:border-red-500' : 'border-white/[0.08] focus:border-[#FF5A1F]'
                     }`}
                 />
-                {selClient && contractVal > 0 && Number(formData.amount) > remainingDue && (
+                {selClient && contractVal > 0 && Number(formData.amount) > maxAllowed && (
                   <p className="text-[11px] text-red-400 mt-1 font-medium">
-                    Payment cannot exceed remaining client balance of {formatINR(remainingDue)}.
+                    Payment cannot exceed remaining client balance of {formatINR(maxAllowed)}.
                   </p>
                 )}
               </div>
@@ -474,7 +530,7 @@ export const AdminPayments: React.FC = () => {
               <div className="flex justify-end gap-3 pt-4 border-t border-white/[0.06]">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => { setIsModalOpen(false); setEditingPayment(null); }}
                   className="px-4 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors cursor-pointer"
                 >
                   Cancel
@@ -484,14 +540,14 @@ export const AdminPayments: React.FC = () => {
                   disabled={
                     submitting ||
                     !selClient ||
-                    (contractVal > 0 && remainingDue <= 0) ||
-                    (contractVal > 0 && Number(formData.amount) > remainingDue) ||
+                    (contractVal > 0 && maxAllowed <= 0) ||
+                    (contractVal > 0 && Number(formData.amount) > maxAllowed) ||
                     Number(formData.amount) <= 0 ||
                     !formData.amount
                   }
                   className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#FF5A1F] hover:bg-[#e04810] disabled:opacity-40 disabled:cursor-not-allowed text-white transition-all shadow-sm cursor-pointer"
                 >
-                  {submitting ? 'Recording...' : 'Record Payment'}
+                  {submitting ? (editingPayment ? 'Saving...' : 'Recording...') : (editingPayment ? 'Save Changes' : 'Record Payment')}
                 </button>
               </div>
             </form>
