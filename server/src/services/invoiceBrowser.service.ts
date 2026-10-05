@@ -8,7 +8,11 @@ async function browser() {
   if (!browserPromise) {
     const executablePath = process.env.CHROMIUM_EXECUTABLE_PATH || (process.platform === 'win32'
       ? ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'].find(p => fs.existsSync(p)) : undefined);
-    browserPromise = chromium.launch({ headless: true, executablePath }).then(instance => {
+    browserPromise = chromium.launch({
+      headless: true,
+      executablePath,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    }).then(instance => {
       instance.on('disconnected', () => { browserPromise = undefined; });
       return instance;
     }).catch(error => { browserPromise = undefined; throw error; });
