@@ -12,7 +12,17 @@ interface Summary {
   unclassifiedCount: number;
 }
 
-export function FinanceSummary({ kind, month, revision = 0 }: { kind: 'received' | 'expenses' | 'closing'; month: string; revision?: number }) {
+export function FinanceSummary({
+  kind,
+  month,
+  revision = 0,
+  onLoadingChange,
+}: {
+  kind: 'received' | 'expenses' | 'closing';
+  month: string;
+  revision?: number;
+  onLoadingChange?: (loading: boolean) => void;
+}) {
   const [loadedData, setData] = useState<Summary | null>(null);
   const data = loadedData?.month === month ? loadedData : null;
   const [error, setError] = useState(false);
@@ -20,13 +30,22 @@ export function FinanceSummary({ kind, month, revision = 0 }: { kind: 'received'
   useEffect(() => {
     let active = true;
     let sequence = 0;
+    onLoadingChange?.(true);
     const fetchSummary = async () => {
       const request = ++sequence;
       try {
         const response = await api.get(`/admin/cash-bank-summary?month=${encodeURIComponent(month)}`, { headers: { 'Cache-Control': 'no-cache' } });
-        if (active && request === sequence) { setData(response.data.data); setError(false); }
+        if (active && request === sequence) {
+          setData(response.data.data);
+          setError(false);
+          onLoadingChange?.(false);
+        }
       } catch {
-        if (active && request === sequence) { setData(null); setError(true); }
+        if (active && request === sequence) {
+          setData(null);
+          setError(true);
+          onLoadingChange?.(false);
+        }
       }
     };
     setData(null);
@@ -54,8 +73,16 @@ export function FinanceSummary({ kind, month, revision = 0 }: { kind: 'received'
         {(['bank', 'cash', 'total'] as const).map((key, index) => (
           <div key={key} className="bg-[#08090d] border border-white/[0.06] rounded-2xl p-5 space-y-3 min-w-0">
             <h2 className="text-xs font-semibold text-zinc-400">{labels[index]}</h2>
-            <p className="text-2xl font-bold text-[#FF5A1F] break-words">{data ? formatINR(data[kind][key]) : error ? 'Unavailable' : 'Loading...'}</p>
-           
+            {data ? (
+              <p className="text-2xl font-bold text-[#FF5A1F] break-words">{formatINR(data[kind][key])}</p>
+            ) : error ? (
+              <p className="text-sm font-medium text-red-400">Unavailable</p>
+            ) : (
+              <div className="flex items-center gap-2.5 py-1">
+                <div className="w-5 h-5 rounded-full border-2 border-[#FF5A1F] border-t-transparent animate-spin" />
+                <span className="text-xs font-mono text-zinc-500">Loading...</span>
+              </div>
+            )}
           </div>
         ))}
       </div>

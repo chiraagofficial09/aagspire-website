@@ -237,6 +237,7 @@ export const AdminPayments: React.FC = () => {
 
   const totalCollected = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
 
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -294,8 +295,11 @@ export const AdminPayments: React.FC = () => {
             <tbody className="divide-y divide-white/[0.04]">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-zinc-500 font-mono">
-                    Loading payments...
+                  <td colSpan={7} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full border-2 border-[#FF5A1F] border-t-transparent animate-spin" />
+                      <span className="text-xs text-zinc-500 font-mono">Loading payments...</span>
+                    </div>
                   </td>
                 </tr>
               ) : filtered.length > 0 ? (

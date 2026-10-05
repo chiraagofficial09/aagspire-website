@@ -186,6 +186,7 @@ export const AdminOfficeExpenses: React.FC = () => {
     return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -251,7 +252,10 @@ export const AdminOfficeExpenses: React.FC = () => {
               {loading ? (
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-zinc-500 font-mono text-xs">
-                    Loading office expenses...
+                    <div className="flex flex-col items-center justify-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full border-2 border-[#FF5A1F] border-t-transparent animate-spin" />
+                      <span>Loading office expenses...</span>
+                    </div>
                   </td>
                 </tr>
               ) : expenses.length > 0 ? (
