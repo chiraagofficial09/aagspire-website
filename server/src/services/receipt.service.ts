@@ -49,8 +49,8 @@ export function generateReceiptPdfStream(data: ReceiptPdfData, res: Response): v
   let cursorY = 46;
 
   // Left: Brand Identity
-  doc.fillColor('#0F172A').fontSize(22).font('Helvetica-Bold').text('AAGSPIRE', 40, cursorY, { characterSpacing: 1 });
-  doc.fillColor('#64748B').fontSize(8).font('Helvetica-Bold').text('CREATIVE PRODUCTION & STAFF MANAGEMENT', 40, cursorY + 26, { characterSpacing: 0.5 });
+  doc.fillColor('#0F172A').fontSize(22).font('Helvetica-Bold').text('AAGSPIRE', 40, cursorY, { characterSpacing: 0 });
+  doc.fillColor('#64748B').fontSize(8).font('Helvetica-Bold').text('CREATIVE PRODUCTION & STAFF MANAGEMENT', 40, cursorY + 26, { characterSpacing: 0 });
   doc.fillColor('#475569').fontSize(7.5).font('Helvetica').text('Disbursement Authority: Aagspire', 40, cursorY + 38);
   doc.fillColor('#64748B').fontSize(7.5).text('finance@aagspire.com  •  www.aagspire.com  •  Staff ID Portal', 40, cursorY + 49);
 
@@ -63,7 +63,7 @@ export function generateReceiptPdfStream(data: ReceiptPdfData, res: Response): v
   doc.fillColor('#0F172A').fontSize(8).font('Helvetica-Bold').text('COMMISSION SETTLEMENT VOUCHER', rightColX, cursorY + 4, {
     align: 'center',
     width: rightColW,
-    characterSpacing: 0.5,
+    characterSpacing: 0,
   });
 
   const voucherCode = data.receiptCode || 'RCP-VOUCHER';
@@ -88,7 +88,7 @@ export function generateReceiptPdfStream(data: ReceiptPdfData, res: Response): v
 
   // Left: Beneficiary Staff Profile
   const col1X = 54;
-  doc.fillColor('#64748B').fontSize(7.5).font('Helvetica-Bold').text('BENEFICIARY DETAILS', col1X, cursorY + 10, { characterSpacing: 0.5 });
+  doc.fillColor('#64748B').fontSize(7.5).font('Helvetica-Bold').text('BENEFICIARY DETAILS', col1X, cursorY + 10, { characterSpacing: 0});
   doc.fillColor('#0F172A').fontSize(11).font('Helvetica-Bold').text(data.employeeName || 'Staff Member', col1X, cursorY + 23);
   doc.fillColor('#334155').fontSize(8).font('Helvetica').text(
     `Employee ID: ${data.employeeCode || 'N/A'}${data.designation ? `  •  ${data.designation}` : ''}`,
@@ -102,7 +102,7 @@ export function generateReceiptPdfStream(data: ReceiptPdfData, res: Response): v
 
   // Right: Payment Channel & Banking
   const col2X = 330;
-  doc.fillColor('#64748B').fontSize(7.5).font('Helvetica-Bold').text('PAYMENT CHANNEL & SETTLEMENT', col2X, cursorY + 10, { characterSpacing: 0.5 });
+  doc.fillColor('#64748B').fontSize(7.5).font('Helvetica-Bold').text('PAYMENT CHANNEL & SETTLEMENT', col2X, cursorY + 10, { characterSpacing: 0 });
   const methodStr = (data.paymentMethod || 'bank_transfer').toUpperCase().replace('_', ' ');
   doc.fillColor('#0F172A').fontSize(8.5).font('Helvetica-Bold').text(`Method: ${methodStr}`, col2X, cursorY + 23);
 
