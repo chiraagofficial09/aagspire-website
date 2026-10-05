@@ -1,3 +1,11 @@
+/**
+ * ============================================================================
+ * 🔒 CRITICAL: RECEIPT PDF DESIGN IS PERMANENTLY FROZEN
+ * ============================================================================
+ * DO NOT MODIFY THE DESIGN, FONTS, SPACING, CHARACTER-SPACING, OR LAYOUT.
+ * All styling and coordinates in this template are FINAL and APPROVED.
+ * ============================================================================
+ */
 import PDFDocument from 'pdfkit';
 import { Response } from 'express';
 import { numberToIndianWords } from '../utils/numberToWords.js';

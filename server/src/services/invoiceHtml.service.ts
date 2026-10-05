@@ -1,3 +1,12 @@
+/**
+ * ============================================================================
+ * 🔒 CRITICAL: INVOICE PDF & PREVIEW DESIGN IS PERMANENTLY FROZEN
+ * ============================================================================
+ * DO NOT MODIFY THE DESIGN, FONTS, SPACING, LETTER-SPACING, BORDERS, OR LAYOUT.
+ * All typography, geometry, SVG outlines, and styles in this template are
+ * FINAL and APPROVED. No automated tool or AI agent should alter this styling.
+ * ============================================================================
+ */
 import fs from 'node:fs';
 import { ClientStatementPdfData, allTerms } from './clientStatementPdf.service.js';
 import { PHONE_ICON_BUF, EMAIL_ICON_BUF } from '../assets/contactIconsBase64.js';
