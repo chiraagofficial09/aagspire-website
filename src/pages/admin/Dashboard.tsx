@@ -81,7 +81,24 @@ export const AdminDashboard: React.FC = () => {
 
   const [pendingTab, setPendingTab] = useState<'workLogs' | 'payments'>('workLogs');
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey);
-  const [showMoreCards, setShowMoreCards] = useState(false);
+  const [showMoreCards, setShowMoreCards] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('dashboard_show_all_data');
+      return saved ? saved === 'true' : false;
+    } catch (_) {
+      return false;
+    }
+  });
+
+  const toggleShowMoreCards = () => {
+    setShowMoreCards((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('dashboard_show_all_data', String(next));
+      } catch (_) {}
+      return next;
+    });
+  };
 
   const fetchDashboardData = async (monthVal?: string) => {
     try {
@@ -350,21 +367,21 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => setShowMoreCards(!showMoreCards)}
+            onClick={toggleShowMoreCards}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer ${
               showMoreCards
-                ? ' text-white border border-white/[0.08] bg-[#0c0d12]/80 hover:bg-[#0c0d12]'
-                : ' text-white  border border-white/[0.08] bg-[#0c0d12] hover:bg-[#0c0d12]/80'
+                ? 'text-white border border-[#FF5A1F]/30 bg-[#0c0d12] shadow-[0_0_12px_rgba(255,90,31,0.15)]'
+                : 'text-white border border-white/[0.08] bg-[#0c0d12] hover:bg-white/5'
             }`}
-            title="Toggle Bad Debt & 5-Tier Allocation Shares"
+            title="Toggle All Data, Allocation Shares, Approvals & Graphs"
           >
-            <PieIcon className="w-4 h-4 text-white" />
+            <PieIcon className={`w-4 h-4 ${showMoreCards ? 'text-[#FF5A1F]' : 'text-white'}`} />
             <span className="hidden sm:inline text-white">
               {showMoreCards ? 'Show 4 boxes Only' : 'Show All Data'}
             </span>
-            <span className="sm:hidden">{showMoreCards ? '4 Cards' : 'Shares'}</span>
+            <span className="sm:hidden">{showMoreCards ? '4 Cards' : 'All Data'}</span>
             {showMoreCards ? (
-              <ChevronUp className="w-3.5 h-3.5" />
+              <ChevronUp className="w-3.5 h-3.5 text-[#FF5A1F]" />
             ) : (
               <ChevronDown className="w-3.5 h-3.5" />
             )}
@@ -496,9 +513,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] sm:text-xs font-medium text-white/50">Total Pending</span>
-                {(totalBadDebt > 0 || totalDeduction > 0) && (
-                  <span className="text-[9px] text-[#FF5A1F] font-mono px-1 rounded bg-[#FF5A1F]/10 border border-[#FF5A1F]/20">Net</span>
-                )}
+                
               </div>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 text-white/80 border border-white/10">
                 <Tag className="w-4 h-4" />
@@ -613,8 +628,11 @@ export const AdminDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* 3. RECENT PROJECTS & PENDING APPROVALS (2 COLUMNS) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+      {/* 5 BOXES: RECENT PROJECTS, PENDING APPROVALS & 3 GRAPHS (TOGGLED WITH SHOW ALL DATA) */}
+      {showMoreCards && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* 3. RECENT PROJECTS & PENDING APPROVALS (2 COLUMNS) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column (7 cols): Recent Projects Table */}
         <div className={`lg:col-span-7 p-5 sm:p-6 rounded-2xl border transition-all duration-200 space-y-4 ${cardBg}`}>
           <div className="flex items-center justify-between">
@@ -1044,6 +1062,20 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Bottom Collapse Button */}
+      <div className="flex justify-center pt-1">
+        <button
+          type="button"
+          onClick={toggleShowMoreCards}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+        >
+          <ChevronUp className="w-3.5 h-3.5 text-[#FF5A1F]" />
+          <span>Show 4 boxes Only</span>
+        </button>
+      </div>
     </div>
+  )}
+</div>
   );
 };
