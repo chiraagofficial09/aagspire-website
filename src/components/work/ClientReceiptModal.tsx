@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   Download,
@@ -58,10 +58,33 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   const toast = useToast();
   const [localProjects, setLocalProjects] = useState<any[]>(initialProjects);
 
-  // Sync local projects with incoming projects
+  // Sync local projects with incoming projects + refresh discount/subProjects from DB
   useEffect(() => {
     if (initialProjects && initialProjects.length > 0) {
       setLocalProjects(initialProjects);
+      setProjectDiscounts((prev) => {
+        const next = { ...prev };
+        initialProjects.forEach((p) => {
+          if (prev[p._id] === undefined) {
+            const da = p.invoiceDiscount !== undefined ? Number(p.invoiceDiscount) : (p.discountAmount !== undefined ? Number(p.discountAmount) : 0);
+            if (da > 0) next[p._id] = da;
+          }
+        });
+        return next;
+      });
+      setProjectSubProjects((prev) => {
+        const next = { ...prev };
+        initialProjects.forEach((p) => {
+          if (prev[p._id] === undefined) {
+            if (Array.isArray(p.subProjects) && p.subProjects.length > 0) {
+              next[p._id] = p.subProjects;
+            } else if (p.description && typeof p.description === 'string' && p.description.trim()) {
+              next[p._id] = p.description.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+            }
+          }
+        });
+        return next;
+      });
     }
   }, [initialProjects]);
 
@@ -75,7 +98,14 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   const [invoicePreview, setInvoicePreview] = useState<InvoiceSnapshot | null>(null);
   const [taxPercent, setTaxPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
-  const [projectDiscounts, setProjectDiscounts] = useState<Record<string, number>>({});
+  const [projectDiscounts, setProjectDiscounts] = useState<Record<string, number>>(() => {
+    const init: Record<string, number> = {};
+    (initialProjects || []).forEach((p: any) => {
+      const da = p.invoiceDiscount !== undefined ? Number(p.invoiceDiscount) : (p.discountAmount !== undefined ? Number(p.discountAmount) : 0);
+      if (da > 0) init[p._id] = da;
+    });
+    return init;
+  });
   const [projectSubProjects, setProjectSubProjects] = useState<Record<string, string[]>>(() => {
     const initial: Record<string, string[]> = {};
     (initialProjects || []).forEach((p: any) => {
@@ -88,18 +118,52 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     return initial;
   });
   const [subProjectInputs, setSubProjectInputs] = useState<Record<string, string>>({});
+  // Per-project debounce timers for discount auto-save
+  const discountTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const persistDiscount = (projectId: string, val: number) => {
+    const safe = Math.max(0, val);
+    api.put(`/admin/projects/${projectId}`, { invoiceDiscount: safe }).catch((err) => {
+      console.error('Failed to auto-save project discount:', err);
+    });
+  };
 
   const handleProjectDiscountChange = (projectId: string, val: number) => {
-    setProjectDiscounts((prev) => ({
-      ...prev,
-      [projectId]: Math.max(0, val),
-    }));
+    const safe = Math.max(0, val);
+    setProjectDiscounts((prev) => ({ ...prev, [projectId]: safe }));
+    // Debounce: save to DB 1 second after user stops typing
+    if (discountTimers.current[projectId]) clearTimeout(discountTimers.current[projectId]);
+    discountTimers.current[projectId] = setTimeout(() => {
+      persistDiscount(projectId, safe);
+    }, 1000);
+  };
+
+  const handleSaveProjectDiscount = (projectId: string, val: number) => {
+    // Flush immediately on blur (cancel pending debounce)
+    if (discountTimers.current[projectId]) clearTimeout(discountTimers.current[projectId]);
+    persistDiscount(projectId, val);
+  };
+
+  const flushAllDiscounts = () => {
+    Object.entries(discountTimers.current).forEach(([pId, timer]) => {
+      clearTimeout(timer);
+      delete discountTimers.current[pId];
+    });
+    Object.entries(projectDiscounts).forEach(([pId, val]) => {
+      persistDiscount(pId, val);
+    });
+  };
+
+  const handleModalClose = () => {
+    flushAllDiscounts();
+    if (onRefreshClient) onRefreshClient();
+    onClose();
   };
 
   const handleAddSubProject = (projectId: string) => {
     const raw = (subProjectInputs[projectId] || '').trim();
     if (!raw) return;
-    const lines = raw.split('\n').map((s) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
+    const lines = raw.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean);
     if (lines.length === 0) return;
     const updated = [...(projectSubProjects[projectId] || []), ...lines];
     setProjectSubProjects((prev) => ({
@@ -108,8 +172,10 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     }));
     setSubProjectInputs((prev) => ({ ...prev, [projectId]: '' }));
 
-    // Persist description to project in background
-    api.put(`/admin/projects/${projectId}`, { description: updated.join('\n') }).catch((err) => {
+    // Persist subProjects + description to MongoDB
+    api.put(`/admin/projects/${projectId}`, { subProjects: updated, description: updated.join('\n') }).then(() => {
+      if (onRefreshClient) onRefreshClient();
+    }).catch((err) => {
       console.error('Failed to auto-save project description:', err);
     });
   };
@@ -121,8 +187,10 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
       [projectId]: updated,
     }));
 
-    // Persist description to project in background
-    api.put(`/admin/projects/${projectId}`, { description: updated.join('\n') }).catch((err) => {
+    // Persist subProjects + description to MongoDB
+    api.put(`/admin/projects/${projectId}`, { subProjects: updated, description: updated.join('\n') }).then(() => {
+      if (onRefreshClient) onRefreshClient();
+    }).catch((err) => {
       console.error('Failed to auto-save project description:', err);
     });
   };
@@ -592,7 +660,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     <div
       className="premium-backdrop fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) handleModalClose();
       }}
     >
       <div className="premium-modal animate-modal-scale relative w-full max-w-4xl bg-[#0c0d12] border border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh] text-white text-xs">
@@ -618,7 +686,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleModalClose}
               className="sm:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -640,7 +708,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => setActiveTab('preview')}
+                onClick={() => { flushAllDiscounts(); setActiveTab('preview'); }}
                 className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer font-medium ${activeTab === 'preview'
                     ? 'bg-gradient-to-r from-[#FF5A1F] to-[#FF7A2F] text-white shadow-sm font-semibold'
                     : 'text-white/60 hover:text-white'
@@ -652,7 +720,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleModalClose}
               className="hidden sm:flex p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -783,7 +851,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                     const currentDiscount =
                       projectDiscounts[p._id] !== undefined
                         ? projectDiscounts[p._id]
-                        : (parseAmount(p.discountAmount) || 0);
+                        : (Number(p.invoiceDiscount) || parseAmount(p.discountAmount) || 0);
 
                     return (
                       <div
@@ -829,6 +897,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                                   placeholder="0"
                                   value={currentDiscount || ''}
                                   onChange={(e) => handleProjectDiscountChange(p._id, Number(e.target.value))}
+                                  onBlur={(e) => handleSaveProjectDiscount(p._id, Number(e.target.value))}
                                   className="w-28 pl-6 pr-2.5 py-1 bg-black/80 border border-white/15 rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
                                 />
                               </div>
@@ -1072,7 +1141,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
             {activeTab === 'select' ? (
               <button
                 type="button"
-                onClick={() => setActiveTab('preview')}
+                onClick={() => { flushAllDiscounts(); setActiveTab('preview'); }}
                 disabled={selectedProjects.length === 0}
                 className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#FF5A1F] via-[#FF6E30] to-[#E04810] hover:brightness-110 text-white text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#FF5A1F]/25"
               >

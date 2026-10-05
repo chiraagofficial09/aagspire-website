@@ -12,9 +12,11 @@ export interface IProject extends Document {
   clientId: Types.ObjectId;
   projectName: string;
   description?: string;
+  subProjects?: string[];
   projectValue: Types.Decimal128;
   discountPercent?: number;
   discountAmount?: Types.Decimal128;
+  invoiceDiscount?: number;
   productionCost?: Types.Decimal128;
   productionCostNotes?: string;
   startDate?: Date;
@@ -33,9 +35,11 @@ const ProjectSchema = new Schema<IProject>(
     clientId: { type: Schema.Types.ObjectId, ref: 'Client', required: true, index: true },
     projectName: { type: String, required: true, trim: true },
     description: { type: String },
+    subProjects: [{ type: String, trim: true }],
     projectValue: { type: Schema.Types.Decimal128, required: true, default: 0 },
     discountPercent: { type: Number, default: 0, min: 0, max: 100 },
     discountAmount: { type: Schema.Types.Decimal128, default: 0 },
+    invoiceDiscount: { type: Number, default: 0 },
     productionCost: { type: Schema.Types.Decimal128, default: 0 },
     productionCostNotes: { type: String },
     startDate: { type: Date },

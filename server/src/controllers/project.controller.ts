@@ -344,17 +344,24 @@ export async function createProject(req: AuthenticatedRequest, res: Response): P
     }
 
     // 1. Create Project
+    const invoiceDiscount = req.body.invoiceDiscount !== undefined ? Math.max(0, round2(parseFloat(String(req.body.invoiceDiscount)) || 0)) : 0;
     const productionCost = req.body.productionCost !== undefined ? Math.max(0, round2(parseFloat(String(req.body.productionCost)) || 0)) : 0;
     const productionCostNotes = req.body.productionCostNotes ? String(req.body.productionCostNotes).trim() : undefined;
+
+    const subProjects = Array.isArray(req.body.subProjects)
+      ? req.body.subProjects
+      : (description ? description.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean) : []);
 
     const project = await Project.create({
       projectCode,
       clientId,
       projectName,
       description,
+      subProjects,
       projectValue: toDecimal(numValue),
       discountPercent,
       discountAmount: toDecimal(discountAmount),
+      invoiceDiscount,
       productionCost: toDecimal(productionCost),
       productionCostNotes,
       startDate: startDate ? new Date(startDate) : undefined,
@@ -856,7 +863,25 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
 
     const newName = req.body.projectName || req.body.title;
     if (newName) project.projectName = newName;
-    if (req.body.description !== undefined) project.description = req.body.description;
+    if (req.body.invoiceDiscount !== undefined) {
+      project.invoiceDiscount = Math.max(0, round2(parseFloat(String(req.body.invoiceDiscount)) || 0));
+    }
+    if (req.body.subProjects !== undefined) {
+      const spList = Array.isArray(req.body.subProjects) ? req.body.subProjects : [];
+      project.subProjects = spList;
+      if (req.body.description === undefined && spList.length > 0) {
+        project.description = spList.join('\n');
+      }
+    }
+    if (req.body.description !== undefined) {
+      project.description = req.body.description;
+      if (req.body.subProjects === undefined && project.description) {
+        project.subProjects = project.description
+          .split('\n')
+          .map((s: string) => s.trim().replace(/^[-•*]\s*/, ''))
+          .filter(Boolean);
+      }
+    }
     if (req.body.startDate !== undefined) project.startDate = req.body.startDate ? new Date(req.body.startDate) : undefined;
     const newDeadline = req.body.deadline || req.body.endDate;
     if (newDeadline !== undefined) project.deadline = newDeadline ? new Date(newDeadline) : undefined;
@@ -904,10 +929,16 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
 
     const currentGross = fromDecimal(project.projectValue);
     const currentDiscPercent = Number(project.discountPercent) || 0;
-    const calcDiscAmount = discAmountToUpdate !== undefined
-      ? round2(parseFloat(String(discAmountToUpdate)))
-      : round2((currentGross * currentDiscPercent) / 100);
-    project.discountAmount = toDecimal(calcDiscAmount);
+
+    if (discAmountToUpdate !== undefined) {
+      const calcDiscAmount = Math.max(0, round2(parseFloat(String(discAmountToUpdate)) || 0));
+      project.discountAmount = toDecimal(calcDiscAmount);
+      projectFinancialsChanged = true;
+    } else if (discPercentToUpdate !== undefined) {
+      const calcDiscAmount = round2((currentGross * currentDiscPercent) / 100);
+      project.discountAmount = toDecimal(calcDiscAmount);
+      projectFinancialsChanged = true;
+    }
     const currentProdCost = project.productionCost ? fromDecimal(project.productionCost) : 0;
 
     // Support updating commission split if passed
