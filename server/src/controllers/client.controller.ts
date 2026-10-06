@@ -106,7 +106,7 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
             const discountAmount = p.discountAmount
               ? fromDecimal(p.discountAmount)
               : round2((grossVal * discountPercent) / 100);
-            return sum + Math.max(0, round2(grossVal - discountAmount));
+            return sum + Math.max(0, round2(grossVal));
           }, 0)
         );
 
@@ -306,7 +306,7 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
       const discountAmount = p.discountAmount
         ? fromDecimal(p.discountAmount)
         : round2((grossVal * discountPercent) / 100);
-      const netVal = Math.max(0, round2(grossVal - discountAmount));
+      const netVal = Math.max(0, round2(grossVal));
       return {
         ...p.toObject(),
         title: p.projectName,

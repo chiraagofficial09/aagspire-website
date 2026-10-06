@@ -147,7 +147,7 @@ export async function calculateEmployeeEarnings(
         ? fromDecimal(proj.discountAmount)
         : round2((grossVal * discountPercent) / 100);
       const prodCost = proj.productionCost ? fromDecimal(proj.productionCost) : 0;
-      const netVal = Math.max(0, round2(grossVal - discountAmount - prodCost));
+      const netVal = Math.max(0, round2(grossVal - prodCost));
       const allocAmt = round2((netVal * (employeePercent / 100) * equalShare) / 100);
 
       try {
@@ -198,7 +198,7 @@ export async function calculateEmployeeEarnings(
       : round2((grossValue * discountPercent) / 100);
     const productionCost = project.productionCost ? fromDecimal(project.productionCost) : 0;
     const productionCostNotes = project.productionCostNotes || '';
-    const netProjectValue = Math.max(0, round2(grossValue - discountAmount - productionCost));
+    const netProjectValue = Math.max(0, round2(grossValue - productionCost));
 
     // Get project commission split
     const commission = await ProjectCommission.findOne({ projectId: projId });
@@ -217,8 +217,8 @@ export async function calculateEmployeeEarnings(
       payments.reduce((sum, p) => sum + fromDecimal(p.amount), 0)
     );
 
-    // Client Debt / Outstanding balance taking client discount into account
-    const clientDebt = Math.max(0, round2(netProjectValue - paymentsReceived));
+    // Client debt uses the entered contract value, before production costs.
+    const clientDebt = Math.max(0, round2(grossValue - paymentsReceived));
 
     // Office Allocation based on net project value
     const officeAllocated = round2((netProjectValue * officePercent) / 100);

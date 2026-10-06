@@ -222,16 +222,12 @@ export function calculateWeightedCommissionSplits(
 }
 
 /**
- * Extracts Net Project Value from a Project document/object.
+ * Extracts the entered contract value without subtracting legacy discounts.
  */
 export function extractNetProjectValue(project: any): number {
   if (!project) return 0;
   const gross = fromDecimal(project.projectValue);
-  const discountPercent = Number(project.discountPercent) || 0;
-  const discountAmount = project.discountAmount
-    ? fromDecimal(project.discountAmount)
-    : round2((gross * discountPercent) / 100);
-  return Math.max(0, round2(gross - discountAmount));
+  return Math.max(0, round2(gross));
 }
 
 /**

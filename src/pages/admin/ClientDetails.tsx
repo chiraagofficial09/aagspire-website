@@ -33,7 +33,7 @@ import { useAlert } from '../../context/AlertContext';
 import { StatusBadge } from '../../components/work/StatusBadge';
 import { ProjectModal } from '../../components/work/ProjectModal';
 
-const getProjectNetValue = (p: any): number => parseAmount(p?.projectValue ?? p?.totalAmount ?? p);
+const getProjectNetValue = (p: any): number => parseAmount(p?.grossProjectValue ?? p?.projectValue ?? p?.totalAmount ?? p);
 const getPaymentAmount = (pm: any): number => parseAmount(pm?.amount ?? pm);
 
 export const AdminClientDetails: React.FC = () => {
@@ -1260,7 +1260,7 @@ export const AdminClientDetails: React.FC = () => {
                       <StatusBadge status={p.status || 'start_process'} type="project" />
                     </td>
                     <td className="py-3.5 px-3 font-mono font-medium text-white text-sm text-right sm:text-left">
-                      {formatINR(p.projectValue ?? p.totalAmount)}
+                      {formatINR(p.grossProjectValue ?? p.projectValue ?? p.totalAmount)}
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       <Link

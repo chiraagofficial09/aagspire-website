@@ -74,16 +74,12 @@ export interface MonthlyTrendPoint {
 }
 
 /**
- * Calculates net project value taking discount percent or flat discount into account.
+ * Returns the entered contract value. Legacy discounts do not reduce project value.
  */
 export function getNetProjectValue(project: any): number {
   if (!project) return 0;
   const gross = fromDecimal(project.projectValue);
-  const discountPercent = Number(project.discountPercent) || 0;
-  const discountAmount = project.discountAmount
-    ? fromDecimal(project.discountAmount)
-    : round2((gross * discountPercent) / 100);
-  return Math.max(0, round2(gross - discountAmount));
+  return Math.max(0, round2(gross));
 }
 
 /**

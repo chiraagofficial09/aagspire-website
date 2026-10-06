@@ -294,7 +294,7 @@ export const AdminDashboard: React.FC = () => {
     id: p._id,
     name: p.projectName || p.title || 'Untitled Project',
     client: p.clientId?.companyName || p.clientId?.name || 'Direct Client',
-    value: parseAmount(p.projectValue ?? p.totalAmount ?? p.value),
+    value: parseAmount(p.grossProjectValue ?? p.projectValue ?? p.totalAmount ?? p.value),
     status: p.status || 'start_process',
   }));
 

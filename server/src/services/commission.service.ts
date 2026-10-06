@@ -56,9 +56,9 @@ export function calculateDiscountedSplit(
   discountPercent: number = 0,
   split: CommissionSplitInput
 ): DiscountedSplitResult {
-  const discPct = Math.max(0, Math.min(100, Number(discountPercent) || 0));
-  const discAmount = round2((grossProjectValue * discPct) / 100);
-  const netProjectValue = Math.max(0, round2(grossProjectValue - discAmount));
+  const discPct = 0;
+  const discAmount = 0;
+  const netProjectValue = Math.max(0, round2(grossProjectValue));
 
   validateCommissionPercentages(split);
 
@@ -96,10 +96,8 @@ export function calculateCommissionAmounts(
 ) {
   validateCommissionPercentages(split);
 
-  const discPct = Math.max(0, Math.min(100, Number(discountPercent) || 0));
-  const discAmount = round2((projectValue * discPct) / 100);
   const prodCost = Math.max(0, Number(productionCost) || 0);
-  const effectiveValue = Math.max(0, round2(projectValue - discAmount - prodCost));
+  const effectiveValue = Math.max(0, round2(projectValue - prodCost));
 
   const brokerAmount = round2((effectiveValue * split.brokerPercent) / 100);
   const employeeAmount = round2((effectiveValue * split.employeePercent) / 100);

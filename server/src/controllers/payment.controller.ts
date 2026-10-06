@@ -95,7 +95,7 @@ export async function createPayment(req: AuthenticatedRequest, res: Response): P
         const discountAmount = p.discountAmount
           ? fromDecimal(p.discountAmount)
           : round2((grossVal * discountPercent) / 100);
-        return sum + Math.max(0, round2(grossVal - discountAmount));
+        return sum + Math.max(0, round2(grossVal));
       }, 0)
     );
 
@@ -282,7 +282,7 @@ export async function updatePayment(req: AuthenticatedRequest, res: Response): P
         const discountAmount = p.discountAmount
           ? fromDecimal(p.discountAmount)
           : round2((grossVal * discountPercent) / 100);
-        return sum + Math.max(0, round2(grossVal - discountAmount));
+        return sum + Math.max(0, round2(grossVal));
       }, 0)
     );
 

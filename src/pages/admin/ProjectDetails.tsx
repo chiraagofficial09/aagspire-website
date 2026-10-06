@@ -124,10 +124,10 @@ export const AdminProjectDetails: React.FC = () => {
               <h1 className="text-xl font-bold text-[#FF5A1F] tracking-tight">{project.projectName || project.title}</h1>
             </div>
             <p className="text-xs text-white/50 font-mono">
-              Client: {project.clientId?.companyName || project.clientId?.name || 'Internal'} &bull; Budget: {formatINR(project.projectValue ?? project.totalAmount)}
+              Client: {project.clientId?.companyName || project.clientId?.name || 'Internal'} &bull; Budget: {formatINR(project.grossProjectValue ?? project.projectValue ?? project.totalAmount)}
               {project.productionCost && Number(project.productionCost) > 0 && (
                 <span className="text-[#FF5A1F] font-medium ml-1.5">
-                  (Design: {formatINR(project.designPrice ?? Math.max(0, (project.projectValue ?? project.totalAmount) - Number(project.productionCost)))})
+                  (Design: {formatINR(project.designPrice ?? Math.max(0, (project.grossProjectValue ?? project.projectValue ?? project.totalAmount) - Number(project.productionCost)))})
                 </span>
               )}
             </p>
@@ -257,7 +257,7 @@ export const AdminProjectDetails: React.FC = () => {
               <div className="flex justify-between text-xs">
                 <span className="text-white/60">Total Budget (Client)</span>
                 <span className="font-mono font-bold text-white">
-                  {formatINR(project.projectValue ?? project.totalAmount)}
+                  {formatINR(project.grossProjectValue ?? project.projectValue ?? project.totalAmount)}
                 </span>
               </div>
               {project.productionCost && Number(project.productionCost) > 0 && (
@@ -273,7 +273,7 @@ export const AdminProjectDetails: React.FC = () => {
                   <div className="flex justify-between text-xs pt-1 border-t border-white/[0.06]">
                     <span className="text-[#FF5A1F] font-medium">Net Design Price</span>
                     <span className="font-mono font-bold text-[#FF5A1F]">
-                      {formatINR(project.designPrice ?? Math.max(0, (project.projectValue ?? project.totalAmount) - Number(project.productionCost)))}
+                      {formatINR(project.designPrice ?? Math.max(0, (project.grossProjectValue ?? project.projectValue ?? project.totalAmount) - Number(project.productionCost)))}
                     </span>
                   </div>
                 </>

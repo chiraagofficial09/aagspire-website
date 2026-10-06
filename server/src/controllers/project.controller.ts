@@ -194,7 +194,7 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
       const discountAmount = proj.discountAmount
         ? fromDecimal(proj.discountAmount)
         : round2((grossVal * discountPercent) / 100);
-      const netVal = Math.max(0, round2(grossVal - discountAmount));
+      const netVal = Math.max(0, round2(grossVal));
       const outstanding = Math.max(0, round2(netVal - paymentsReceived));
 
       let userShare = 100;
@@ -225,7 +225,7 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
 
       const prodCost = proj.productionCost ? fromDecimal(proj.productionCost) : 0;
       const prodCostNotes = proj.productionCostNotes || '';
-      const designPrice = Math.max(0, round2(grossVal - discountAmount - prodCost));
+      const designPrice = Math.max(0, round2(grossVal - prodCost));
 
       const comm = commissionsByProject[projIdStr] || null;
 
@@ -687,7 +687,7 @@ export async function getProjectById(req: AuthenticatedRequest, res: Response): 
     const discountAmount = project.discountAmount
       ? fromDecimal(project.discountAmount)
       : round2((grossVal * discountPercent) / 100);
-    const netVal = Math.max(0, round2(grossVal - discountAmount));
+    const netVal = Math.max(0, round2(grossVal));
 
     let projectPaid = round2(
       payments
@@ -723,7 +723,7 @@ export async function getProjectById(req: AuthenticatedRequest, res: Response): 
     const isEmployeeView = req.user?.role === 'employee';
     const prodCost = project.productionCost ? fromDecimal(project.productionCost) : 0;
     const prodCostNotes = project.productionCostNotes || '';
-    const designPrice = Math.max(0, round2(grossVal - discountAmount - prodCost));
+    const designPrice = Math.max(0, round2(grossVal - prodCost));
 
     const projectData = {
       ...project.toObject(),

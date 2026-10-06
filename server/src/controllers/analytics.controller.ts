@@ -129,7 +129,7 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       const discountAmount = p.discountAmount
         ? fromDecimal(p.discountAmount)
         : round2((grossVal * discountPercent) / 100);
-      const netVal = Math.max(0, round2(grossVal - discountAmount));
+      const netVal = Math.max(0, round2(grossVal));
       const paymentsReceived = prjEarning?.paymentsReceived ?? 0;
       const balanceDue = prjEarning?.clientDebt !== undefined ? prjEarning.clientDebt : Math.max(0, round2(netVal - paymentsReceived));
 

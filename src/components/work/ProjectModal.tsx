@@ -147,7 +147,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         ? new Date(project.endDate).toISOString().slice(0, 10)
         : '';
 
-      const val = project.projectValue ?? project.totalAmount ?? '';
+      const val = project.grossProjectValue ?? project.projectValue ?? project.totalAmount ?? '';
       const prodCostVal = project.productionCost !== undefined && project.productionCost !== null && Number(project.productionCost) > 0
         ? String(project.productionCost)
         : '';

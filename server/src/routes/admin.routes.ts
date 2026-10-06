@@ -258,7 +258,7 @@ router.get('/projects/:id/financials', async (req, res) => {
     const discPct = Number(prj?.discountPercent) || 0;
     const discAmt = prj?.discountAmount ? fromDecimal(prj.discountAmount) : round2((totalVal * discPct) / 100);
     const prodCost = prj?.productionCost ? fromDecimal(prj.productionCost) : 0;
-    const netDesignPrice = Math.max(0, round2(totalVal - discAmt - prodCost));
+    const netDesignPrice = Math.max(0, round2(totalVal - prodCost));
     
     const empPoolPct = comm?.employeePercent || 0;
     const adminPct = comm?.adminPercent || 0;
