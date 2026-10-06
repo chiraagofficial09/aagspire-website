@@ -28,8 +28,6 @@ export interface IClient extends Document {
   source?: string;
   notes?: string;
   lastInvoiceNumber?: string;
-  specialDiscount?: number;
-  taxPercent?: number;
   deductions?: IClientDeduction[];
   badDebts?: IClientBadDebt[];
   status: 'active' | 'inactive';
@@ -52,8 +50,6 @@ const ClientSchema = new Schema<IClient>(
     source: { type: String, trim: true },
     notes: { type: String },
     lastInvoiceNumber: { type: String, trim: true },
-    specialDiscount: { type: Number, default: 0 },
-    taxPercent: { type: Number, default: 0 },
     deductions: [
       {
         projectName: { type: String, required: true },

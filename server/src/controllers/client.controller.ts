@@ -303,9 +303,9 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
       const paid = projectPaymentsMap.get(pid) || 0;
       const grossVal = fromDecimal(p.projectValue);
       const discountPercent = Number(p.discountPercent) || 0;
-      const invDisc = Number(p.invoiceDiscount) || 0;
-      const pDiscAmt = p.discountAmount ? fromDecimal(p.discountAmount) : 0;
-      const discountAmount = invDisc > 0 ? invDisc : (pDiscAmt > 0 ? pDiscAmt : round2((grossVal * discountPercent) / 100));
+      const discountAmount = p.discountAmount
+        ? fromDecimal(p.discountAmount)
+        : round2((grossVal * discountPercent) / 100);
       const netVal = Math.max(0, round2(grossVal - discountAmount));
       return {
         ...p.toObject(),
@@ -313,7 +313,6 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
         projectValue: netVal,
         grossProjectValue: grossVal,
         discountAmount,
-        invoiceDiscount: invDisc > 0 ? invDisc : discountAmount,
         discountPercent,
         totalAmount: netVal,
         paidAmount: paid,
@@ -632,8 +631,8 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       ? (digits[digits.length - 1].length === 4 && digits[digits.length - 1].startsWith('0') ? digits[digits.length - 1].substring(1) : digits[digits.length - 1])
       : '001';
     const invoiceNumber = (req.query.invoiceNumber as string) || req.body?.invoiceNumber || defaultNum;
-    const taxPercent = Number(req.query.taxPercent || req.body?.taxPercent || client.taxPercent || 0);
-    const discountAmount = Number(req.query.discountAmount || req.body?.discountAmount || client.specialDiscount || 0);
+    const taxPercent = Number(req.query.taxPercent || req.body?.taxPercent || 0);
+    const discountAmount = Number(req.query.discountAmount || req.body?.discountAmount || 0);
     if (!Number.isFinite(taxPercent) || taxPercent < 0 || !Number.isFinite(discountAmount) || discountAmount < 0) {
       res.status(400).json({ success: false, message: 'Tax and discount must be non-negative numbers.' });
       return;

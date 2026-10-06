@@ -864,11 +864,7 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
     const newName = req.body.projectName || req.body.title;
     if (newName) project.projectName = newName;
     if (req.body.invoiceDiscount !== undefined) {
-      const discVal = Math.max(0, round2(parseFloat(String(req.body.invoiceDiscount)) || 0));
-      project.invoiceDiscount = discVal;
-      if (req.body.discountAmount === undefined && req.body.discountPercent === undefined) {
-        project.discountAmount = toDecimal(discVal);
-      }
+      project.invoiceDiscount = Math.max(0, round2(parseFloat(String(req.body.invoiceDiscount)) || 0));
     }
     if (req.body.subProjects !== undefined) {
       const spList = Array.isArray(req.body.subProjects) ? req.body.subProjects : [];
@@ -937,16 +933,10 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
     if (discAmountToUpdate !== undefined) {
       const calcDiscAmount = Math.max(0, round2(parseFloat(String(discAmountToUpdate)) || 0));
       project.discountAmount = toDecimal(calcDiscAmount);
-      if (req.body.invoiceDiscount === undefined) {
-        project.invoiceDiscount = calcDiscAmount;
-      }
       projectFinancialsChanged = true;
     } else if (discPercentToUpdate !== undefined) {
       const calcDiscAmount = round2((currentGross * currentDiscPercent) / 100);
       project.discountAmount = toDecimal(calcDiscAmount);
-      if (req.body.invoiceDiscount === undefined) {
-        project.invoiceDiscount = calcDiscAmount;
-      }
       projectFinancialsChanged = true;
     }
     const currentProdCost = project.productionCost ? fromDecimal(project.productionCost) : 0;
