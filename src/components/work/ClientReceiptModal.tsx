@@ -60,7 +60,9 @@ export function getProjectActualCost(p: any): number {
   if (p?.grossProjectValue !== undefined && p?.grossProjectValue !== null && !isNaN(Number(p.grossProjectValue)) && Number(p.grossProjectValue) > 0) {
     return parseAmount(p.grossProjectValue);
   }
-  return parseAmount(p?.projectValue ?? p?.totalAmount);
+  const baseVal = parseAmount(p?.projectValue ?? p?.totalAmount);
+  const disc = Number(p?.invoiceDiscount) || parseAmount(p?.discountAmount) || 0;
+  return baseVal + disc;
 }
 
 export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
@@ -156,7 +158,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
 
   const persistDiscount = (projectId: string, val: number): Promise<any> => {
     const safe = Math.max(0, val);
-    return api.put(`/admin/projects/${projectId}`, { invoiceDiscount: safe }).catch((err) => {
+    return api.put(`/admin/projects/${projectId}`, { invoiceDiscount: safe, discountAmount: safe }).catch((err) => {
       console.error('Failed to auto-save project discount:', err);
     });
   };

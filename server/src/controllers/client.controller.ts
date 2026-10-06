@@ -310,15 +310,14 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
       return {
         ...p.toObject(),
         title: p.projectName,
-        projectValue: grossVal,
+        projectValue: netVal,
         grossProjectValue: grossVal,
-        netProjectValue: netVal,
-        discountAmount: pDiscAmt,
-        invoiceDiscount: invDisc,
+        discountAmount,
+        invoiceDiscount: invDisc > 0 ? invDisc : discountAmount,
         discountPercent,
-        totalAmount: grossVal,
+        totalAmount: netVal,
         paidAmount: paid,
-        balance: Math.max(0, round2(grossVal - paid)),
+        balance: Math.max(0, round2(netVal - paid)),
       };
     });
 
@@ -678,7 +677,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       const manualDiscount = customDiscounts[pIdStr] !== undefined
         ? Number(customDiscounts[pIdStr]) || 0
         : (Number(p.invoiceDiscount) || (round2(fromDecimal(p.discountAmount) || 0) > 0 ? round2(fromDecimal(p.discountAmount)) : 0));
-      const grossPrice = manualDiscount > 0 ? round2(baseProjectValue + manualDiscount) : baseProjectValue;
+      const grossPrice = round2(baseProjectValue + manualDiscount);
       const manualSubProjects = customDescriptions[pIdStr] || ((Array.isArray(p.subProjects) && p.subProjects.length > 0) ? p.subProjects : (p.description ? p.description.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean) : []));
       return {
         projectCode: p.projectCode,
