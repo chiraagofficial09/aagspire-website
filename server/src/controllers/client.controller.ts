@@ -672,22 +672,22 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
     const projects = rawProjects.map((p) => {
       const pIdStr = String(p._id);
       const paid = projectPaymentsMap.get(pIdStr) || 0;
-      const baseProjectValue = fromDecimal(p.projectValue);
+      const val = getNetProjectValue(p);
       const manualDiscount = customDiscounts[pIdStr] !== undefined
         ? Number(customDiscounts[pIdStr]) || 0
-        : (Number(p.invoiceDiscount) || (round2(fromDecimal(p.discountAmount) || 0) > 0 ? round2(fromDecimal(p.discountAmount)) : 0));
-      const grossPrice = round2(baseProjectValue + manualDiscount);
-      const manualSubProjects = customDescriptions[pIdStr] || ((Array.isArray(p.subProjects) && p.subProjects.length > 0) ? p.subProjects : (p.description ? p.description.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean) : []));
+        : round2(fromDecimal(p.projectValue) - val);
+      const grossPrice = round2(val + manualDiscount);
+      const manualSubProjects = customDescriptions[pIdStr] || (p.description ? p.description.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean) : []);
       return {
         projectCode: p.projectCode,
         projectName: p.projectName,
         status: p.status,
-        projectValue: baseProjectValue,
+        projectValue: val,
         grossProjectValue: grossPrice,
         discountPercent: Number(p.discountPercent) || 0,
         discountAmount: manualDiscount,
         paidAmount: paid,
-        balance: Math.max(0, round2(baseProjectValue - paid)),
+        balance: Math.max(0, round2(val - paid)),
         startDate: p.startDate ? new Date(p.startDate).toLocaleDateString('en-IN') : undefined,
         deadline: p.deadline ? new Date(p.deadline).toLocaleDateString('en-IN') : undefined,
         subProjects: manualSubProjects,
