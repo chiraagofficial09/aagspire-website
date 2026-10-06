@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   X,
   Download,
@@ -24,6 +24,7 @@ interface ClientReceiptModalProps {
   client: any;
   projects: any[];
   onRefreshClient?: () => void;
+  onInvoiceDiscountSaved?: (projectId: string, value: number) => void;
   initialMonth?: string;
   deductions?: any[];
 }
@@ -52,6 +53,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   client,
   projects: initialProjects = [],
   onRefreshClient,
+  onInvoiceDiscountSaved,
   initialMonth,
   deductions = [],
 }) => {
@@ -75,7 +77,45 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   const [invoicePreview, setInvoicePreview] = useState<InvoiceSnapshot | null>(null);
   const [taxPercent, setTaxPercent] = useState<number>(0);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
-  const [projectDiscounts, setProjectDiscounts] = useState<Record<string, number>>({});
+  const [projectDiscounts, setProjectDiscounts] = useState<Record<string, number>>(() =>
+    Object.fromEntries(initialProjects.map(p => [p._id, parseAmount(p.invoiceDiscount ?? p.discountAmount)]))
+  );
+  const discountSaves = useRef<Record<string, Promise<void>>>({});
+  const discountTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const pendingDiscounts = useRef<Record<string, number>>({});
+  const editedDiscounts = useRef(new Set<string>());
+  const saveCallbacks = useRef({ toast, onInvoiceDiscountSaved });
+  saveCallbacks.current = { toast, onInvoiceDiscountSaved };
+  const flushDiscount = useCallback((projectId: string) => {
+    clearTimeout(discountTimers.current[projectId]);
+    delete discountTimers.current[projectId];
+    const value = pendingDiscounts.current[projectId];
+    if (value === undefined) return;
+    delete pendingDiscounts.current[projectId];
+    discountSaves.current[projectId] = (discountSaves.current[projectId] ?? Promise.resolve())
+      .then(async () => {
+        const response = await api.patch(`/admin/projects/${projectId}/invoice-discount`, { invoiceDiscount: value });
+        if (!response.data?.success || response.data?.data?.invoiceDiscount !== value) {
+          throw new Error('Server did not confirm the saved discount.');
+        }
+        saveCallbacks.current.onInvoiceDiscountSaved?.(projectId, value);
+      })
+      .catch((error: any) => {
+        saveCallbacks.current.toast.error(error.response?.data?.message || error.message || 'Invoice discount could not be saved.');
+      });
+  }, []);
+  useEffect(() => () => {
+    Object.keys(pendingDiscounts.current).forEach(flushDiscount);
+  }, [flushDiscount]);
+  useEffect(() => {
+    setProjectDiscounts(prev => {
+      const next = { ...prev };
+      initialProjects.forEach(p => {
+        if (!editedDiscounts.current.has(p._id)) next[p._id] = parseAmount(p.invoiceDiscount ?? p.discountAmount);
+      });
+      return next;
+    });
+  }, [initialProjects]);
   const [projectSubProjects, setProjectSubProjects] = useState<Record<string, string[]>>(() => {
     const initial: Record<string, string[]> = {};
     (initialProjects || []).forEach((p: any) => {
@@ -90,10 +130,16 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   const [subProjectInputs, setSubProjectInputs] = useState<Record<string, string>>({});
 
   const handleProjectDiscountChange = (projectId: string, val: number) => {
+    if (!Number.isFinite(val)) return;
+    const value = Math.max(0, val);
+    editedDiscounts.current.add(projectId);
     setProjectDiscounts((prev) => ({
       ...prev,
-      [projectId]: Math.max(0, val),
+      [projectId]: value,
     }));
+    pendingDiscounts.current[projectId] = value;
+    clearTimeout(discountTimers.current[projectId]);
+    discountTimers.current[projectId] = setTimeout(() => flushDiscount(projectId), 400);
   };
 
   const handleAddSubProject = (projectId: string) => {
@@ -318,9 +364,10 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
   }, [enrichedProjects, selectedMonths]);
 
   // Keep selected IDs synced with displayed projects when billing months change
+  const displayedProjectIds = JSON.stringify(displayedProjects.map(p => p._id));
   useEffect(() => {
-    setSelectedProjectIds(displayedProjects.map((p) => p._id));
-  }, [displayedProjects]);
+    setSelectedProjectIds(JSON.parse(displayedProjectIds));
+  }, [displayedProjectIds]);
 
   if (!isOpen || !client) return null;
 
@@ -783,7 +830,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                     const currentDiscount =
                       projectDiscounts[p._id] !== undefined
                         ? projectDiscounts[p._id]
-                        : (parseAmount(p.discountAmount) || 0);
+                        : parseAmount(p.invoiceDiscount ?? p.discountAmount);
 
                     return (
                       <div
@@ -829,6 +876,7 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                                   placeholder="0"
                                   value={currentDiscount || ''}
                                   onChange={(e) => handleProjectDiscountChange(p._id, Number(e.target.value))}
+                                  onBlur={() => flushDiscount(p._id)}
                                   className="w-28 pl-6 pr-2.5 py-1 bg-black/80 border border-white/15 rounded-lg text-white font-mono text-xs focus:border-[#FF5A1F] focus:outline-none"
                                 />
                               </div>

@@ -15,6 +15,7 @@ export interface IProject extends Document {
   projectValue: Types.Decimal128;
   discountPercent?: number;
   discountAmount?: Types.Decimal128;
+  invoiceDiscount?: number;
   productionCost?: Types.Decimal128;
   productionCostNotes?: string;
   startDate?: Date;
@@ -36,6 +37,7 @@ const ProjectSchema = new Schema<IProject>(
     projectValue: { type: Schema.Types.Decimal128, required: true, default: 0 },
     discountPercent: { type: Number, default: 0, min: 0, max: 100 },
     discountAmount: { type: Schema.Types.Decimal128, default: 0 },
+    invoiceDiscount: { type: Number, min: 0 },
     productionCost: { type: Schema.Types.Decimal128, default: 0 },
     productionCostNotes: { type: String },
     startDate: { type: Date },

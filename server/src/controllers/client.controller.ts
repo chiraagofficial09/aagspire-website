@@ -675,7 +675,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       const val = getNetProjectValue(p);
       const manualDiscount = customDiscounts[pIdStr] !== undefined
         ? Number(customDiscounts[pIdStr]) || 0
-        : round2(fromDecimal(p.projectValue) - val);
+        : (p.invoiceDiscount ?? round2(fromDecimal(p.projectValue) - val));
       const grossPrice = round2(val + manualDiscount);
       const manualSubProjects = customDescriptions[pIdStr] || (p.description ? p.description.split('\n').map((s: string) => s.trim().replace(/^[-•*]\s*/, '')).filter(Boolean) : []);
       return {

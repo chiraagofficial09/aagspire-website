@@ -1,4 +1,5 @@
 import { getCashBankSummary } from '../controllers/cashBank.controller.js';
+import { saveInvoiceDiscount } from '../controllers/invoiceDiscount.controller.js';
 import { Router } from 'express';
 import { Types } from 'mongoose';
 import { authenticate } from '../middleware/auth.middleware.js';
@@ -143,6 +144,7 @@ router.patch('/projects/bulk', bulkUpdateProjects);
 router.delete('/projects/bulk', bulkDeleteProjects);
 router.get('/projects/:id', getProjectById);
 router.put('/projects/:id', updateProject);
+router.patch('/projects/:id/invoice-discount', saveInvoiceDiscount);
 router.patch('/projects/:id', updateProject);
 router.delete('/projects/:id', deleteProject);
 router.put('/projects/:id/employees', updateEmployeeAllocations);

@@ -1696,6 +1696,13 @@ export const AdminClientDetails: React.FC = () => {
           client={client}
           projects={allProjects}
           onRefreshClient={fetchClient}
+          onInvoiceDiscountSaved={(projectId, invoiceDiscount) => {
+            setClient((prev: any) => prev ? {
+              ...prev,
+              projects: (prev.projects || []).map((project: any) =>
+                project._id === projectId ? { ...project, invoiceDiscount } : project),
+            } : prev);
+          }}
           initialMonth={selectedMonth}
           deductions={deductions}
         />
