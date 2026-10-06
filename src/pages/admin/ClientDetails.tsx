@@ -1260,7 +1260,7 @@ export const AdminClientDetails: React.FC = () => {
                       <StatusBadge status={p.status || 'start_process'} type="project" />
                     </td>
                     <td className="py-3.5 px-3 font-mono font-medium text-white text-sm text-right sm:text-left">
-                      {formatINR(p.projectValue ?? p.totalAmount)}
+                      {formatINR(p.grossProjectValue ?? p.projectValue ?? p.totalAmount)}
                     </td>
                     <td className="py-3.5 px-3 text-right">
                       <Link

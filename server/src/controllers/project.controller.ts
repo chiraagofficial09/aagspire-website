@@ -239,9 +239,9 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
         sharePercent: userShare,
         sharePercentage: userShare,
         employeeCommission,
-        totalAmount: isEmployee ? 0 : netVal,
+        totalAmount: isEmployee ? 0 : grossVal,
         endDate: proj.deadline,
-        projectValue: isEmployee ? 0 : netVal,
+        projectValue: isEmployee ? 0 : grossVal,
         grossProjectValue: isEmployee ? 0 : grossVal,
         discountPercent: isEmployee ? 0 : discountPercent,
         discountAmount: isEmployee ? 0 : discountAmount,
@@ -739,8 +739,8 @@ export async function getProjectById(req: AuthenticatedRequest, res: Response): 
       productionCost: isEmployeeView ? 0 : prodCost,
       productionCostNotes: isEmployeeView ? undefined : prodCostNotes,
       designPrice: isEmployeeView ? 0 : designPrice,
-      totalAmount: isEmployeeView ? 0 : netVal,
-      projectValue: isEmployeeView ? 0 : netVal,
+      totalAmount: isEmployeeView ? 0 : grossVal,
+      projectValue: isEmployeeView ? 0 : grossVal,
       grossProjectValue: isEmployeeView ? 0 : grossVal,
       discountPercent: isEmployeeView ? 0 : discountPercent,
       discountAmount: isEmployeeView ? 0 : discountAmount,
@@ -866,9 +866,6 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
     if (req.body.invoiceDiscount !== undefined) {
       const discVal = Math.max(0, round2(parseFloat(String(req.body.invoiceDiscount)) || 0));
       project.invoiceDiscount = discVal;
-      if (req.body.discountAmount === undefined && req.body.discountPercent === undefined) {
-        project.discountAmount = toDecimal(discVal);
-      }
     }
     if (req.body.subProjects !== undefined) {
       const spList = Array.isArray(req.body.subProjects) ? req.body.subProjects : [];
@@ -937,16 +934,10 @@ export async function updateProject(req: AuthenticatedRequest, res: Response): P
     if (discAmountToUpdate !== undefined) {
       const calcDiscAmount = Math.max(0, round2(parseFloat(String(discAmountToUpdate)) || 0));
       project.discountAmount = toDecimal(calcDiscAmount);
-      if (req.body.invoiceDiscount === undefined) {
-        project.invoiceDiscount = calcDiscAmount;
-      }
       projectFinancialsChanged = true;
     } else if (discPercentToUpdate !== undefined) {
       const calcDiscAmount = round2((currentGross * currentDiscPercent) / 100);
       project.discountAmount = toDecimal(calcDiscAmount);
-      if (req.body.invoiceDiscount === undefined) {
-        project.invoiceDiscount = calcDiscAmount;
-      }
       projectFinancialsChanged = true;
     }
     const currentProdCost = project.productionCost ? fromDecimal(project.productionCost) : 0;

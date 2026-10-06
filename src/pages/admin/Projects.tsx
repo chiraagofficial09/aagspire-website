@@ -687,7 +687,7 @@ export const AdminProjects: React.FC = () => {
         ? prj.clientId
         : clients.find((c) => c._id === prj.clientId || c.id === prj.clientId);
     const clientName = clientObj?.companyName || clientObj?.name || 'Client Production';
-    const projectVal = prj.projectValue ?? prj.netProjectValue ?? prj.totalAmount ?? prj.grossProjectValue ?? 0;
+    const projectVal = prj.grossProjectValue ?? prj.projectValue ?? prj.totalAmount ?? 0;
     const delivered = isDelivered(prj.status);
     const isSelected = selectedIds.has(prj._id);
 
@@ -992,7 +992,7 @@ export const AdminProjects: React.FC = () => {
                 if (next && selectedIds.size === 1) {
                   const prj = projects.find((p) => selectedIds.has(p._id));
                   if (prj) {
-                    const val = prj.projectValue ?? prj.netProjectValue ?? prj.totalAmount ?? '';
+                    const val = prj.grossProjectValue ?? prj.projectValue ?? prj.totalAmount ?? '';
                     setBulkValueInput(val ? String(val) : '');
                   }
                 }

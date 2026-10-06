@@ -34,7 +34,6 @@ export async function deliverInvoice(clientId: unknown, data: ClientStatementPdf
       const pDisc = Number(proj.discountAmount) || 0;
       const updatePayload: any = {
         invoiceDiscount: pDisc,
-        discountAmount: toDecimal(pDisc),
       };
       if (Array.isArray(proj.subProjects) && proj.subProjects.length > 0) {
         updatePayload.subProjects = proj.subProjects;
