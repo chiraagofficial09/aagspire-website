@@ -7,8 +7,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc && node scripts/copyAssets.mjs",
-    "test:finance": "npm run build && node --experimental-strip-types --test tests/cashBankBalance.test.ts tests/financeControllers.test.mjs",
-    "test:finance-ui": "node tests/financeUi.test.mjs",
+    "test:finance": "npm run build && node --import tsx --test ../clientReceivable.test.ts tests/projectContractValue.test.ts tests/clientProjectSheet.test.ts ../qa/clientFinanceApi.test.mjs tests/invoiceBadDebt.test.mjs",
+    "test:finance-ui": "node --test ../qa/clientFinanceUi.test.mjs",
+    "test:invoice": "npm run build && node --test tests/invoiceParity.test.mjs",
     "install:browser": "playwright install --with-deps chromium",
     "start": "node dist/server.js",
     "seed": "tsx src/scripts/seed.ts",

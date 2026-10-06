@@ -14,6 +14,7 @@ import { allocateInvoicePayments } from '../services/invoiceCalculations.service
 import { InvoiceCounter } from '../models/InvoiceCounter.js';
 import { calculateFinancialMetrics, getNetProjectValue } from '../services/dashboardFinance.js';
 import { getMonthDateRange } from '../utils/dateHelper.js';
+import { clientReceivable } from '../services/clientReceivable.js';
 
 export async function listClients(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -75,9 +76,13 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
 
     const paymentsByClientInMonth = new Map<string, number>();
     const paymentsByClientCumulative = new Map<string, number>();
+    const allPaymentsByClient = new Map<string, typeof allPayments>();
     for (const pm of allPayments) {
       const cid = pm.clientId?.toString();
       if (cid) {
+        const clientPayments = allPaymentsByClient.get(cid) || [];
+        clientPayments.push(pm);
+        allPaymentsByClient.set(cid, clientPayments);
         const pmDate = new Date(pm.paymentDate || pm.createdAt || 0);
         const amt = fromDecimal(pm.amount);
         paymentsByClientCumulative.set(cid, (paymentsByClientCumulative.get(cid) || 0) + amt);
@@ -119,9 +124,9 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
           : (paymentsByClientCumulative.get(cidStr) || 0)
       );
       const totalPaidCumulative = round2(paymentsByClientCumulative.get(cidStr) || 0);
-      const outstanding = isMonthFiltered
-        ? Math.max(0, round2(totalValue - totalPaid))
-        : Math.max(0, round2(totalValue - totalPaidCumulative));
+      const balance = clientReceivable(allProjects,
+        allPaymentsByClient.get(cidStr) || [], client, monthRange);
+      const outstanding = balance.netClosingReceivable;
 
       return {
         ...client.toObject(),
@@ -145,7 +150,9 @@ export async function listClients(req: AuthenticatedRequest, res: Response): Pro
           outstanding,
           allTimeBusinessValue: allTimeTotalValue,
           allTimePaid: totalPaidCumulative,
-          allTimeOutstanding: Math.max(0, round2(allTimeTotalValue - totalPaidCumulative)),
+          allTimeOutstanding: balance.allTimeOutstanding,
+          openingReceivable: balance.openingReceivable,
+          netClosingReceivable: balance.netClosingReceivable,
         },
       };
     });
@@ -251,8 +258,9 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
     ]);
 
     const totalBusinessValue = financialMetrics.totalAllTimeProjectValue;
+    const balance = clientReceivable(rawProjects, rawPayments, client, getMonthDateRange(targetMonth || ''));
     const totalPaymentsReceived = financialMetrics.totalAllTimeCashCollected;
-    const pendingPayment = financialMetrics.totalAllTimeReceivable;
+    const pendingPayment = balance.netClosingReceivable;
 
     // Pre-calculate payment allocation across client projects (supporting general client payments)
     const sortedProjects = [...rawProjects].sort(
@@ -334,7 +342,7 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
       totalPaymentsReceived,
       pendingPayment,
       outstanding: pendingPayment,
-      financialSummary: financialMetrics,
+      financialSummary: { ...financialMetrics, ...balance },
       financials: {
         totalContractValue: totalBusinessValue,
         totalBusinessValue,
@@ -350,7 +358,8 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
         cashCollected: financialMetrics.cashCollected,
         currentMonthCollection: financialMetrics.currentMonthCollection,
         previousOutstandingCollected: financialMetrics.previousOutstandingCollected,
-        openingReceivable: financialMetrics.openingReceivable,
+        openingReceivable: balance.openingReceivable,
+        netClosingReceivable: balance.netClosingReceivable,
         closingReceivable: financialMetrics.closingReceivable,
         appliedCollections: financialMetrics.appliedCollections,
         unappliedCash: financialMetrics.unappliedCash,
@@ -368,7 +377,7 @@ export async function getClientById(req: AuthenticatedRequest, res: Response): P
       success: true,
       data: payload,
       client,
-      financialSummary: financialMetrics,
+      financialSummary: payload.financialSummary,
       financials: payload.financials,
       projects,
       payments,

@@ -97,12 +97,13 @@ export function getMonthDateRange(targetMonth?: string): {
   const [yearStr, monthStr] = targetMonth.split('-');
   const year = parseInt(yearStr, 10);
   const month = parseInt(monthStr, 10);
-  if (isNaN(year) || isNaN(month)) {
+  if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
     return { startDate: null, endDate: null, monthLabel: 'All Time', isAllMonths: true };
   }
-  const startDate = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const endDate = new Date(year, month, 0, 23, 59, 59, 999);
-  const monthLabel = startDate.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+  const indiaOffset = 330 * 60_000;
+  const startDate = new Date(Date.UTC(year, month - 1, 1) - indiaOffset);
+  const endDate = new Date(Date.UTC(year, month, 1) - indiaOffset - 1);
+  const monthLabel = startDate.toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' });
   return { startDate, endDate, monthLabel, isAllMonths: false };
 }
 

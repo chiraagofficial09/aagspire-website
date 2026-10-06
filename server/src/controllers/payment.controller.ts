@@ -9,6 +9,7 @@ import { logAudit } from '../services/audit.service.js';
 import { createNotification } from '../services/notification.service.js';
 import { financeMonthRange, validMoney, validFinanceDate } from '../services/cashBankBalance.js';
 import { appendRowSafely } from '../services/googleSheets.service.js';
+import { clientReceivable } from '../services/clientReceivable.js';
 
 export async function listPayments(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -106,7 +107,7 @@ export async function createPayment(req: AuthenticatedRequest, res: Response): P
     );
 
     // 3. Client-level outstanding / remaining balance
-    const remainingBalance = Math.max(0, round2(clientNetContractValue - paymentsAlreadyReceived));
+    const remainingBalance = clientReceivable(clientProjects, existingPayments, client).allTimeOutstanding;
 
     if (clientNetContractValue > 0 && remainingBalance <= 0) {
       res.status(400).json({
@@ -292,7 +293,10 @@ export async function updatePayment(req: AuthenticatedRequest, res: Response): P
       otherPayments.reduce((sum, p) => sum + fromDecimal(p.amount), 0)
     );
 
-    const remainingBalance = Math.max(0, round2(clientNetContractValue - otherPaymentsTotal));
+    const sameClient = String(payment.clientId) === String(client._id);
+    const currentDue = clientReceivable(clientProjects,
+      sameClient ? [...otherPayments, payment] : otherPayments, client).allTimeOutstanding;
+    const remainingBalance = round2(currentDue + (sameClient ? fromDecimal(payment.amount) : 0));
 
     if (clientNetContractValue > 0 && numAmount > remainingBalance) {
       res.status(400).json({

@@ -114,7 +114,9 @@ export const AdminClientDetails: React.FC = () => {
           })),
         });
         toast.success('Deduction added successfully');
+        await fetchClient(undefined, true);
       } catch (err) {
+        setDeductions(deductions);
         console.error('Failed to persist deduction:', err);
         toast.error('Failed to save deduction to server');
       }
@@ -134,7 +136,9 @@ export const AdminClientDetails: React.FC = () => {
           })),
         });
         toast.success('Deduction removed');
+        await fetchClient(undefined, true);
       } catch (err) {
+        setDeductions(deductions);
         console.error('Failed to remove deduction:', err);
         toast.error('Failed to remove deduction from server');
       }
@@ -172,8 +176,9 @@ export const AdminClientDetails: React.FC = () => {
           })),
         });
         toast.success('Bad debt recorded successfully');
-        fetchClient();
+        await fetchClient(undefined, true);
       } catch (err) {
+        setBadDebts(badDebts);
         console.error('Failed to persist bad debt:', err);
         toast.error('Failed to save bad debt to server');
       }
@@ -194,7 +199,9 @@ export const AdminClientDetails: React.FC = () => {
           })),
         });
         toast.success('Bad debt removed');
+        await fetchClient(undefined, true);
       } catch (err) {
+        setBadDebts(badDebts);
         console.error('Failed to remove bad debt:', err);
         toast.error('Failed to remove bad debt from server');
       }
@@ -307,9 +314,9 @@ export const AdminClientDetails: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchClient = async (monthOverride?: string) => {
+  const fetchClient = async (monthOverride?: string, silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const m = monthOverride !== undefined ? monthOverride : selectedMonth;
       const query = m && m !== 'all' ? `?month=${encodeURIComponent(m)}` : (m === 'all' ? '?month=all' : '');
       const res = await api.get(`/admin/clients/${id}${query}`);
@@ -353,7 +360,7 @@ export const AdminClientDetails: React.FC = () => {
     } catch (err) {
       console.error('Error fetching client details', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -529,8 +536,11 @@ export const AdminClientDetails: React.FC = () => {
   }, [badDebts]);
 
   const allTimeNetRemainingDue = useMemo(() => {
+    if (client?.financialSummary?.allTimeOutstanding !== undefined) {
+      return Number(client.financialSummary.allTimeOutstanding);
+    }
     return Math.max(0, allTimeContractVal - allTimePaidVal - totalAllDeductions - totalAllBadDebts);
-  }, [allTimeContractVal, allTimePaidVal, totalAllDeductions, totalAllBadDebts]);
+  }, [client?.financialSummary?.allTimeOutstanding, allTimeContractVal, allTimePaidVal, totalAllDeductions, totalAllBadDebts]);
 
   const editingAmount = editingPayment ? Number(editingPayment.amount || 0) : 0;
   const maxAllowedPayment = allTimeContractVal > 0
@@ -625,8 +635,10 @@ export const AdminClientDetails: React.FC = () => {
   );
 
   const netReceivableAfterAll = useMemo(() => {
-    return Math.max(0, closingReceivable - totalDeductions - totalBadDebts);
-  }, [closingReceivable, totalDeductions, totalBadDebts]);
+    return finSummary.netClosingReceivable !== undefined
+      ? Number(finSummary.netClosingReceivable)
+      : Math.max(0, closingReceivable - totalDeductions - totalBadDebts);
+  }, [finSummary.netClosingReceivable, closingReceivable, totalDeductions, totalBadDebts]);
 
   const appliedCollections = Number(finSummary.appliedCollections ?? (currentMonthCollection + previousOutstandingCollected));
   const unappliedCash = Number(finSummary.unappliedCash || 0);

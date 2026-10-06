@@ -15,8 +15,9 @@ export function getMonthDateRange(month?: string | null): MonthDateRange | null 
     return null;
   }
 
-  const startOfMonth = new Date(yr, mo - 1, 1, 0, 0, 0, 0);
-  const endOfMonth = new Date(yr, mo, 0, 23, 59, 59, 999);
+  const indiaOffset = 330 * 60_000;
+  const startOfMonth = new Date(Date.UTC(yr, mo - 1, 1) - indiaOffset);
+  const endOfMonth = new Date(Date.UTC(yr, mo, 1) - indiaOffset - 1);
 
   return { startOfMonth, endOfMonth };
 }
