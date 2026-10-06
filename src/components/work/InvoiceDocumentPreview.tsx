@@ -6,6 +6,33 @@ export type InvoiceSnapshot = {
   totals: { totalRevenue: number; pendingBalance: number };
 };
 
+// Previews requested ahead of time (while the user is still on the selection tab), so opening
+// the Preview tab can show the invoice immediately. Entries are reused only well within the
+// server's 1-hour snapshot expiry.
+const PREFETCH_MAX_AGE_MS = 45 * 60 * 1000;
+const prefetchedPreviews = new Map<string, { at: number; request: Promise<Omit<InvoiceSnapshot, 'requestKey'>> }>();
+
+function requestPreview(clientId: string, requestKey: string) {
+  const key = `${clientId}|${requestKey}`;
+  const cached = prefetchedPreviews.get(key);
+  if (cached && Date.now() - cached.at < PREFETCH_MAX_AGE_MS) return cached.request;
+  const request = api.post(`/admin/clients/${clientId}/invoice-preview`, JSON.parse(requestKey)).then(res => res.data);
+  // Keep only the latest request per client
+  for (const k of prefetchedPreviews.keys()) if (k.startsWith(`${clientId}|`)) prefetchedPreviews.delete(k);
+  prefetchedPreviews.set(key, { at: Date.now(), request });
+  request.catch(() => prefetchedPreviews.delete(key));
+  return request;
+}
+
+/** Renders nothing; prepares the preview in the background (debounced) while the user edits. */
+export function InvoicePreviewPrefetcher({ clientId, requestKey }: { clientId: string; requestKey: string }) {
+  useEffect(() => {
+    const timer = setTimeout(() => { requestPreview(clientId, requestKey).catch(() => {}); }, 600);
+    return () => clearTimeout(timer);
+  }, [clientId, requestKey]);
+  return null;
+}
+
 export function InvoiceDocumentPreview({ clientId, requestKey, onReady }: {
   clientId: string; requestKey: string; onReady: (snapshot: InvoiceSnapshot | null) => void;
 }) {
@@ -17,19 +44,21 @@ export function InvoiceDocumentPreview({ clientId, requestKey, onReady }: {
   const hasLoadedOnce = useRef(false);
   useEffect(() => {
     let active = true;
-    onReady(null); setSnapshot(null); setError('');
-    // First preview loads immediately; later edits (typing invoice no./discounts) are debounced
-    // so the server isn't asked to rebuild the invoice on every keystroke.
+    // Keep the previous preview on screen while the updated one loads (Download stays disabled
+    // via onReady(null) until the new snapshot matches). First load is immediate; later edits
+    // are debounced so the server isn't asked to rebuild the invoice on every keystroke.
+    onReady(null); setError('');
+    const alreadyRequested = prefetchedPreviews.has(`${clientId}|${requestKey}`);
     const timer = setTimeout(() => {
       hasLoadedOnce.current = true;
-      api.post(`/admin/clients/${clientId}/invoice-preview`, JSON.parse(requestKey)).then(res => {
+      requestPreview(clientId, requestKey).then(data => {
         if (!active) return;
-        const value = { ...res.data, requestKey };
+        const value = { ...data, requestKey };
         setSnapshot(value); onReady(value);
       }).catch(err => {
         if (active) setError(err.response?.data?.message || 'Could not prepare invoice. Please retry.');
       });
-    }, hasLoadedOnce.current ? 450 : 0);
+    }, hasLoadedOnce.current && !alreadyRequested ? 300 : 0);
     return () => { active = false; clearTimeout(timer); };
   }, [clientId, requestKey, retry, onReady]);
   if (error) return <div role="alert" className="p-6 text-red-300">{error}<button className="ml-3 underline" onClick={() => setRetry(n => n + 1)}>Retry preview</button></div>;

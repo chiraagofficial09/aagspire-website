@@ -38,6 +38,20 @@ export function prerenderInvoicePdf(previewId: string, ownerKey: string, html: s
   prune();
 }
 
+const pendingSnapshotWrites = new Map<string, Promise<unknown>>();
+
+/** Tracks a preview snapshot that is still being saved, so a fast Download click can wait for it. */
+export function trackSnapshotWrite(previewId: string, write: Promise<unknown>): void {
+  const tracked = write.catch(() => undefined).finally(() => pendingSnapshotWrites.delete(previewId));
+  pendingSnapshotWrites.set(previewId, tracked);
+}
+
+/** Resolves once the snapshot for this preview (if still being written) has been saved. */
+export async function waitForSnapshotWrite(previewId: string): Promise<void> {
+  const pending = pendingSnapshotWrites.get(previewId);
+  if (pending) await pending;
+}
+
 /** Returns the pre-rendered PDF for a preview (once), or undefined if not available. */
 export function takePrerenderedPdf(previewId: string): Promise<Buffer> | undefined {
   prune();

@@ -16,7 +16,7 @@ import { formatINR, parseAmount } from '../../utils/formatters';
 import { CustomSelect } from './CustomSelect';
 import { MonthMultiSelect } from './MonthMultiSelect';
 import { CustomDatePicker } from './CustomDatePicker';
-import { InvoiceDocumentPreview, type InvoiceSnapshot } from './InvoiceDocumentPreview';
+import { InvoiceDocumentPreview, InvoicePreviewPrefetcher, type InvoiceSnapshot } from './InvoiceDocumentPreview';
 
 interface ClientReceiptModalProps {
   isOpen?: boolean;
@@ -709,6 +709,10 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
+          {/* Prepare the preview in the background so the Preview tab opens instantly */}
+          {activeTab === 'select' && selectedProjects.length > 0 && (
+            <InvoicePreviewPrefetcher clientId={client._id} requestKey={invoiceRequestKey} />
+          )}
           {activeTab === 'select' ? (
             <div className="space-y-6">
               {/* Billing Month Selector Bar */}

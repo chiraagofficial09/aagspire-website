@@ -9,7 +9,8 @@ import { createNotification } from '../services/notification.service.js';
 import { fromDecimal, round2 } from '../utils/decimalHelper.js';
 import { renderInvoiceHtml } from '../services/invoiceHtml.service.js';
 import { deliverInvoice } from '../services/invoiceDelivery.service.js';
-import { prerenderInvoicePdf, takePrerenderedPdf } from '../services/invoicePdfCache.service.js';
+import { prerenderInvoicePdf, takePrerenderedPdf, trackSnapshotWrite, waitForSnapshotWrite } from '../services/invoicePdfCache.service.js';
+import { Types } from 'mongoose';
 import { InvoicePreview } from '../models/InvoicePreview.js';
 import { allocateInvoicePayments } from '../services/invoiceCalculations.service.js';
 import { InvoiceCounter } from '../models/InvoiceCounter.js';
@@ -512,6 +513,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
     }
 
     if (req.body?.previewId) {
+      await waitForSnapshotWrite(String(req.body.previewId));
       const snapshot = await InvoicePreview.findOne({ _id: req.body.previewId, clientId: client._id, userId: req.user!._id, expiresAt: { $gt: new Date() } });
       if (!snapshot) {
         res.status(409).json({ success: false, message: 'Invoice preview expired. Open Preview again before downloading.' });
@@ -530,7 +532,12 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       return;
     }
 
-    let rawProjects = await Project.find({ clientId: client._id }).sort({ createdAt: -1 });
+    // Both project reads are independent, so fetch them together (allClientProjects is used for payment allocation below)
+    const [sortedClientProjects, allClientProjects] = await Promise.all([
+      Project.find({ clientId: client._id }).sort({ createdAt: -1 }),
+      Project.find({ clientId: client._id }),
+    ]);
+    let rawProjects = sortedClientProjects;
     if (selectedIds.length > 0) {
       rawProjects = rawProjects.filter((p) => selectedIds.includes(p._id.toString()));
       rawProjects.sort((a, b) => selectedIds.indexOf(a._id.toString()) - selectedIds.indexOf(b._id.toString()));
@@ -676,7 +683,6 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       return;
     }
 
-    const allClientProjects = await Project.find({ clientId: client._id });
     const projectPaymentsMap = allocateInvoicePayments(allClientProjects, rawPayments);
 
     const projects = rawProjects.map((p) => {
@@ -799,13 +805,17 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
       };
     const html = renderInvoiceHtml(invoiceData);
     if (req.path.endsWith('/invoice-preview')) {
-      const snapshot = await InvoicePreview.create({
-        clientId: client._id, userId: req.user!._id, data: invoiceData, html, fileName,
+      // Save the snapshot in the background and respond right away; Download waits for the save if needed
+      const previewId = new Types.ObjectId();
+      const snapshotWrite = InvoicePreview.create({
+        _id: previewId, clientId: client._id, userId: req.user!._id, data: invoiceData, html, fileName,
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
       });
+      trackSnapshotWrite(String(previewId), snapshotWrite);
+      snapshotWrite.catch((err) => console.error('[Invoice Preview] Failed to save snapshot:', err?.message || err));
       // Start rendering the PDF now so the Download click is instant
-      prerenderInvoicePdf(String(snapshot._id), `${req.user!._id}:${client._id}`, html);
-      res.json({ success: true, previewId: snapshot._id, html, fileName,
+      prerenderInvoicePdf(String(previewId), `${req.user!._id}:${client._id}`, html);
+      res.json({ success: true, previewId, html, fileName,
         totals: { subtotal, taxAmount, totalPaid, pendingBalance, totalRevenue } });
       return;
     }

@@ -110,8 +110,11 @@ export const api = axios.create({
     const response = await defaultAdapter(config);
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
       // Notification read/clear actions don't affect other data, so keep the rest of the cache warm
-      if (String(config.url || '').startsWith('/notifications')) {
+      const mutatedUrl = String(config.url || '');
+      if (mutatedUrl.startsWith('/notifications')) {
         clearApiCache('/notifications');
+      } else if (mutatedUrl.endsWith('/invoice-preview')) {
+        // Building an invoice preview doesn't change any business data; keep the cache warm
       } else {
         clearApiCache();
       }
