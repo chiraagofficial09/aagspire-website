@@ -108,7 +108,9 @@ export default function Navbar({
           className="group flex w-fit items-center cursor-pointer"
         >
           <img
-            src="/Aagspire_Logo.png"
+            src="/Aagspire_Logo-sm.png"
+            width={382}
+            height={128}
             alt="Aagspire"
             className="h-8 w-auto object-contain transition-opacity duration-300 group-hover:opacity-80"
           />

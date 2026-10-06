@@ -70,7 +70,9 @@ export default function Footer() {
           <div>
             <div className="flex items-center mb-4">
               <img
-                src="/Aagspire_Logo.png"
+                src="/Aagspire_Logo-sm.png"
+                width={382}
+                height={128}
                 alt="Aagspire"
                 className="h-8 w-auto object-contain"
               />

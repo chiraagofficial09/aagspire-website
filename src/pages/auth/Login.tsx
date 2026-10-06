@@ -34,7 +34,9 @@ export const Login: React.FC = () => {
       <div className="text-center mb-8">
         <div className="flex items-center justify-center mb-3">
           <img
-            src="/Aagspire_Logo.png"
+            src="/Aagspire_Logo-sm.png"
+            width={382}
+            height={128}
             alt="Aagspire"
             className="h-9 sm:h-10 w-auto object-contain"
           />

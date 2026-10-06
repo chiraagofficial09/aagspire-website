@@ -9,6 +9,7 @@ import { createNotification } from '../services/notification.service.js';
 import { fromDecimal, round2 } from '../utils/decimalHelper.js';
 import { renderInvoiceHtml } from '../services/invoiceHtml.service.js';
 import { deliverInvoice } from '../services/invoiceDelivery.service.js';
+import { prerenderInvoicePdf, takePrerenderedPdf } from '../services/invoicePdfCache.service.js';
 import { InvoicePreview } from '../models/InvoicePreview.js';
 import { allocateInvoicePayments } from '../services/invoiceCalculations.service.js';
 import { InvoiceCounter } from '../models/InvoiceCounter.js';
@@ -516,7 +517,7 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         res.status(409).json({ success: false, message: 'Invoice preview expired. Open Preview again before downloading.' });
         return;
       }
-      await deliverInvoice(client._id, snapshot.data, snapshot.html, snapshot.fileName, res);
+      await deliverInvoice(client._id, snapshot.data, snapshot.html, snapshot.fileName, res, takePrerenderedPdf(String(snapshot._id)));
       return;
     }
 
@@ -802,6 +803,8 @@ export async function downloadClientStatementPdf(req: AuthenticatedRequest, res:
         clientId: client._id, userId: req.user!._id, data: invoiceData, html, fileName,
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
       });
+      // Start rendering the PDF now so the Download click is instant
+      prerenderInvoicePdf(String(snapshot._id), `${req.user!._id}:${client._id}`, html);
       res.json({ success: true, previewId: snapshot._id, html, fileName,
         totals: { subtotal, taxAmount, totalPaid, pendingBalance, totalRevenue } });
       return;

@@ -7,6 +7,45 @@ import { Settlement } from '../models/Settlement.js';
 import { Client } from '../models/Client.js';
 import { fromDecimal, round2 } from '../utils/decimalHelper.js';
 
+/**
+ * Unfiltered collections shared by the admin dashboard calculations.
+ * Loading them once per request avoids re-reading the same collections ~30 times.
+ * Each query matches exactly what the individual functions run on their own.
+ */
+export interface FinanceSnapshot {
+  projects: any[];
+  /** ClientPayment sorted by { paymentDate: 1, createdAt: 1 } (used by calculateFinancialMetrics) */
+  paymentsSorted: any[];
+  /** ClientPayment in natural order (used by employee / settlement metrics) */
+  payments: any[];
+  commissions: any[];
+  shares: any[];
+  paidSettlements: any[];
+  adjustedClients: any[];
+}
+
+export async function loadFinanceSnapshot(): Promise<FinanceSnapshot> {
+  const [projects, paymentsSorted, payments, commissions, shares, paidSettlements, adjustedClients] =
+    await Promise.all([
+      Project.find().lean(),
+      ClientPayment.find().sort({ paymentDate: 1, createdAt: 1 }).lean(),
+      ClientPayment.find().lean(),
+      ProjectCommission.find().lean(),
+      ProjectEmployee.find().lean(),
+      Settlement.find({ status: 'paid' }).lean(),
+      Client.find(
+        {
+          $or: [
+            { 'badDebts.0': { $exists: true } },
+            { 'deductions.0': { $exists: true } },
+          ],
+        },
+        'deductions badDebts'
+      ).lean(),
+    ]);
+  return { projects, paymentsSorted, payments, commissions, shares, paidSettlements, adjustedClients };
+}
+
 export interface FinancialMetrics {
   // 6 Primary Metrics
   newProjectValue: number;
@@ -113,8 +152,10 @@ export function getMonthDateRange(targetMonth?: string): {
 export async function calculateFinancialMetrics(options: {
   clientId?: string | Types.ObjectId;
   targetMonth?: string;
+  /** Preloaded unfiltered data; only used for the all-clients (no clientId) calculation */
+  snapshot?: FinanceSnapshot;
 }): Promise<FinancialMetrics> {
-  const { clientId, targetMonth } = options;
+  const { clientId, targetMonth, snapshot } = options;
   const { startDate, endDate, monthLabel, isAllMonths } = getMonthDateRange(targetMonth);
 
   // 1. Fetch relevant projects and payments
@@ -136,11 +177,14 @@ export async function calculateFinancialMetrics(options: {
         ],
       };
 
-  const [allProjects, allPayments, clientsWithAdjustments] = await Promise.all([
-    Project.find(projectQuery).lean(),
-    ClientPayment.find(paymentQuery).sort({ paymentDate: 1, createdAt: 1 }).lean(),
-    Client.find(clientFilter, 'deductions badDebts').lean(),
-  ]);
+  const [allProjects, allPayments, clientsWithAdjustments] =
+    snapshot && !clientId
+      ? [snapshot.projects, snapshot.paymentsSorted, snapshot.adjustedClients]
+      : await Promise.all([
+          Project.find(projectQuery).lean(),
+          ClientPayment.find(paymentQuery).sort({ paymentDate: 1, createdAt: 1 }).lean(),
+          Client.find(clientFilter, 'deductions badDebts').lean(),
+        ]);
 
   const projectMap = new Map<string, any>();
   const projectPaymentsBeforeMonth = new Map<string, number>();
@@ -527,18 +571,20 @@ export async function calculateFinancialMetrics(options: {
  * - Employee Advance = max(Paid - Earned, 0)
  */
 export async function calculateEmployeeFinanceMetrics(
-  targetMonth?: string
+  targetMonth?: string,
+  snapshot?: FinanceSnapshot
 ): Promise<EmployeeFinanceMetrics> {
   const { startDate, endDate, isAllMonths } = getMonthDateRange(targetMonth);
 
-  const [allProjects, allPayments, allCommissions, allShares, allPaidSettlements] =
-    await Promise.all([
-      Project.find().lean(),
-      ClientPayment.find().lean(),
-      ProjectCommission.find().lean(),
-      ProjectEmployee.find().lean(),
-      Settlement.find({ status: 'paid' }).lean(),
-    ]);
+  const [allProjects, allPayments, allCommissions, allShares, allPaidSettlements] = snapshot
+    ? [snapshot.projects, snapshot.payments, snapshot.commissions, snapshot.shares, snapshot.paidSettlements]
+    : await Promise.all([
+        Project.find().lean(),
+        ClientPayment.find().lean(),
+        ProjectCommission.find().lean(),
+        ProjectEmployee.find().lean(),
+        Settlement.find({ status: 'paid' }).lean(),
+      ]);
 
   const commissionMap = new Map<string, any>();
   for (const c of allCommissions) {
@@ -688,15 +734,18 @@ export async function calculateEmployeeFinanceMetrics(
  * - Settlement Reserve Accrued = Actual Valid Collections * Settlement %
  */
 export async function calculateSettlementReserveMetrics(
-  targetMonth?: string
+  targetMonth?: string,
+  snapshot?: FinanceSnapshot
 ): Promise<SettlementReserveMetrics> {
   const { startDate, endDate, isAllMonths } = getMonthDateRange(targetMonth);
 
-  const [allProjects, allPayments, allCommissions] = await Promise.all([
-    Project.find().lean(),
-    ClientPayment.find().lean(),
-    ProjectCommission.find().lean(),
-  ]);
+  const [allProjects, allPayments, allCommissions] = snapshot
+    ? [snapshot.projects, snapshot.payments, snapshot.commissions]
+    : await Promise.all([
+        Project.find().lean(),
+        ClientPayment.find().lean(),
+        ProjectCommission.find().lean(),
+      ]);
 
   const commissionMap = new Map<string, any>();
   for (const c of allCommissions) {
@@ -784,22 +833,30 @@ export async function calculateSettlementReserveMetrics(
  */
 export async function calculateMonthlyTrends(
   monthsCount: number = 6,
-  clientId?: string | Types.ObjectId
+  clientId?: string | Types.ObjectId,
+  snapshot?: FinanceSnapshot
 ): Promise<MonthlyTrendPoint[]> {
   const now = new Date();
   const count = Math.min(36, Math.max(3, Number(monthsCount) || 6));
   const trendPoints: MonthlyTrendPoint[] = [];
 
+  const months: { key: string; displayMonth: string }[] = [];
   for (let i = count - 1; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const displayMonth = d.toLocaleString('en-US', { month: 'short' });
-
-    // Calculate exact metrics for this month
-    const m = await calculateFinancialMetrics({
-      clientId,
-      targetMonth: key,
+    months.push({
+      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      displayMonth: d.toLocaleString('en-US', { month: 'short' }),
     });
+  }
+
+  // Each month is independent and read-only, so compute them concurrently (results keep month order)
+  const monthMetrics = await Promise.all(
+    months.map(({ key }) => calculateFinancialMetrics({ clientId, targetMonth: key, snapshot }))
+  );
+
+  for (let idx = 0; idx < months.length; idx++) {
+    const { key, displayMonth } = months[idx];
+    const m = monthMetrics[idx];
 
     trendPoints.push({
       key,

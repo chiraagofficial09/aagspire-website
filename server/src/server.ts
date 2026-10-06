@@ -10,6 +10,11 @@ async function startServer() {
 
   app.listen(ENV.PORT, () => {
     console.log(`[Aagspire Work Server] Running on http://localhost:${ENV.PORT}`);
+
+    // Pre-warm the shared Chromium instance so the first invoice download doesn't pay the browser launch
+    import('./services/invoiceBrowser.service.js')
+      .then(({ renderInvoicePdf }) => renderInvoicePdf('<main style="height:10px"></main>'))
+      .catch((err) => console.warn('[Aagspire Work Server] Invoice renderer warm-up skipped:', err?.message || err));
   });
 }
 

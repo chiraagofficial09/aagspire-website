@@ -16,20 +16,15 @@ export default defineConfig({
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
+        // Match exact package folders: a loose includes('react') also caught lucide-react,
+        // react-icons, react-query and recharts' react-redux, pulling them into the entry chunk.
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
-              return 'vendor-react';
-            }
-            if (id.includes('recharts')) {
-              return 'vendor-charts';
-            }
-            if (id.includes('lucide-react') || id.includes('react-icons')) {
-              return 'vendor-icons';
-            }
-            if (id.includes('@tanstack') || id.includes('axios')) {
-              return 'vendor-query';
-            }
+          const normalized = id.replace(/\\/g, '/');
+          if (/\/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom)\//.test(normalized)) {
+            return 'vendor-react';
+          }
+          if (/\/node_modules\/(@tanstack|axios)\//.test(normalized)) {
+            return 'vendor-query';
           }
         },
       },

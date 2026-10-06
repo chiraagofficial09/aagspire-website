@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import { ENV } from './config/env.js';
 import { isDatabaseConnected } from './config/database.js';
 import { errorHandler } from './middleware/error.middleware.js';
@@ -37,8 +38,13 @@ app.use(
       }
     },
     credentials: true,
+    // Let browsers cache the preflight so each API call doesn't need an extra OPTIONS round trip
+    maxAge: 7200,
   })
 );
+
+// Gzip/brotli-compatible response compression for large JSON payloads (dashboard, lists)
+app.use(compression());
 
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));

@@ -80,7 +80,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
           className="flex items-center gap-2 select-none group py-1"
         >
           <img
-            src="/Aagspire_Logo.png"
+            src="/Aagspire_Logo-sm.png"
+            width={382}
+            height={128}
             alt="Aagspire"
             className="h-10 w-auto object-contain transition-opacity duration-200 group-hover:opacity-90"
           />
@@ -271,7 +273,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       <div className="md:hidden fixed top-0 inset-x-0 h-16 bg-[#050507] border-b border-white/[0.06] z-40 px-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <img
-            src="/Aagspire_Logo.png"
+            src="/Aagspire_Logo-sm.png"
+            width={382}
+            height={128}
             alt="Aagspire"
             className="h-6 w-auto object-contain"
           />

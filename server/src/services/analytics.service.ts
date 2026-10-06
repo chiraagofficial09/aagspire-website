@@ -9,6 +9,7 @@ import {
   calculateMonthlyTrends,
   calculateEmployeeFinanceMetrics,
   calculateSettlementReserveMetrics,
+  loadFinanceSnapshot,
   getMonthDateRange,
   getNetProjectValue,
 } from './dashboardFinance.js';
@@ -22,26 +23,26 @@ export async function getAdminDashboardMetrics(monthsCount: number = 6, targetMo
   const now = new Date();
 
   // 1. Calculate Core Financial Metrics using Shared Source of Truth
+  // Load the shared collections once and reuse them across every calculation below
+  const [snapshot, pendingWorkLogsCount, pendingSettlementsCount] = await Promise.all([
+    loadFinanceSnapshot(),
+    WorkLog.countDocuments({ status: 'submitted' }),
+    Settlement.countDocuments({ status: 'draft' }),
+  ]);
+  const allProjects = snapshot.projects;
+  const allPayments = snapshot.payments;
+  const allCommissions = snapshot.commissions;
+
   const [
     finMetrics,
     empFinance,
     settlementFinance,
     monthlyTrends,
-    allProjects,
-    allPayments,
-    allCommissions,
-    pendingWorkLogsCount,
-    pendingSettlementsCount,
   ] = await Promise.all([
-    calculateFinancialMetrics({ targetMonth }),
-    calculateEmployeeFinanceMetrics(targetMonth),
-    calculateSettlementReserveMetrics(targetMonth),
-    calculateMonthlyTrends(count),
-    Project.find().lean(),
-    ClientPayment.find().lean(),
-    ProjectCommission.find().lean(),
-    WorkLog.countDocuments({ status: 'submitted' }),
-    Settlement.countDocuments({ status: 'draft' }),
+    calculateFinancialMetrics({ targetMonth, snapshot }),
+    calculateEmployeeFinanceMetrics(targetMonth, snapshot),
+    calculateSettlementReserveMetrics(targetMonth, snapshot),
+    calculateMonthlyTrends(count, undefined, snapshot),
   ]);
 
   const { startDate, endDate, isAllMonths } = getMonthDateRange(targetMonth);

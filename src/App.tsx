@@ -1,7 +1,7 @@
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/work/ProtectedRoute';
 import { ToastProvider } from './components/work/Toast';
 import { AlertProvider } from './context/AlertContext';
@@ -12,17 +12,36 @@ import CursorEffect from './components/CursorEffect';
 import ImageProtection from './components/ImageProtection';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import Services from './components/Services';
-import Process from './components/Process';
-import Testimonials from './components/Testimonials';
-import About from './components/About';
-import CTA from './components/CTA';
-import Footer from './components/Footer';
-
-// Layouts
-import { AdminLayout } from './layouts/AdminLayout';
-import { EmployeeLayout } from './layouts/EmployeeLayout';
 import { AuthLayout } from './layouts/AuthLayout';
+
+// Below-the-fold sections only render after ignite, so they are split out of the
+// initial bundle and prefetched while the browser is idle.
+const loadServices = () => import('./components/Services');
+const loadProcess = () => import('./components/Process');
+const loadTestimonials = () => import('./components/Testimonials');
+const loadAbout = () => import('./components/About');
+const loadCTA = () => import('./components/CTA');
+const loadFooter = () => import('./components/Footer');
+
+const Services = lazy(loadServices);
+const Process = lazy(loadProcess);
+const Testimonials = lazy(loadTestimonials);
+const About = lazy(loadAbout);
+const CTA = lazy(loadCTA);
+const Footer = lazy(loadFooter);
+
+const prefetchPublicSections = () => {
+  loadServices();
+  loadProcess();
+  loadTestimonials();
+  loadAbout();
+  loadCTA();
+  loadFooter();
+};
+
+// Lazy Loaded Layouts (keeps portal code out of the public landing bundle)
+const AdminLayout = lazy(() => import('./layouts/AdminLayout').then((m) => ({ default: m.AdminLayout })));
+const EmployeeLayout = lazy(() => import('./layouts/EmployeeLayout').then((m) => ({ default: m.EmployeeLayout })));
 
 // Sleek loading spinner matching theme
 const PageLoader: React.FC = () => (
@@ -62,6 +81,62 @@ const EmployeeAttendance = lazy(() => import('./pages/employee/Attendance').then
 const EmployeeProfile = lazy(() => import('./pages/employee/Profile').then((m) => ({ default: m.EmployeeProfile })));
 const EmployeeTermsAndConditions = lazy(() => import('./pages/employee/TermsAndConditions').then((m) => ({ default: m.EmployeeTermsAndConditions })));
 
+// Portal chunks are prefetched once the role is known, so navigating between portal
+// pages doesn't wait for each page's code to download on click.
+const adminChunkLoaders = [
+  () => import('./layouts/AdminLayout'),
+  () => import('./pages/admin/Dashboard'),
+  () => import('./pages/admin/Employees'),
+  () => import('./pages/admin/EmployeeDetails'),
+  () => import('./pages/admin/Clients'),
+  () => import('./pages/admin/ClientDetails'),
+  () => import('./pages/admin/Projects'),
+  () => import('./pages/admin/ProjectDetails'),
+  () => import('./pages/admin/WorkLogs'),
+  () => import('./pages/admin/Attendance'),
+  () => import('./pages/admin/CashBankBalance'),
+  () => import('./pages/admin/Payments'),
+  () => import('./pages/admin/Commissions'),
+  () => import('./pages/admin/OfficeExpenses'),
+  () => import('./pages/admin/Settings'),
+  () => import('./pages/admin/TermsManagement'),
+];
+const employeeChunkLoaders = [
+  () => import('./layouts/EmployeeLayout'),
+  () => import('./pages/employee/Dashboard'),
+  () => import('./pages/employee/Projects'),
+  () => import('./pages/employee/ProjectDetails'),
+  () => import('./pages/employee/Work'),
+  () => import('./pages/employee/Attendance'),
+  () => import('./pages/employee/Profile'),
+  () => import('./pages/employee/TermsAndConditions'),
+];
+
+const PortalPrefetcher: React.FC = () => {
+  const { user } = useAuth();
+  const role = user?.role;
+
+  useEffect(() => {
+    if (role !== 'admin' && role !== 'employee') return;
+    const loaders = role === 'admin' ? adminChunkLoaders : employeeChunkLoaders;
+    // Layout + dashboard right away (in parallel with auth/data requests), the rest when idle
+    loaders.slice(0, 2).forEach((load) => load().catch(() => {}));
+    const prefetchRest = () => loaders.slice(2).forEach((load) => load().catch(() => {}));
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(prefetchRest, { timeout: 3000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(prefetchRest, 2000);
+    return () => window.clearTimeout(id);
+  }, [role]);
+
+  return null;
+};
+
 const queryClient = new QueryClient();
 
 // Public Marketing Website Component
@@ -69,6 +144,23 @@ const PublicWebsite: React.FC = () => {
   const [ignited, setIgnited] = useState(false);
   const [isWorkOpen, setIsWorkOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+
+  useEffect(() => {
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(prefetchPublicSections, { timeout: 2500 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(prefetchPublicSections, 1500);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    if (ignited) prefetchPublicSections();
+  }, [ignited]);
 
   const handleOpenWork = () => {
     if (!ignited) setIgnited(true);
@@ -115,20 +207,26 @@ const PublicWebsite: React.FC = () => {
         />
         {ignited && (
           <div className="transition-opacity duration-1000 opacity-100">
-            <Services isWorkOpen={isWorkOpen} onCloseWork={handleCloseWork} />
-            <Process />
-            <Testimonials />
-            <About />
-            <CTA
-              isContactOpen={isContactOpen}
-              onOpenContact={handleOpenContact}
-              onCloseContact={handleCloseContact}
-              onOpenWork={handleOpenWork}
-            />
+            <Suspense fallback={null}>
+              <Services isWorkOpen={isWorkOpen} onCloseWork={handleCloseWork} />
+              <Process />
+              <Testimonials />
+              <About />
+              <CTA
+                isContactOpen={isContactOpen}
+                onOpenContact={handleOpenContact}
+                onCloseContact={handleCloseContact}
+                onOpenWork={handleOpenWork}
+              />
+            </Suspense>
           </div>
         )}
       </main>
-      {ignited && <Footer />}
+      {ignited && (
+        <Suspense fallback={null}>
+          <Footer />
+        </Suspense>
+      )}
     </div>
   );
 };
@@ -138,6 +236,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
+          <PortalPrefetcher />
           <ToastProvider>
             <AlertProvider>
               <NotificationProvider>

@@ -95,16 +95,18 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
     const endDate = monthRange?.endOfMonth;
 
     // 1. Personal Earnings Breakdown (month-filtered)
-    const earnings = await calculateEmployeeEarnings(employeeId, targetMonth);
-
     // 2. Assigned Projects (strictly projects where employee is in assignedEmployees)
     const possibleEmpIds = [employeeId, req.employee?.userId].filter(Boolean);
-    const assignedProjectsDocs = await Project.find({
-      assignedEmployees: { $in: possibleEmpIds },
-    })
-      .populate('clientId', 'name companyName clientCode')
-      .populate('assignedEmployees', 'fullName employeeCode designation')
-      .sort({ createdAt: -1 });
+    // Earnings and the project list are independent reads, so fetch them concurrently
+    const [earnings, assignedProjectsDocs] = await Promise.all([
+      calculateEmployeeEarnings(employeeId, targetMonth),
+      Project.find({
+        assignedEmployees: { $in: possibleEmpIds },
+      })
+        .populate('clientId', 'name companyName clientCode')
+        .populate('assignedEmployees', 'fullName employeeCode designation')
+        .sort({ createdAt: -1 }),
+    ]);
 
     const peRecords = await ProjectEmployee.find({
       employeeId: { $in: possibleEmpIds },
@@ -204,24 +206,37 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
         { createdAt: { $gte: startDate, $lte: endDate } },
       ];
     }
-    const approvedLogs = await WorkLog.find({ ...workLogQuery, status: 'approved' });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const receiptQuery: any = { employeeId };
+    if (startDate && endDate) {
+      receiptQuery.issuedAt = { $gte: startDate, $lte: endDate };
+    }
+
+    // Independent reads for hours, attendance, recent logs and receipts run concurrently
+    const [approvedLogs, allLogs, todayAttendance, recentWorkLogs, recentReceipts] = await Promise.all([
+      WorkLog.find({ ...workLogQuery, status: 'approved' }),
+      WorkLog.find(workLogQuery),
+      Attendance.findOne({ employeeId, date: today }),
+      WorkLog.find(workLogQuery)
+        .populate('projectId', 'projectName projectCode')
+        .sort({ workDate: -1, createdAt: -1 })
+        .limit(5),
+      Receipt.find(receiptQuery)
+        .sort({ issuedAt: -1 })
+        .limit(5),
+    ]);
+
     const approvedMinutes = approvedLogs.reduce((sum, log) => sum + (log.totalMinutes || 0), 0);
     const approvedHours = round2(approvedMinutes / 60);
 
-    const allLogs = await WorkLog.find(workLogQuery);
     const totalMinutes = allLogs.reduce((sum, log) => sum + (log.totalMinutes || 0), 0);
     const totalHours = round2(totalMinutes / 60);
 
-    // 4. Today's Attendance & Clock Status
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayAttendance = await Attendance.findOne({ employeeId, date: today });
+    // 4. Today's Attendance & Clock Status (fetched above)
 
-    // 5. Recent Work Logs (filtered by month)
-    const recentWorkLogs = await WorkLog.find(workLogQuery)
-      .populate('projectId', 'projectName projectCode')
-      .sort({ workDate: -1, createdAt: -1 })
-      .limit(5);
+    // 5. Recent Work Logs (filtered by month, fetched above)
 
     const formattedWorkLogs = recentWorkLogs.map((log) => {
       const mins = log.totalMinutes || 0;
@@ -234,14 +249,7 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       };
     });
 
-    // 6. Recent Receipts (filtered by month)
-    const receiptQuery: any = { employeeId };
-    if (startDate && endDate) {
-      receiptQuery.issuedAt = { $gte: startDate, $lte: endDate };
-    }
-    const recentReceipts = await Receipt.find(receiptQuery)
-      .sort({ issuedAt: -1 })
-      .limit(5);
+    // 6. Recent Receipts (filtered by month, fetched above)
 
     const kpis = {
       activeProjectsCount: activeProjects.length,

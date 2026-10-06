@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /employee
+Disallow: /work
+
+Sitemap: https://aagspire-website.chiraagofficial09.workers.dev/sitemap.xml

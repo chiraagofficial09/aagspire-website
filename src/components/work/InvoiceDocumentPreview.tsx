@@ -14,17 +14,23 @@ export function InvoiceDocumentPreview({ clientId, requestKey, onReady }: {
   const [retry, setRetry] = useState(0);
   const [height, setHeight] = useState(1200);
   const frame = useRef<HTMLIFrameElement>(null);
+  const hasLoadedOnce = useRef(false);
   useEffect(() => {
     let active = true;
     onReady(null); setSnapshot(null); setError('');
-    api.post(`/admin/clients/${clientId}/invoice-preview`, JSON.parse(requestKey)).then(res => {
-      if (!active) return;
-      const value = { ...res.data, requestKey };
-      setSnapshot(value); onReady(value);
-    }).catch(err => {
-      if (active) setError(err.response?.data?.message || 'Could not prepare invoice. Please retry.');
-    });
-    return () => { active = false; };
+    // First preview loads immediately; later edits (typing invoice no./discounts) are debounced
+    // so the server isn't asked to rebuild the invoice on every keystroke.
+    const timer = setTimeout(() => {
+      hasLoadedOnce.current = true;
+      api.post(`/admin/clients/${clientId}/invoice-preview`, JSON.parse(requestKey)).then(res => {
+        if (!active) return;
+        const value = { ...res.data, requestKey };
+        setSnapshot(value); onReady(value);
+      }).catch(err => {
+        if (active) setError(err.response?.data?.message || 'Could not prepare invoice. Please retry.');
+      });
+    }, hasLoadedOnce.current ? 450 : 0);
+    return () => { active = false; clearTimeout(timer); };
   }, [clientId, requestKey, retry, onReady]);
   if (error) return <div role="alert" className="p-6 text-red-300">{error}<button className="ml-3 underline" onClick={() => setRetry(n => n + 1)}>Retry preview</button></div>;
   if (!snapshot) return <p role="status" className="p-6 text-zinc-400">Preparing invoice preview…</p>;

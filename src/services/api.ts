@@ -109,7 +109,12 @@ export const api = axios.create({
     // For POST, PUT, PATCH, DELETE: execute network call, then automatically invalidate cache
     const response = await defaultAdapter(config);
     if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-      clearApiCache();
+      // Notification read/clear actions don't affect other data, so keep the rest of the cache warm
+      if (String(config.url || '').startsWith('/notifications')) {
+        clearApiCache('/notifications');
+      } else {
+        clearApiCache();
+      }
     }
     return response;
   },

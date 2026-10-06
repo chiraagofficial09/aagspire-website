@@ -19,7 +19,9 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
       <header className="p-6 md:p-8 flex items-center justify-between z-10">
         <Link to="/" className="flex items-center gap-3 group cursor-pointer">
           <img
-            src="/Aagspire_Logo.png"
+            src="/Aagspire_Logo-sm.png"
+            width={382}
+            height={128}
             alt="Aagspire"
             className="h-7 w-auto object-contain transition-opacity group-hover:opacity-90"
           />

@@ -22,7 +22,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem('aagspire_token') || null;
   });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // With a cached session, render immediately and verify /auth/me in the background
+  // (a failed check clears the session and ProtectedRoute redirects to login).
+  const [isLoading, setIsLoading] = useState<boolean>(
+    () => !(localStorage.getItem('aagspire_user') && localStorage.getItem('aagspire_token'))
+  );
 
   const fetchCurrentUser = async () => {
     const storedToken = localStorage.getItem('aagspire_token');

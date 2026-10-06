@@ -62,6 +62,9 @@ export const ClockWidget: React.FC<ClockWidgetProps> = ({ compact = false, onSta
 
   useEffect(() => {
     fetchStatus();
+  }, []);
+
+  useEffect(() => {
     const interval = setInterval(() => {
       if (isClockedIn && clockInAt) {
         const diffMs = Date.now() - new Date(clockInAt).getTime();
