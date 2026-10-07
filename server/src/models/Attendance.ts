@@ -10,6 +10,7 @@ export interface IAttendance extends Document {
   totalMinutes?: number;
   status: AttendanceStatus;
   notes?: string;
+  autoClockedOut?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +28,7 @@ const AttendanceSchema = new Schema<IAttendance>(
       default: 'present',
     },
     notes: { type: String },
+    autoClockedOut: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

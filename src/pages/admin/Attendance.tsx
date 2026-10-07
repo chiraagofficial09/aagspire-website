@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Calendar, Clock, ExternalLink, Trash2 } from 'lucide-react';
+import { Search, Calendar, Clock, ExternalLink, Trash2, Timer } from 'lucide-react';
 import { api } from '../../services/api';
 import { CustomCalendarDropdown } from '../../components/work/CustomCalendarDropdown';
+import { CustomSelect } from '../../components/work/CustomSelect';
 import { EmptyState } from '../../components/work/EmptyState';
 import { useToast } from '../../components/work/Toast';
 import { useAlert } from '../../context/AlertContext';
@@ -15,6 +16,9 @@ export const AdminAttendance: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [autoClockOutEnabled, setAutoClockOutEnabled] = useState(false);
+  const [autoClockOutTime, setAutoClockOutTime] = useState('19:00');
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const fetchAttendance = async () => {
     try {
@@ -30,7 +34,47 @@ export const AdminAttendance: React.FC = () => {
 
   useEffect(() => {
     fetchAttendance();
+    api.get('/admin/attendance/settings')
+      .then((res) => {
+        const data = res.data?.data;
+        if (!data) return;
+        setAutoClockOutEnabled(Boolean(data.autoClockOutEnabled));
+        setAutoClockOutTime(data.autoClockOutTime || '19:00');
+      })
+      .catch((err) => console.error('Error fetching attendance settings', err));
   }, []);
+
+  const timeOptions = useMemo(() => {
+    const toLabel = (hhmm: string) => {
+      const [h, m] = hhmm.split(':').map(Number);
+      return `${String(h % 12 || 12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+    };
+    const slots = Array.from({ length: 48 }, (_, i) =>
+      `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`
+    );
+    // Keep a previously saved off-slot time (e.g. 19:15) selectable
+    if (autoClockOutTime && !slots.includes(autoClockOutTime)) {
+      slots.push(autoClockOutTime);
+      slots.sort();
+    }
+    return slots.map((value) => ({ value, label: toLabel(value) }));
+  }, [autoClockOutTime]);
+
+  const handleSaveSettings = async () => {
+    if (!autoClockOutTime) {
+      toast.error('Please choose a clock-out time');
+      return;
+    }
+    try {
+      setSavingSettings(true);
+      await api.put('/admin/attendance/settings', { autoClockOutEnabled, autoClockOutTime });
+      toast.success('Auto clock-out settings saved');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save auto clock-out settings');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   const filtered = attendance.filter((item) => {
     const term = search.toLowerCase();
@@ -186,6 +230,48 @@ export const AdminAttendance: React.FC = () => {
         <p className="text-xs text-zinc-400 mt-1">Track team member clock-in and clock-out activity by date.</p>
       </div>
 
+      {/* Auto Clock-Out Settings */}
+      <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl px-5 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#FF5A1F]/10 border border-[#FF5A1F]/20 flex items-center justify-center shrink-0">
+            <Timer className="w-4 h-4 text-[#FF5A1F]" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-white">Auto Clock-Out</p>
+            <p className="text-[11px] text-zinc-400 mt-0.5">
+              Anyone still clocked in after this time is clocked out at 1:00 PM and marked as half day.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={autoClockOutEnabled}
+              onChange={(e) => setAutoClockOutEnabled(e.target.checked)}
+              className="w-4 h-4 accent-[#FF5A1F] cursor-pointer"
+            />
+            Enabled
+          </label>
+          <CustomSelect
+            value={autoClockOutTime}
+            onChange={setAutoClockOutTime}
+            options={timeOptions}
+            disabled={!autoClockOutEnabled}
+            icon={<Clock className="w-3.5 h-3.5" />}
+            className="w-36"
+          />
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            disabled={savingSettings}
+            className="px-4 py-2 rounded-xl bg-[#FF5A1F] hover:bg-[#e04810] text-white text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {savingSettings ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
         <div className="relative w-full sm:w-80">
@@ -304,7 +390,17 @@ export const AdminAttendance: React.FC = () => {
                                 In Session
                               </span>
                             ) : (
-                              <span className="text-zinc-400">{clockOut}</span>
+                              <span className="flex items-center gap-1.5 text-zinc-400">
+                                {clockOut}
+                                {item.autoClockedOut && (
+                                  <span
+                                    title={item.notes || 'Auto clocked-out (half day)'}
+                                    className="px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold"
+                                  >
+                                    Auto · Half Day
+                                  </span>
+                                )}
+                              </span>
                             )}
                           </td>
 

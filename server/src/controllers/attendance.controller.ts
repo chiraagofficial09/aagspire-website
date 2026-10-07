@@ -7,6 +7,8 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
 import { createNotification } from '../services/notification.service.js';
 import { round2 } from '../utils/decimalHelper.js';
+import { AttendanceSettings } from '../models/AttendanceSettings.js';
+import { getAttendanceSettings, TIME_PATTERN } from '../services/autoClockOut.service.js';
 
 function getStartOfDay(date: Date = new Date()): Date {
   const d = new Date(date);
@@ -373,6 +375,7 @@ export async function manualAdjustAttendance(req: AuthenticatedRequest, res: Res
         totalMinutes,
         status: status || 'present',
         notes,
+        autoClockedOut: false,
       },
       { upsert: true, new: true }
     );
@@ -386,6 +389,48 @@ export async function manualAdjustAttendance(req: AuthenticatedRequest, res: Res
     });
 
     res.json({ success: true, message: 'Attendance record updated.', attendance, data: attendance });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function getAttendanceSettingsHandler(_req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    res.json({ success: true, data: await getAttendanceSettings() });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+export async function updateAttendanceSettings(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    const { autoClockOutEnabled, autoClockOutTime } = req.body || {};
+
+    if (typeof autoClockOutEnabled !== 'boolean' || typeof autoClockOutTime !== 'string' || !TIME_PATTERN.test(autoClockOutTime)) {
+      res.status(400).json({ success: false, message: 'Provide a valid on/off value and a time in HH:mm format.' });
+      return;
+    }
+
+    const oldValue = await getAttendanceSettings();
+    await AttendanceSettings.findByIdAndUpdate(
+      'default',
+      { autoClockOutEnabled, autoClockOutTime },
+      { upsert: true, new: true }
+    );
+
+    await logAudit({
+      userId: req.user!._id,
+      action: 'UPDATE_ATTENDANCE_SETTINGS',
+      entityType: 'AttendanceSettings',
+      oldValue,
+      newValue: { autoClockOutEnabled, autoClockOutTime },
+    }).catch(() => {});
+
+    res.json({
+      success: true,
+      message: 'Auto clock-out settings saved.',
+      data: { autoClockOutEnabled, autoClockOutTime },
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
