@@ -142,6 +142,13 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
     discountTimers.current[projectId] = setTimeout(() => flushDiscount(projectId), 400);
   };
 
+  const hasAnyDiscount = Object.values(projectDiscounts).some((v) => v > 0);
+  const clearAllDiscounts = () => {
+    Object.entries(projectDiscounts).forEach(([projectId, value]) => {
+      if (value > 0) handleProjectDiscountChange(projectId, 0);
+    });
+  };
+
   const handleAddSubProject = (projectId: string) => {
     const raw = (subProjectInputs[projectId] || '').trim();
     if (!raw) return;
@@ -821,6 +828,15 @@ export const ClientReceiptModal: React.FC<ClientReceiptModalProps> = ({
                     className="text-xs text-white/50 hover:text-white font-mono cursor-pointer"
                   >
                     Clear All
+                  </button>
+                  <span className="text-white/20">&bull;</span>
+                  <button
+                    type="button"
+                    onClick={clearAllDiscounts}
+                    disabled={!hasAnyDiscount}
+                    className="text-xs text-white/50 hover:text-white font-mono cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-white/50"
+                  >
+                    Clear All Discounts
                   </button>
                 </div>
               </div>
