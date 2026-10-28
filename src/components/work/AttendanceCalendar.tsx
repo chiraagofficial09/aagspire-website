@@ -33,6 +33,7 @@ interface CalendarEmployee {
   name?: string;
   employeeCode?: string;
   status?: string;
+  joiningDate?: string;
 }
 
 const NO_ATTENDANCE: CalendarAttendance[] = [];
@@ -87,6 +88,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   const [holidayError, setHolidayError] = useState('');
   const [holidaySuccess, setHolidaySuccess] = useState('');
   const [showStatusTooltip, setShowStatusTooltip] = useState(false);
+  const [ownJoiningDate, setOwnJoiningDate] = useState('');
   const role = isAdmin ? 'admin' : 'employee';
   const requestKey = `${role}:${employeeId}:${month}`;
 
@@ -108,6 +110,15 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
     });
     return () => { active = false; };
   }, [isAdmin, employeeReload]);
+
+  useEffect(() => {
+    if (isAdmin) return;
+    let active = true;
+    api.get('/employee/profile').then((res) => {
+      if (active) setOwnJoiningDate(res.data.data?.joiningDate || '');
+    }).catch(() => { /* Without a joining date, absences are inferred for the whole month. */ });
+    return () => { active = false; };
+  }, [isAdmin]);
 
   useEffect(() => {
     let active = true;
@@ -159,16 +170,33 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   const holidaysByDate = useMemo(() => new Map(
     holidays.map((holiday) => [holiday.date, holiday]),
   ), [holidays]);
-  const counts = useMemo(() => summarizeAttendance(currentAttendance), [currentAttendance]);
   const days = useMemo(() => calendarMonthDays(month), [month]);
+  const selectedEmployee = employees.find((employee) => employee._id === employeeId);
+  const joiningDate = isAdmin ? selectedEmployee?.joiningDate : ownJoiningDate;
+  // Missed working days have no saved record, so past non-Sunday, non-holiday days without one count as absent.
+  const inferredAbsentDates = useMemo(() => {
+    const dates = new Set<string>();
+    if (isAdmin && !employeeId) return dates;
+    const joinKey = joiningDate ? attendanceDateKey(joiningDate) : '';
+    for (const day of days) {
+      if (!day || day.isSunday || day.date >= today || (joinKey && day.date < joinKey)) continue;
+      if (!recordsByDate.has(day.date) && !holidaysByDate.has(day.date)) dates.add(day.date);
+    }
+    return dates;
+  }, [days, today, joiningDate, recordsByDate, holidaysByDate, isAdmin, employeeId]);
+  const counts = useMemo(() => {
+    const summary = summarizeAttendance(currentAttendance);
+    summary.absent += inferredAbsentDates.size;
+    return summary;
+  }, [currentAttendance, inferredAbsentDates]);
   const selectedDay = days.find((day) => day?.date === selectedDate);
   const selectedRecord = recordsByDate.get(selectedDate);
   const selectedHoliday = holidaysByDate.get(selectedDate);
-  const selectedStatus = selectedRecord ? STATUS_STYLES[selectedRecord.status] : undefined;
+  const selectedInferredAbsent = inferredAbsentDates.has(selectedDate);
+  const selectedStatus = selectedRecord ? STATUS_STYLES[selectedRecord.status] : selectedInferredAbsent ? STATUS_STYLES.absent : undefined;
   const selectedClockIn = selectedRecord?.clockInAt || selectedRecord?.clockInTime;
   const selectedClockOut = selectedRecord?.clockOutAt || selectedRecord?.clockOutTime;
   const inSession = Boolean(selectedClockIn && !selectedClockOut);
-  const selectedEmployee = employees.find((employee) => employee._id === employeeId);
 
   const navigateMonth = (nextMonth: string) => {
     setMonth(nextMonth);
@@ -352,7 +380,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                 if (!day) return <div key={`blank-${index}`} className={compact ? 'h-9 sm:h-10' : 'min-h-[76px]'} aria-hidden="true" />;
                 const record = recordsByDate.get(day.date);
                 const holiday = holidaysByDate.get(day.date);
-                const style = record ? STATUS_STYLES[record.status] : undefined;
+                const style = record ? STATUS_STYLES[record.status] : inferredAbsentDates.has(day.date) ? STATUS_STYLES.absent : undefined;
                 const offLabel = holiday?.name || (day.isSunday ? 'Sunday Off' : '');
                 const session = record && (record.clockInAt || record.clockInTime) && !(record.clockOutAt || record.clockOutTime);
                 const label = [displayDate(day.date, { day: 'numeric', month: 'long', year: 'numeric' }), style?.label || 'No attendance record', session ? 'In session' : '', holiday?.name, day.isSunday ? 'Sunday Off' : ''].filter(Boolean).join(', ');
@@ -402,7 +430,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                   {selectedRecord.autoClockedOut && <p className="text-xs text-amber-400/90 font-medium">Automatically clocked out</p>}
                   {selectedRecord.notes && <p className="text-xs text-zinc-400 whitespace-pre-wrap break-words">{selectedRecord.notes}</p>}
                 </>
-              ) : <p className="text-xs text-zinc-500">No attendance record for this date.</p>}
+              ) : <p className="text-xs text-zinc-500">{selectedInferredAbsent ? 'No clock-in on this working day.' : 'No attendance record for this date.'}</p>}
             </div>
           )}
         </div>
