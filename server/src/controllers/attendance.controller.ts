@@ -336,10 +336,11 @@ export async function listAttendance(req: AuthenticatedRequest, res: Response): 
 
     const records = await Attendance.find(filter)
       .populate('employeeId', 'fullName employeeCode designation')
-      .sort({ date: -1 });
+      .sort({ date: -1 })
+      .lean();
 
     const formatted = records.map((r: any) => ({
-      ...r.toObject(),
+      ...r,
       clockInTime: r.clockInAt,
       clockOutTime: r.clockOutAt,
       totalHours: r.totalMinutes ? round2(r.totalMinutes / 60) : 0,

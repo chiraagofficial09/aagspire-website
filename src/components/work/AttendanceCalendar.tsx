@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Info, Plus, RefreshCw, X } from 'lucide-react';
 import { api } from '../../services/api';
 import { CustomSelect } from './CustomSelect';
@@ -89,6 +89,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   const [holidaySuccess, setHolidaySuccess] = useState('');
   const [showStatusTooltip, setShowStatusTooltip] = useState(false);
   const [ownJoiningDate, setOwnJoiningDate] = useState('');
+  const forceFreshRef = useRef(false);
   const role = isAdmin ? 'admin' : 'employee';
   const requestKey = `${role}:${employeeId}:${month}`;
 
@@ -121,6 +122,8 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   }, [isAdmin]);
 
   useEffect(() => {
+    // Wait for the employee list so admins don't pay for an extra holidays-only round trip.
+    if (isAdmin && employeesLoading) return;
     let active = true;
     setError(null);
     const isCached = Boolean(attendanceCache[requestKey]);
@@ -128,8 +131,10 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
       setLoading(true);
     }
     const params = monthBounds(month);
-    // A refresh after clock-in/out or a holiday change must read current data.
-    const headers = { 'Cache-Control': 'no-cache' };
+    // Clock-in/out and holiday saves are POSTs, which already clear the shared API cache;
+    // only an explicit refresh needs to bypass it.
+    const headers = forceFreshRef.current ? { 'Cache-Control': 'no-cache' } : undefined;
+    forceFreshRef.current = false;
     Promise.all([
       isAdmin && !employeeId
         ? Promise.resolve(null)
@@ -150,7 +155,12 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [month, employeeId, isAdmin, role, requestKey, refreshKey, reload]);
+  }, [month, employeeId, isAdmin, employeesLoading, role, requestKey, refreshKey, reload]);
+
+  const forceReload = () => {
+    forceFreshRef.current = true;
+    setReload((value) => value + 1);
+  };
 
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === 'visible') setReload((value) => value + 1); };
@@ -285,7 +295,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             </button>
           )}
           <button type="button" aria-label="Refresh attendance calendar" title="Refresh calendar" onClick={() => {
-            setReload((value) => value + 1);
+            forceReload();
             if (employeesError) setEmployeeReload((value) => value + 1);
           }} disabled={isBusy} className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-colors">
             <RefreshCw className={`w-3.5 h-3.5 ${isBusy ? 'animate-spin' : ''}`} />
@@ -364,7 +374,7 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
       {currentError ? (
         <div role="alert" className="py-8 text-center text-sm text-zinc-400">
           <p>{currentError}</p>
-          <button type="button" onClick={() => setReload((value) => value + 1)} className="mt-3 text-[#FF5A1F] font-semibold">Retry</button>
+          <button type="button" onClick={forceReload} className="mt-3 text-[#FF5A1F] font-semibold">Retry</button>
         </div>
       ) : isInitialLoading ? (
         <div role="status" className="py-12 text-center text-xs text-zinc-500">Loading attendance calendar…</div>
