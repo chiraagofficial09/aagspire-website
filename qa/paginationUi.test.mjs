@@ -19,6 +19,20 @@ const logs = Array.from({ length: 45 }, (_, i) => ({
   employeeId: employees[i % 2], workDate: `2026-10-${String(28 - (i % 28)).padStart(2, '0')}T05:00:00.000Z`, totalMinutes: 60,
 }));
 
+// 13 delivered projects over 12 delivery days (2 on the newest day) plus one in progress
+const projects = [
+  ...Array.from({ length: 12 }, (_, i) => ({ day: 25 - i, n: i })),
+  { day: 25, n: 12 },
+].map(({ day, n }) => ({
+  _id: `prj-${n}`, projectName: `Delivered ${n}`, projectCode: `PRJ-${n}`, status: 'delivered',
+  deliveredAt: `2026-10-${String(day).padStart(2, '0')}T06:00:00.000Z`, createdAt: '2026-09-01T06:00:00.000Z',
+  clientId: { _id: 'cli-1', name: 'Acme' }, projectValue: 1000, totalAmount: 1000, assignedEmployees: [employees[0]],
+}));
+projects.push({
+  _id: 'prj-open', projectName: 'Still Open', projectCode: 'PRJ-OPEN', status: 'in_process', createdAt: '2026-10-20T06:00:00.000Z',
+  clientId: { _id: 'cli-1', name: 'Acme' }, projectValue: 500, totalAmount: 500, assignedEmployees: [employees[0]],
+});
+
 const requests = [];
 const results = [];
 const check = async (name, fn) => {
@@ -52,6 +66,7 @@ async function makePage(role, path) {
     const q = (k) => url.searchParams.get(k);
     if (url.pathname === '/api/auth/me') return json({ user: { ...user, employee: employees[0] } });
     if (url.pathname === '/api/admin/employees') return json({ data: employees });
+    if (url.pathname === '/api/admin/projects' || url.pathname === '/api/employee/projects') return json({ data: projects });
     if (url.pathname.endsWith('/attendance') && q('page')) {
       let rows = role === 'employee' ? attendance.filter((r) => r.employeeId._id === 'emp-a') : attendance;
       if (q('search')) rows = rows.filter((r) => r.employeeId.fullName.toLowerCase().includes(q('search').toLowerCase()));
@@ -167,8 +182,48 @@ try {
     assert.equal(last.query.page, '1');
   });
 
+  const dayBoxes = (p) => p.getByText(/^\d+ projects? delivered$/);
+  const projectViews = [];
+  for (const [role, path] of [['admin', '/admin/projects'], ['employee', '/employee/projects']]) {
+    const view = await makePage(role, path);
+    projectViews.push(view);
+    const p = view.page;
+
+    await check(`${role} projects: only the 5 latest delivery days show, newest first`, async () => {
+      await p.getByText('Showing 1–5 of 12 delivery days').waitFor();
+      assert.equal(await dayBoxes(p).count(), 5);
+      assert.deepEqual(await dayBoxes(p).allInnerTexts(), ['2 projects delivered', '1 project delivered', '1 project delivered', '1 project delivered', '1 project delivered']);
+      assert.ok(await p.getByText('25 Oct 2026').count() >= 1, 'newest day on page 1');
+      assert.equal(await p.getByText('14 Oct 2026').count(), 0, 'oldest day must not be on page 1');
+    });
+
+    await check(`${role} projects: in-progress projects and the delivered total are unaffected`, async () => {
+      assert.ok(await p.getByText('Still Open').count() >= 1);
+      assert.ok(await p.getByText('Delivered Projects').locator('..').getByText('13', { exact: true }).count() === 1);
+    });
+
+    await check(`${role} projects: older delivery days are on later pages`, async () => {
+      await p.getByRole('button', { name: 'Page 3', exact: true }).click();
+      await p.getByText('Showing 11–12 of 12 delivery days').waitFor();
+      assert.equal(await dayBoxes(p).count(), 2);
+      assert.ok(await p.getByText('14 Oct 2026').count() >= 1);
+      assert.ok(await p.getByRole('button', { name: 'Next page' }).isDisabled());
+      await p.getByRole('button', { name: 'Previous page' }).click();
+      await p.getByText('Showing 6–10 of 12 delivery days').waitFor();
+    });
+
+    await check(`${role} projects: searching returns to page 1 and hides pagination when it fits`, async () => {
+      await p.getByPlaceholder('Search projects...').fill('Delivered 1');
+      // "Delivered 1", "10", "11", "12" -> 4 different days, fits on one page
+      await p.waitForFunction(() => !document.body.innerText.includes('delivery days'));
+      assert.equal(await dayBoxes(p).count(), 4);
+      await p.getByPlaceholder('Search projects...').fill('');
+      await p.getByText('Showing 1–5 of 12 delivery days').waitFor();
+    });
+  }
+
   await check('no uncaught browser errors', async () => {
-    const all = [admin, logsPage, emp, work].flatMap((v) => v.errors);
+    const all = [admin, logsPage, emp, work, ...projectViews].flatMap((v) => v.errors);
     assert.deepEqual(all, []);
   });
 } finally {

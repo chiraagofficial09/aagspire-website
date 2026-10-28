@@ -31,7 +31,11 @@ import { CustomSelect } from '../../components/work/CustomSelect';
 import { ProjectModal } from '../../components/work/ProjectModal';
 import { BulkCreateProjectsModal } from '../../components/work/BulkCreateProjectsModal';
 import { EmptyState } from '../../components/work/EmptyState';
+import { Pagination } from '../../components/work/Pagination';
+import { useClientPagination } from '../../hooks/useClientPagination';
 import { MonthSelectDropdown, MonthOption } from '../../components/work/MonthSelectDropdown';
+
+const DELIVERED_DAYS_PER_PAGE = 5;
 
 export const AdminProjects: React.FC = () => {
   const toast = useToast();
@@ -441,6 +445,14 @@ export const AdminProjects: React.FC = () => {
     () => completedGroups.reduce((acc, g) => acc + g.projects.length, 0),
     [completedGroups]
   );
+
+  // Show the latest delivery days first; older days go on further pages
+  const deliveredSectionRef = useRef<HTMLDivElement>(null);
+  const {
+    pageItems: visibleCompletedGroups,
+    pagination: deliveredPagination,
+    setPage: setDeliveredPage,
+  } = useClientPagination(completedGroups, DELIVERED_DAYS_PER_PAGE, `${search}|${statusFilter}|${selectedMonth}`);
 
   const shouldShowPendingSection = statusFilter === 'all' || !isDelivered(statusFilter);
   const shouldShowCompletedSection = statusFilter === 'all' || isDelivered(statusFilter);
@@ -1756,7 +1768,7 @@ export const AdminProjects: React.FC = () => {
 
           {/* SECTION 2: Completed Projects Grouped by Date Boxes */}
           {shouldShowCompletedSection && (
-            <div className="space-y-4 pt-1">
+            <div ref={deliveredSectionRef} className="space-y-4 pt-1 scroll-mt-4">
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-zinc-500" />
@@ -1770,7 +1782,7 @@ export const AdminProjects: React.FC = () => {
 
               {completedGroups.length > 0 ? (
                 <div className="space-y-4">
-                  {completedGroups.map((group) => (
+                  {visibleCompletedGroups.map((group) => (
                     <div
                       key={group.dateKey}
                       className="bg-[#08090d] border border-white/[0.06] rounded-2xl overflow-hidden shadow-sm"
@@ -1799,6 +1811,16 @@ export const AdminProjects: React.FC = () => {
                       </div>
                     </div>
                   ))}
+                  {deliveredPagination.totalPages > 1 && (
+                    <Pagination
+                      pagination={deliveredPagination}
+                      onPageChange={(next) => {
+                        setDeliveredPage(next);
+                        deliveredSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      unit={['delivery day', 'delivery days']}
+                    />
+                  )}
                 </div>
               ) : (
                 <div className="p-6 text-center text-xs text-zinc-500 bg-[#08090d] border border-white/[0.06] rounded-2xl">
