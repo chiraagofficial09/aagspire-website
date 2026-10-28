@@ -1,39 +1,89 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Calendar, Clock, ExternalLink, Trash2, Timer } from 'lucide-react';
 import { api } from '../../services/api';
 import { CustomCalendarDropdown } from '../../components/work/CustomCalendarDropdown';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { EmptyState } from '../../components/work/EmptyState';
+import { Pagination, PaginationInfo } from '../../components/work/Pagination';
 import { useToast } from '../../components/work/Toast';
 import { useAlert } from '../../context/AlertContext';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+
+const DAYS_PER_PAGE = 7;
 
 export const AdminAttendance: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const { showConfirm } = useAlert();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
   const [attendance, setAttendance] = useState<any[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [summary, setSummary] = useState({ days: 0, records: 0 });
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   const [dateFilter, setDateFilter] = useState('');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [autoClockOutEnabled, setAutoClockOutEnabled] = useState(false);
   const [autoClockOutTime, setAutoClockOutTime] = useState('19:00');
   const [savingSettings, setSavingSettings] = useState(false);
+  const requestId = useRef(0);
 
-  const fetchAttendance = async () => {
-    try {
-      setLoading(true);
-      const res = await api.get('/admin/attendance');
-      setAttendance(res.data.data || res.data.attendance || []);
-    } catch (err) {
-      console.error('Error fetching attendance', err);
-    } finally {
-      setLoading(false);
-    }
+  const setPage = (next: number, replace = false) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next <= 1) params.delete('page');
+      else params.set('page', String(next));
+      return params;
+    }, { replace });
   };
 
+  // Changing a filter starts again from page 1. Compared with the previous values (not a
+  // first-run flag) so a refreshed ?page= survives StrictMode's double effect run.
+  const lastFilters = useRef(`${debouncedSearch}|${dateFilter}`);
   useEffect(() => {
-    fetchAttendance();
+    const key = `${debouncedSearch}|${dateFilter}`;
+    if (key === lastFilters.current) return;
+    lastFilters.current = key;
+    setPage(1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, dateFilter]);
+
+  useEffect(() => {
+    const current = ++requestId.current;
+    setLoading(true);
+    api.get('/admin/attendance', {
+      params: {
+        page,
+        limit: DAYS_PER_PAGE,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(dateFilter ? { date: dateFilter } : {}),
+      },
+    })
+      .then((res) => {
+        if (current !== requestId.current) return;
+        const info: PaginationInfo | undefined = res.data.pagination;
+        // A delete can empty the last page; step back instead of showing nothing
+        if (info && page > info.totalPages) {
+          setPage(info.totalPages, true);
+          return;
+        }
+        setAttendance(res.data.data || res.data.attendance || []);
+        setPagination(info || null);
+        setSummary({ days: res.data.summary?.days ?? 0, records: res.data.summary?.records ?? 0 });
+      })
+      .catch((err) => {
+        if (current === requestId.current) console.error('Error fetching attendance', err);
+      })
+      .finally(() => {
+        if (current === requestId.current) setLoading(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, debouncedSearch, dateFilter, reloadKey]);
+
+  useEffect(() => {
     api.get('/admin/attendance/settings')
       .then((res) => {
         const data = res.data?.data;
@@ -76,14 +126,8 @@ export const AdminAttendance: React.FC = () => {
     }
   };
 
-  const filtered = attendance.filter((item) => {
-    const term = search.toLowerCase();
-    const matchesSearch =
-      (item.employeeId?.fullName || item.employeeId?.name || '')?.toLowerCase().includes(term) ||
-      item.employeeId?.employeeCode?.toLowerCase().includes(term);
-    const matchesDate = !dateFilter || dateFilter === 'all' || item.date?.startsWith(dateFilter);
-    return matchesSearch && matchesDate;
-  });
+  // Search and date filters run on the server; this page holds whole days only
+  const filtered = attendance;
 
   // Group by date
   const grouped = useMemo(() => {
@@ -216,7 +260,8 @@ export const AdminAttendance: React.FC = () => {
     try {
       await api.delete(`/admin/attendance/${item._id}`);
       toast.success('Attendance record removed successfully');
-      setAttendance((prev) => prev.filter((a) => a._id !== item._id));
+      // Refetch so day counts, totals and page boundaries stay correct
+      setReloadKey((value) => value + 1);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to remove attendance record');
     }
@@ -295,7 +340,7 @@ export const AdminAttendance: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      {loading ? (
+      {loading && !pagination ? (
         <div className="bg-[#08090d] border border-white/[0.06] rounded-2xl p-12 text-center text-zinc-500 font-mono text-xs">
           Loading attendance records...
         </div>
@@ -304,7 +349,7 @@ export const AdminAttendance: React.FC = () => {
           <EmptyState type="attendance" />
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className={`space-y-5 transition-opacity ${loading ? 'opacity-60' : ''}`}>
           {grouped.map((group) => (
             <div
               key={group.dateKey}
@@ -441,8 +486,20 @@ export const AdminAttendance: React.FC = () => {
         </div>
       )}
 
+      {pagination && (
+        <Pagination
+          pagination={pagination}
+          onPageChange={(next) => {
+            setPage(next);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          unit={['day', 'days']}
+          disabled={loading}
+        />
+      )}
+
       <div className="text-xs text-zinc-500 px-1">
-        {filtered.length} {filtered.length === 1 ? 'record' : 'records'} across {grouped.length} {grouped.length === 1 ? 'day' : 'days'}
+        {summary.records} {summary.records === 1 ? 'record' : 'records'} across {summary.days} {summary.days === 1 ? 'day' : 'days'}
       </div>
     </div>
   );

@@ -6,7 +6,10 @@ import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
 import { createNotification } from '../services/notification.service.js';
 import { round2 } from '../utils/decimalHelper.js';
-import { getMonthDateRange } from '../utils/dateHelper.js';
+import { getDayOrMonthDateRange, getMonthDateRange } from '../utils/dateHelper.js';
+import { Employee } from '../models/Employee.js';
+import { escapeRegex, paginationMeta, parsePagination, searchTerm } from '../utils/pagination.js';
+import { Types } from 'mongoose';
 
 export async function listWorkLogs(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -38,6 +41,69 @@ export async function listWorkLogs(req: AuthenticatedRequest, res: Response): Pr
       filter.workDate = { $gte: monthRange.startOfMonth, $lte: monthRange.endOfMonth };
     }
 
+    // Paged mode (?page=): filters, search and paging run on the server
+    const page = parsePagination(req.query, { defaultLimit: 20, maxLimit: 100 });
+    if (page) {
+      if (filter.employeeId && !Types.ObjectId.isValid(String(filter.employeeId))) {
+        res.status(400).json({ success: false, message: 'Invalid employee.' });
+        return;
+      }
+      if (filter.status !== undefined && typeof filter.status !== 'string') delete filter.status;
+
+      const { date, search } = req.query;
+      if (date !== undefined && date !== '' && date !== 'all') {
+        const range = getDayOrMonthDateRange(typeof date === 'string' ? date : null);
+        if (!range) {
+          res.status(400).json({ success: false, message: 'Use a date in YYYY-MM-DD or YYYY-MM format.' });
+          return;
+        }
+        filter.workDate = { $gte: range.start, $lte: range.end };
+      }
+
+      const term = searchTerm(search);
+      if (term) {
+        const regex = new RegExp(escapeRegex(term), 'i');
+        const [employeeIds, projectIds] = await Promise.all([
+          Employee.find({ $or: [{ fullName: regex }, { employeeCode: regex }] }).distinct('_id'),
+          Project.find({ $or: [{ projectName: regex }, { projectCode: regex }] }).distinct('_id'),
+        ]);
+        const searchMatch = {
+          $or: [
+            { taskName: regex },
+            { description: regex },
+            { 'projectsWorked.projectName': regex },
+            { 'projectsWorked.projectCode': regex },
+            { employeeId: { $in: employeeIds } },
+            { projectId: { $in: projectIds } },
+            { 'projectsWorked.projectId': { $in: projectIds } },
+          ],
+        };
+        // A projectId filter already uses $or, so combine both with $and
+        filter.$and = [...(filter.$and || []), searchMatch];
+      }
+
+      const [pageLogs, total] = await Promise.all([
+        WorkLog.find(filter)
+          .populate('employeeId', 'fullName employeeCode designation')
+          .populate('projectId', 'projectName projectCode status')
+          .populate('projectsWorked.projectId', 'projectName projectCode status')
+          .populate('reviewedBy', 'name email')
+          .sort({ workDate: -1, createdAt: -1, _id: -1 })
+          .skip(page.skip)
+          .limit(page.limit),
+        WorkLog.countDocuments(filter),
+      ]);
+      const formatted = pageLogs.map(formatWorkLog);
+      res.json({
+        success: true,
+        count: formatted.length,
+        workLogs: formatted,
+        data: formatted,
+        pagination: paginationMeta(page, total),
+      });
+      return;
+    }
+
     const workLogs = await WorkLog.find(filter)
       .populate('employeeId', 'fullName employeeCode designation')
       .populate('projectId', 'projectName projectCode status')
@@ -45,20 +111,22 @@ export async function listWorkLogs(req: AuthenticatedRequest, res: Response): Pr
       .populate('reviewedBy', 'name email')
       .sort({ workDate: -1, createdAt: -1 });
 
-    const formatted = workLogs.map((log) => {
-      const mins = log.totalMinutes || 0;
-      return {
-        ...log.toObject(),
-        hoursWorked: round2(mins / 60),
-        durationMinutes: mins,
-        logDate: log.workDate,
-      };
-    });
+    const formatted = workLogs.map(formatWorkLog);
 
     res.json({ success: true, count: formatted.length, workLogs: formatted, data: formatted });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
+}
+
+function formatWorkLog(log: any) {
+  const mins = log.totalMinutes || 0;
+  return {
+    ...log.toObject(),
+    hoursWorked: round2(mins / 60),
+    durationMinutes: mins,
+    logDate: log.workDate,
+  };
 }
 
 export async function createWorkLog(req: AuthenticatedRequest, res: Response): Promise<void> {

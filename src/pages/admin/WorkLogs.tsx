@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Search,
@@ -19,49 +19,100 @@ import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomCalendarDropdown } from '../../components/work/CustomCalendarDropdown';
 import { EmptyState } from '../../components/work/EmptyState';
-import { WorkLogCard, extractProjectsFromLog, ExtractedProject } from '../../components/work/WorkLogCard';
+import { WorkLogCard } from '../../components/work/WorkLogCard';
+import { Pagination, PaginationInfo } from '../../components/work/Pagination';
 import { useAlert } from '../../context/AlertContext';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+
+const LOGS_PER_PAGE = 20;
 
 export const AdminWorkLogs: React.FC = () => {
   const toast = useToast();
   const { showConfirm } = useAlert();
   const [workLogs, setWorkLogs] = useState<any[]>([]);
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchParams] = useSearchParams();
+  const [reloadKey, setReloadKey] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlEmpId = searchParams.get('employeeId');
   const urlDate = searchParams.get('date');
+  const page = Math.max(1, Number.parseInt(searchParams.get('page') || '1', 10) || 1);
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [employeeFilter, setEmployeeFilter] = useState(urlEmpId || 'all');
   const [dateFilter, setDateFilter] = useState(urlDate || 'all');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [updatingProjectId, setUpdatingProjectId] = useState<string | null>(null);
+  const requestId = useRef(0);
 
   useEffect(() => {
     if (urlEmpId) setEmployeeFilter(urlEmpId);
     if (urlDate) setDateFilter(urlDate);
   }, [urlEmpId, urlDate]);
 
-  const fetchWorkLogs = async () => {
-    try {
-      setLoading(true);
-      const [logsRes, empsRes] = await Promise.all([
-        api.get('/admin/work-logs'),
-        api.get('/admin/employees').catch(() => ({ data: { data: [] } })),
-      ]);
-      setWorkLogs(logsRes.data?.data || logsRes.data?.workLogs || []);
-      setEmployees(empsRes.data?.data || empsRes.data?.employees || []);
-    } catch (err) {
-      console.error('Error fetching work logs', err);
-    } finally {
-      setLoading(false);
-    }
+  const setPage = (next: number, replace = false) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next <= 1) params.delete('page');
+      else params.set('page', String(next));
+      return params;
+    }, { replace });
   };
 
+  // Changing a filter starts again from page 1. Compared with the previous values (not a
+  // first-run flag) so a refreshed ?page= survives StrictMode's double effect run.
+  const filterKey = `${debouncedSearch}|${statusFilter}|${employeeFilter}|${dateFilter}`;
+  const lastFilters = useRef(filterKey);
   useEffect(() => {
-    fetchWorkLogs();
+    if (filterKey === lastFilters.current) return;
+    lastFilters.current = filterKey;
+    setPage(1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKey]);
+
+  // Reloads the current page (after a review, delete or project status change)
+  const fetchWorkLogs = () => setReloadKey((value) => value + 1);
+
+  useEffect(() => {
+    api.get('/admin/employees')
+      .then((res) => setEmployees(res.data?.data || res.data?.employees || []))
+      .catch(() => setEmployees([]));
   }, []);
+
+  useEffect(() => {
+    const current = ++requestId.current;
+    setLoading(true);
+    api.get('/admin/work-logs', {
+      params: {
+        page,
+        limit: LOGS_PER_PAGE,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+        ...(employeeFilter !== 'all' ? { employeeId: employeeFilter } : {}),
+        ...(dateFilter && dateFilter !== 'all' ? { date: dateFilter } : {}),
+      },
+    })
+      .then((res) => {
+        if (current !== requestId.current) return;
+        const info: PaginationInfo | undefined = res.data.pagination;
+        // A delete can empty the last page; step back instead of showing nothing
+        if (info && page > info.totalPages) {
+          setPage(info.totalPages, true);
+          return;
+        }
+        setWorkLogs(res.data?.data || res.data?.workLogs || []);
+        setPagination(info || null);
+      })
+      .catch((err) => {
+        if (current === requestId.current) console.error('Error fetching work logs', err);
+      })
+      .finally(() => {
+        if (current === requestId.current) setLoading(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, filterKey, reloadKey]);
 
   const employeeOptions = useMemo(() => {
     const map = new Map<string, { label: string; designation?: string }>();
@@ -162,57 +213,8 @@ export const AdminWorkLogs: React.FC = () => {
     }
   };
 
-  const filtered = useMemo(() => {
-    return workLogs.filter((log) => {
-      const term = search.toLowerCase();
-      const deliverables = extractProjectsFromLog(log);
-      const matchesSearch =
-        !term ||
-        log.taskName?.toLowerCase().includes(term) ||
-        (log.employeeId?.fullName || log.employeeId?.name || '')
-          ?.toLowerCase()
-          .includes(term) ||
-        (log.projectId?.projectName || log.projectId?.title || '')
-          ?.toLowerCase()
-          .includes(term) ||
-        deliverables.some(
-          (d: ExtractedProject) =>
-            d.name.toLowerCase().includes(term) ||
-            (d.code && d.code.toLowerCase().includes(term))
-        );
-
-      const matchesStatus = statusFilter === 'all' || log.status === statusFilter;
-      const logEmpId =
-        typeof log.employeeId === 'object' && log.employeeId !== null
-          ? String(log.employeeId._id || log.employeeId.id || '')
-          : String(log.employeeId || '');
-      const matchesEmployee =
-        employeeFilter === 'all' || logEmpId === String(employeeFilter);
-
-      let matchesDate = true;
-      if (dateFilter && dateFilter !== 'all') {
-        const rawDate = log.logDate || log.workDate || log.createdAt;
-        if (rawDate) {
-          const d = new Date(rawDate);
-          if (!isNaN(d.getTime())) {
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const logYMD = `${year}-${month}-${day}`;
-            const logYM = `${year}-${month}`;
-
-            if (dateFilter.length === 7) {
-              matchesDate = logYM === dateFilter;
-            } else {
-              matchesDate = logYMD === dateFilter;
-            }
-          }
-        }
-      }
-
-      return matchesSearch && matchesStatus && matchesEmployee && matchesDate;
-    });
-  }, [workLogs, search, statusFilter, employeeFilter, dateFilter]);
+  // Search, status, team member and date filters all run on the server
+  const filtered = workLogs;
 
   return (
     <div className="space-y-6">
@@ -263,12 +265,12 @@ export const AdminWorkLogs: React.FC = () => {
       </div>
 
       {/* Logs Display - Option 1: Ultra-Clean Minimal Card */}
-      {loading ? (
+      {loading && !pagination ? (
         <div className="bg-[#090a0e] border border-white/[0.06] rounded-xl p-10 text-center text-zinc-500 font-mono text-xs">
           Loading work logs...
         </div>
       ) : filtered.length > 0 ? (
-        <div className="space-y-3">
+        <div className={`space-y-3 transition-opacity ${loading ? 'opacity-60' : ''}`}>
           {filtered.map((log) => (
             <WorkLogCard
               key={log._id}
@@ -289,9 +291,17 @@ export const AdminWorkLogs: React.FC = () => {
         </div>
       )}
 
-      <div className="text-xs text-zinc-500 px-1">
-        {filtered.length} {filtered.length === 1 ? 'work log' : 'work logs'}
-      </div>
+      {pagination && (
+        <Pagination
+          pagination={pagination}
+          onPageChange={(next) => {
+            setPage(next);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          unit={['work log', 'work logs']}
+          disabled={loading}
+        />
+      )}
     </div>
   );
 };

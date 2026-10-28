@@ -9,6 +9,9 @@ import { createNotification } from '../services/notification.service.js';
 import { round2 } from '../utils/decimalHelper.js';
 import { AttendanceSettings } from '../models/AttendanceSettings.js';
 import { getAttendanceSettings, TIME_PATTERN } from '../services/autoClockOut.service.js';
+import { Employee } from '../models/Employee.js';
+import { getDayOrMonthDateRange } from '../utils/dateHelper.js';
+import { escapeRegex, paginationMeta, parsePagination, searchTerm } from '../utils/pagination.js';
 
 function getStartOfDay(date: Date = new Date()): Date {
   const d = new Date(date);
@@ -320,6 +323,82 @@ export async function listAttendance(req: AuthenticatedRequest, res: Response): 
       if (employeeId) filter.employeeId = employeeId;
     }
 
+    const formatRecords = (records: any[]) => records.map((r: any) => ({
+      ...r,
+      clockInTime: r.clockInAt,
+      clockOutTime: r.clockOutAt,
+      totalHours: r.totalMinutes ? round2(r.totalMinutes / 60) : 0,
+    }));
+
+    // Paged mode (?page=) pages by day, so one day's records never split across pages
+    const page = parsePagination(req.query, { defaultLimit: 7, maxLimit: 31 });
+    if (page) {
+      const match: Record<string, any> = {};
+      if (filter.employeeId) {
+        if (!Types.ObjectId.isValid(String(filter.employeeId))) {
+          res.status(400).json({ success: false, message: 'Invalid employee.' });
+          return;
+        }
+        // Aggregation $match doesn't cast, so ObjectIds must be real ObjectIds
+        match.employeeId = new Types.ObjectId(String(filter.employeeId));
+      }
+      if (typeof status === 'string' && status && status !== 'all') match.status = status;
+
+      const { date, search } = req.query;
+      if (date !== undefined && date !== '' && date !== 'all') {
+        const range = getDayOrMonthDateRange(typeof date === 'string' ? date : null);
+        if (!range) {
+          res.status(400).json({ success: false, message: 'Use a date in YYYY-MM-DD or YYYY-MM format.' });
+          return;
+        }
+        match.date = { $gte: range.start, $lte: range.end };
+      }
+
+      const term = searchTerm(search);
+      if (term) {
+        const regex = new RegExp(escapeRegex(term), 'i');
+        const employeeIds = await Employee.find({ $or: [{ fullName: regex }, { employeeCode: regex }] }).distinct('_id');
+        match.$and = [{ employeeId: { $in: employeeIds } }];
+      }
+
+      const [summary] = await Attendance.aggregate([
+        { $match: match },
+        { $group: { _id: '$date', records: { $sum: 1 }, minutes: { $sum: { $ifNull: ['$totalMinutes', 0] } } } },
+        { $sort: { _id: -1 } },
+        {
+          $facet: {
+            days: [{ $skip: page.skip }, { $limit: page.limit }],
+            totals: [{ $group: { _id: null, days: { $sum: 1 }, records: { $sum: '$records' }, minutes: { $sum: '$minutes' } } }],
+          },
+        },
+      ]);
+      const pageDates = summary.days.map((d: any) => d._id);
+      const totals = summary.totals[0] || { days: 0, records: 0, minutes: 0 };
+
+      const records = pageDates.length
+        ? await Attendance.find({ ...match, date: { $in: pageDates } })
+            .populate('employeeId', 'fullName employeeCode designation')
+            .sort({ date: -1, clockInAt: 1, _id: 1 })
+            .lean()
+        : [];
+      const formatted = formatRecords(records);
+
+      res.json({
+        success: true,
+        count: formatted.length,
+        attendance: formatted,
+        data: formatted,
+        pagination: paginationMeta(page, totals.days),
+        summary: {
+          days: totals.days,
+          records: totals.records,
+          totalMinutes: totals.minutes,
+          totalHours: round2(totals.minutes / 60),
+        },
+      });
+      return;
+    }
+
     if (status && status !== 'all') {
       filter.status = status;
     }
@@ -339,12 +418,7 @@ export async function listAttendance(req: AuthenticatedRequest, res: Response): 
       .sort({ date: -1 })
       .lean();
 
-    const formatted = records.map((r: any) => ({
-      ...r,
-      clockInTime: r.clockInAt,
-      clockOutTime: r.clockOutAt,
-      totalHours: r.totalMinutes ? round2(r.totalMinutes / 60) : 0,
-    }));
+    const formatted = formatRecords(records);
 
     res.json({ success: true, count: formatted.length, attendance: formatted, data: formatted });
   } catch (error: any) {

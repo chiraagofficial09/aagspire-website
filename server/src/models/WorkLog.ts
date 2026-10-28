@@ -60,5 +60,7 @@ const WorkLogSchema = new Schema<IWorkLog>(
 
 WorkLogSchema.index({ employeeId: 1, workDate: -1 });
 WorkLogSchema.index({ projectId: 1, status: 1 });
+// Admin work-log list: filter by status, newest first (paged)
+WorkLogSchema.index({ status: 1, workDate: -1 });
 
 export const WorkLog = mongoose.model<IWorkLog>('WorkLog', WorkLogSchema);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
@@ -20,6 +20,10 @@ import { useToast } from '../../components/work/Toast';
 import { CustomSelect } from '../../components/work/CustomSelect';
 import { CustomDatePicker } from '../../components/work/CustomDatePicker';
 import { EmptyState } from '../../components/work/EmptyState';
+import type { PaginationInfo } from '../../components/work/Pagination';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+
+const LOGS_PER_LOAD = 20;
 
 export interface ExtractedProject {
   projectId?: string;
@@ -143,25 +147,65 @@ export const EmployeeWork: React.FC = () => {
     description: '',
   });
 
-  const fetchAll = async () => {
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const debouncedSearch = useDebouncedValue(search.trim());
+  const requestId = useRef(0);
+
+  // page 1 replaces the list (filters changed, after a submit); later pages append to it
+  const fetchLogs = async (page = 1) => {
+    const current = ++requestId.current;
     try {
-      setLoading(true);
-      const [wRes, pRes] = await Promise.all([
-        api.get('/employee/work-logs'),
-        api.get('/employee/projects'),
-      ]);
-      setWorkLogs(wRes.data.data || wRes.data.workLogs || []);
-      setProjects(pRes.data.data || pRes.data.projects || []);
+      if (page === 1) setLoading(true);
+      else setLoadingMore(true);
+      const res = await api.get('/employee/work-logs', {
+        params: {
+          page,
+          limit: LOGS_PER_LOAD,
+          ...(debouncedSearch ? { search: debouncedSearch } : {}),
+          ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+        },
+      });
+      if (current !== requestId.current) return;
+      const rows = res.data.data || res.data.workLogs || [];
+      setWorkLogs((prev) => {
+        if (page === 1) return rows;
+        // A log added since the last load shifts rows by one; skip any already shown
+        const seen = new Set(prev.map((log) => log._id));
+        return [...prev, ...rows.filter((log: { _id: string }) => !seen.has(log._id))];
+      });
+      setPagination(res.data.pagination || null);
     } catch (err) {
-      console.error('Error fetching work logs', err);
+      if (current === requestId.current) console.error('Error fetching work logs', err);
     } finally {
-      setLoading(false);
+      if (current === requestId.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 
+  const fetchProjects = () =>
+    api.get('/employee/projects')
+      .then((res) => setProjects(res.data.data || res.data.projects || []))
+      .catch((err) => console.error('Error fetching projects', err));
+
+  // After a submit or project status change, refresh both the logs and the project list
+  const fetchAll = () => {
+    fetchLogs(1);
+    fetchProjects();
+  };
+
   useEffect(() => {
-    fetchAll();
+    fetchProjects();
   }, []);
+
+  useEffect(() => {
+    fetchLogs(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, statusFilter]);
+
+  const hasMore = Boolean(pagination && pagination.page < pagination.totalPages);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,24 +258,8 @@ export const EmployeeWork: React.FC = () => {
     }
   };
 
-  const filteredLogs = useMemo(() => {
-    return workLogs.filter((log) => {
-      const term = search.toLowerCase();
-      const deliverables = extractProjectsFromLog(log);
-      const matchesSearch =
-        !term ||
-        log.taskName?.toLowerCase().includes(term) ||
-        log.description?.toLowerCase().includes(term) ||
-        deliverables.some(
-          (d) =>
-            d.name.toLowerCase().includes(term) ||
-            (d.code && d.code.toLowerCase().includes(term))
-        );
-
-      const matchesStatus = statusFilter === 'all' || log.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [workLogs, search, statusFilter]);
+  // Search and status filters run on the server
+  const filteredLogs = workLogs;
 
   return (
     <div className="space-y-6">
@@ -445,8 +473,21 @@ export const EmployeeWork: React.FC = () => {
         </div>
       )}
 
+      {hasMore && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => fetchLogs((pagination?.page ?? 1) + 1)}
+            disabled={loadingMore}
+            className="px-5 py-2 rounded-xl border border-white/[0.08] bg-[#0d0e14] hover:bg-white/5 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      )}
+
       <div className="text-xs text-zinc-500 px-1">
-        {filteredLogs.length} {filteredLogs.length === 1 ? 'log' : 'logs'}
+        Showing {filteredLogs.length} of {pagination?.total ?? filteredLogs.length} {(pagination?.total ?? filteredLogs.length) === 1 ? 'log' : 'logs'}
       </div>
 
       {/* Modal for manual logging with all features preserved */}
