@@ -17,6 +17,7 @@ export interface CustomDatePickerProps {
   required?: boolean;
   name?: string;
   id?: string;
+  triggerId?: string;
   minDate?: string;
   maxDate?: string;
   usePortal?: boolean;
@@ -54,6 +55,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   required = false,
   name,
   id,
+  triggerId,
   minDate,
   maxDate,
   usePortal = true,
@@ -311,6 +313,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
       {/* Trigger button styled like custom input / select */}
       <button
         ref={triggerRef}
+        id={triggerId}
         type="button"
         disabled={disabled}
         onClick={toggleOpen}

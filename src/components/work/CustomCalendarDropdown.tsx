@@ -61,11 +61,6 @@ export const CustomCalendarDropdown: React.FC<CustomCalendarDropdownProps> = ({
     return formatYMD(y.getFullYear(), y.getMonth(), y.getDate());
   }, []);
 
-  const currentMonthYM = useMemo(
-    () => `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`,
-    [today]
-  );
-
   // Parse initial view month/year based on value or today
   const initialYear = useMemo(() => {
     if (value && value !== 'all') {
@@ -275,7 +270,7 @@ export const CustomCalendarDropdown: React.FC<CustomCalendarDropdownProps> = ({
           } top-full mt-2 z-50 rounded-2xl bg-[#0c0d12] border border-white/[0.1] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.95)] w-72 select-none`}
         >
           {/* Quick Presets Bar */}
-          <div className="grid grid-cols-4 gap-1 pb-2.5 border-b border-white/[0.06]">
+          <div className="grid grid-cols-3 gap-1 pb-2.5 border-b border-white/[0.06]">
             <button
               type="button"
               onClick={() => {
@@ -317,20 +312,6 @@ export const CustomCalendarDropdown: React.FC<CustomCalendarDropdownProps> = ({
               }`}
             >
               Yesterday
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onChange(currentMonthYM);
-                setIsOpen(false);
-              }}
-              className={`px-1.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors text-center cursor-pointer truncate ${
-                value === currentMonthYM
-                  ? 'bg-[#FF5A1F] text-white shadow-sm font-semibold'
-                  : 'bg-white/[0.04] text-zinc-300 hover:bg-white/[0.08] hover:text-white'
-              }`}
-            >
-              This Month
             </button>
           </div>
 

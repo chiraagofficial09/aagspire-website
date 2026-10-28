@@ -12,6 +12,7 @@ import {
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { ClockWidget } from '../../components/work/ClockWidget';
+import { AttendanceCalendar } from '../../components/work/AttendanceCalendar';
 import { NotificationBell } from '../../components/work/NotificationBell';
 import { formatINR } from '../../utils/formatters';
 import { StatusBadge } from '../../components/work/StatusBadge';
@@ -22,6 +23,7 @@ export const EmployeeDashboard: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [designation, setDesignation] = useState<string>('');
+  const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
 
   // Month-wise filter setup
   const now = useMemo(() => new Date(), []);
@@ -190,7 +192,10 @@ export const EmployeeDashboard: React.FC = () => {
       </div>
 
       {/* Daily Attendance Card Widget */}
-      <ClockWidget onStatusChange={fetchDashboard} />
+      <ClockWidget onStatusChange={() => {
+        fetchDashboard();
+        setAttendanceRefreshKey((value) => value + 1);
+      }} />
 
       {/* 3 KPI Metric Cards: Total, Paid, Pending */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
@@ -257,10 +262,10 @@ export const EmployeeDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Two Columns Grid: Assigned Projects & Recent Production Logs */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Three Columns Grid: Assigned Projects, Recent Production Logs & Attendance Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Assigned Projects */}
-        <div className="rounded-2xl bg-[#0e1017] border border-white/[0.06] p-6 space-y-4">
+        <div className="rounded-2xl bg-[#0e1017] border border-white/[0.06] p-5 sm:p-6 space-y-4 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Folder className="w-5 h-5 text-zinc-300" />
@@ -355,7 +360,7 @@ export const EmployeeDashboard: React.FC = () => {
         </div>
 
         {/* Right Column: Recent Production Logs */}
-        <div className="rounded-2xl bg-[#0e1017] border border-white/[0.06] p-6 space-y-4 flex flex-col justify-between min-h-[340px]">
+        <div className="rounded-2xl bg-[#0e1017] border border-white/[0.06] p-5 sm:p-6 space-y-4 flex flex-col justify-between min-h-[340px]">
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -415,6 +420,10 @@ export const EmployeeDashboard: React.FC = () => {
               </Link>
             </div>
           )}
+        </div>
+        {/* Right Column: Attendance Calendar */}
+        <div className="flex flex-col">
+          <AttendanceCalendar refreshKey={attendanceRefreshKey} compact />
         </div>
       </div>
 

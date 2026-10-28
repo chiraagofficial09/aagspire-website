@@ -15,6 +15,7 @@ import { calculateEmployeeEarnings } from '../services/earnings.service.js';
 import { listSettlements } from '../controllers/settlement.controller.js';
 import { listReceipts, getReceiptById, downloadReceiptPdf } from '../controllers/receipt.controller.js';
 import { listCompanyTermsEmployee } from '../controllers/companyTerm.controller.js';
+import { listHolidays } from '../controllers/holiday.controller.js';
 
 const router = Router();
 
@@ -40,6 +41,7 @@ router.get('/attendance/today', getTodayClockStatus);
 router.post('/attendance/clock-in', clockIn);
 router.post('/attendance/clock-out', clockOut);
 router.get('/attendance', listAttendance);
+router.get('/holidays', listHolidays);
 
 // Earnings
 router.get('/earnings', async (req: AuthenticatedRequest, res: Response): Promise<void> => {

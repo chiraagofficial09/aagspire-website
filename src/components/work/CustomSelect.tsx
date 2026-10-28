@@ -21,6 +21,7 @@ export interface CustomSelectProps<T = string | number> {
   required?: boolean;
   name?: string;
   id?: string;
+  triggerId?: string;
   icon?: React.ReactNode;
   actionItem?: {
     label: string;
@@ -42,6 +43,7 @@ export function CustomSelect<T extends string | number = string>({
   required = false,
   name,
   id,
+  triggerId,
   icon,
   actionItem,
   usePortal = true,
@@ -183,6 +185,7 @@ export function CustomSelect<T extends string | number = string>({
       {/* Dropdown Trigger Button */}
       <button
         ref={triggerRef}
+        id={triggerId}
         type="button"
         disabled={disabled}
         onClick={toggleOpen}

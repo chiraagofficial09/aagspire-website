@@ -81,6 +81,7 @@ import {
   syncGoogleSheet,
 } from '../controllers/googleSheets.controller.js';
 import { getAdminAnalytics } from '../controllers/analytics.controller.js';
+import { listHolidays, createHoliday } from '../controllers/holiday.controller.js';
 import { exportReportCsv } from '../controllers/report.controller.js';
 import {
   listCompanyTermsAdmin,
@@ -321,6 +322,10 @@ router.post('/attendance/manual', manualAdjustAttendance);
 router.get('/attendance/settings', getAttendanceSettingsHandler);
 router.put('/attendance/settings', updateAttendanceSettings);
 router.delete('/attendance/:id', deleteAttendance);
+
+// Office Holidays
+router.get('/holidays', listHolidays);
+router.post('/holidays', createHoliday);
 
 // Settlements & Payments
 router.get('/settlements', listSettlements);

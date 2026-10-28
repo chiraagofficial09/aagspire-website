@@ -43,6 +43,7 @@ import {
 } from 'recharts';
 import { api } from '../../services/api';
 import { StatusBadge } from '../../components/work/StatusBadge';
+import { AttendanceCalendar } from '../../components/work/AttendanceCalendar';
 import { parseAmount, formatINR } from '../../utils/formatters';
 
 // Format split percentage: whole numbers as 40%, fractional as 23.45%
@@ -628,14 +629,16 @@ export const AdminDashboard: React.FC = () => {
         )}
       </div>
 
+
       {/* 5 BOXES: RECENT PROJECTS, PENDING APPROVALS & 3 GRAPHS (TOGGLED WITH SHOW ALL DATA) */}
       {showMoreCards && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* 3. RECENT PROJECTS & PENDING APPROVALS (2 COLUMNS) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column (7 cols): Recent Projects Table */}
-        <div className={`lg:col-span-7 p-5 sm:p-6 rounded-2xl border transition-all duration-200 space-y-4 ${cardBg}`}>
-          <div className="flex items-center justify-between">
+          {/* 3. RECENT PROJECTS, PENDING APPROVALS & ATTENDANCE CALENDAR (3 COLUMNS) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Recent Projects Table */}
+        <div className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
             <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
               Recent Projects
             </h2>
@@ -645,29 +648,29 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-xs min-w-[460px]">
+            <table className="w-full text-left text-xs min-w-[340px]">
               <thead className="border-b border-white/10 text-white/40 font-mono text-[11px] uppercase tracking-wider">
                 <tr>
-                  <th className="pb-2.5 pr-3 font-semibold">PROJECT NAME</th>
-                  <th className="pb-2.5 px-3 font-semibold">CLIENT</th>
-                  <th className="pb-2.5 px-3 font-semibold">VALUE</th>
-                  <th className="pb-2.5 pl-3 font-semibold text-right">STATUS</th>
+                  <th className="pb-2 pr-2 font-semibold">PROJECT</th>
+                  <th className="pb-2 px-2 font-semibold">CLIENT</th>
+                  <th className="pb-2 px-2 font-semibold">VALUE</th>
+                  <th className="pb-2 pl-2 font-semibold text-right">STATUS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {recentProjects.length > 0 ? (
                   recentProjects.map((prj: any) => (
                     <tr key={prj.id} className="transition-colors hover:bg-white/[0.02]">
-                      <td className="py-3.5 pr-3 font-semibold truncate max-w-[170px]">
+                      <td className="py-2.5 pr-2 font-semibold truncate max-w-[120px]">
                         <span className={headingColor}>{prj.name}</span>
                       </td>
-                      <td className={`py-3.5 px-3 truncate max-w-[140px] ${subtextColor}`}>
+                      <td className={`py-2.5 px-2 truncate max-w-[90px] text-[11px] ${subtextColor}`}>
                         {prj.client}
                       </td>
-                      <td className={`py-3.5 px-3 font-semibold font-mono ${headingColor}`}>
+                      <td className={`py-2.5 px-2 font-semibold font-mono text-xs ${headingColor}`}>
                         {formatINR(prj.value)}
                       </td>
-                      <td className="py-3.5 pl-3 text-right">
+                      <td className="py-2.5 pl-2 text-right">
                         <StatusBadge status={prj.status} type="project" />
                       </td>
                     </tr>
@@ -685,10 +688,16 @@ export const AdminDashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
+          </div>
+          <div className="pt-3 border-t text-[11px] font-mono text-center border-white/10 mt-3">
+            <span className={subtextColor}>
+              {recentProjects.length} recent {recentProjects.length === 1 ? 'project' : 'projects'}
+            </span>
+          </div>
         </div>
 
-        {/* Right Column (5 cols): Pending Approvals */}
-        <div className={`lg:col-span-5 p-5 sm:p-6 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
+        {/* Middle Column: Pending Approvals */}
+        <div className={`p-5 sm:p-6 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${cardBg}`}>
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className={`text-base font-bold tracking-tight ${headingColor}`}>
@@ -819,6 +828,10 @@ export const AdminDashboard: React.FC = () => {
               {pendingWorkLogs.length} pending work logs &bull; {recentPayments.length} recorded payments
             </span>
           </div>
+        </div>
+        {/* Right Column: Attendance Calendar */}
+        <div className="flex flex-col">
+          <AttendanceCalendar isAdmin compact />
         </div>
       </div>
 
