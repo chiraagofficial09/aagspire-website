@@ -163,7 +163,12 @@ export const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
   };
 
   useEffect(() => {
-    const refresh = () => { if (document.visibilityState === 'visible') setReload((value) => value + 1); };
+    // Returning to the tab should show changes made elsewhere (e.g. a newly added holiday), so skip the API cache.
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return;
+      forceFreshRef.current = true;
+      setReload((value) => value + 1);
+    };
     window.addEventListener('focus', refresh);
     return () => window.removeEventListener('focus', refresh);
   }, []);

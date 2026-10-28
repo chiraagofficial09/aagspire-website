@@ -14,19 +14,28 @@ interface CacheEntry {
 const apiCache = new Map<string, CacheEntry>();
 const inFlightRequests = new Map<string, Promise<any>>();
 const DEFAULT_TTL_MS = 25 * 1000; // 25 seconds default TTL for GET requests
+// Notifications are polled every 20s; a shorter TTL keeps each poll fresh while still de-duplicating bursts.
+const NOTIFICATIONS_TTL_MS = 5 * 1000;
+// Bumped on every invalidation so a GET that started before a mutation can't cache pre-mutation data.
+let cacheGeneration = 0;
+
+const ttlFor = (url: string) => (url.startsWith('/notifications') ? NOTIFICATIONS_TTL_MS : DEFAULT_TTL_MS);
 
 /**
  * Manually clear the in-memory API cache.
  * @param urlPrefix Optional URL prefix to invalidate only matching endpoints.
  */
 export function clearApiCache(urlPrefix?: string): void {
-  if (!urlPrefix) {
-    apiCache.clear();
-    return;
-  }
-  for (const key of apiCache.keys()) {
-    if (key.includes(urlPrefix)) {
-      apiCache.delete(key);
+  cacheGeneration += 1;
+  for (const map of [apiCache, inFlightRequests] as Map<string, unknown>[]) {
+    if (!urlPrefix) {
+      map.clear();
+      continue;
+    }
+    for (const key of map.keys()) {
+      if (key.includes(urlPrefix)) {
+        map.delete(key);
+      }
     }
   }
 }
@@ -61,7 +70,7 @@ export const api = axios.create({
 
       // 1. Check existing fresh cache entry
       const cached = apiCache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < DEFAULT_TTL_MS) {
+      if (cached && Date.now() - cached.timestamp < ttlFor(url)) {
         return {
           ...cached.response,
           data: typeof structuredClone === 'function'
@@ -84,8 +93,15 @@ export const api = axios.create({
       }
 
       // 3. Perform network request and cache the result
+      const generation = cacheGeneration;
       const requestPromise = (async () => {
         const response = await defaultAdapter(config);
+        // The cache was invalidated while this request was in flight, so its data may predate the change
+        if (generation !== cacheGeneration) return response;
+        const now = Date.now();
+        for (const [key, entry] of apiCache) {
+          if (now - entry.timestamp >= DEFAULT_TTL_MS) apiCache.delete(key);
+        }
         apiCache.set(cacheKey, {
           response: {
             ...response,
@@ -93,7 +109,7 @@ export const api = axios.create({
               ? structuredClone(response.data)
               : JSON.parse(JSON.stringify(response.data)),
           },
-          timestamp: Date.now(),
+          timestamp: now,
         });
         return response;
       })();
@@ -102,7 +118,8 @@ export const api = axios.create({
       try {
         return await requestPromise;
       } finally {
-        inFlightRequests.delete(cacheKey);
+        // Only remove our own entry; an invalidation may have replaced it with a newer request
+        if (inFlightRequests.get(cacheKey) === requestPromise) inFlightRequests.delete(cacheKey);
       }
     }
 

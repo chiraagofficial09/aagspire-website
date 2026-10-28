@@ -10,6 +10,9 @@ export interface AuthenticatedRequest extends Request {
   tokenPayload?: TokenPayload;
 }
 
+const ACTIVITY_WRITE_INTERVAL_MS = 60 * 1000;
+const lastActivityWrites = new Map<string, number>();
+
 export async function authenticate(
   req: AuthenticatedRequest,
   res: Response,
@@ -35,8 +38,12 @@ export async function authenticate(
     const payload = verifyToken(token);
     req.tokenPayload = payload;
 
-    // 3. Find user in database
-    const user = await User.findById(payload.userId);
+    // 3. Find user in database. For employee tokens the employee profile is looked up in parallel;
+    // access is still decided by the stored user's role and status below, not the token's role.
+    const [user, employeeForToken] = await Promise.all([
+      User.findById(payload.userId),
+      payload.role === 'employee' ? Employee.findOne({ userId: payload.userId }) : Promise.resolve(undefined),
+    ]);
     if (!user) {
       res.status(401).json({ success: false, message: 'User session invalid. Please log in again.' });
       return;
@@ -51,16 +58,22 @@ export async function authenticate(
 
     // 4. If employee, attach employee document
     if (user.role === 'employee') {
-      const employee = await Employee.findOne({ userId: user._id });
-      req.employee = employee;
+      req.employee = employeeForToken !== undefined
+        ? employeeForToken
+        : await Employee.findOne({ userId: user._id });
     }
 
-    // 5. Asynchronously update lastActivityAt on latest active session
-    LoginSession.findOneAndUpdate(
-      { userId: user._id, status: 'active' },
-      { lastActivityAt: new Date() },
-      { sort: { loginAt: -1 } }
-    ).exec().catch(() => {});
+    // 5. Asynchronously update lastActivityAt on latest active session (at most once a minute per user)
+    const userKey = String(user._id);
+    const now = Date.now();
+    if (now - (lastActivityWrites.get(userKey) || 0) >= ACTIVITY_WRITE_INTERVAL_MS) {
+      lastActivityWrites.set(userKey, now);
+      LoginSession.findOneAndUpdate(
+        { userId: user._id, status: 'active' },
+        { lastActivityAt: new Date() },
+        { sort: { loginAt: -1 } }
+      ).exec().catch(() => {});
+    }
 
     next();
   } catch (error: any) {

@@ -100,7 +100,11 @@ export async function calculateEmployeeEarnings(
   const allEmpIds = Array.from(new Set([empId.toString(), userRelatedId.toString()])).map((idStr) => new Types.ObjectId(idStr));
 
   // 1. Find all project allocations for this employee
-  const rawAllocations = await ProjectEmployee.find({ employeeId: { $in: allEmpIds } }).populate('projectId');
+  // (with projects assigned directly via Project.assignedEmployees, an independent read)
+  const [rawAllocations, directlyAssignedProjects] = await Promise.all([
+    ProjectEmployee.find({ employeeId: { $in: allEmpIds } }).populate('projectId'),
+    Project.find({ assignedEmployees: { $in: allEmpIds } }),
+  ]);
   const allocations: typeof rawAllocations = [];
 
   for (const alloc of rawAllocations) {
@@ -133,7 +137,6 @@ export async function calculateEmployeeEarnings(
       .filter(Boolean)
   );
 
-  const directlyAssignedProjects = await Project.find({ assignedEmployees: { $in: allEmpIds } });
   for (const proj of directlyAssignedProjects) {
     if (!existingProjectIds.has(proj._id.toString())) {
       // Auto-create missing ProjectEmployee record so all relations stay in sync
@@ -177,6 +180,56 @@ export async function calculateEmployeeEarnings(
   let totalEarned = 0;
   const projectDetails: ProjectEarningDetail[] = [];
 
+  // Total paid across all settlements for this employee (month filtered if specified)
+  const settlementFilter: any = {
+    employeeId: { $in: allEmpIds },
+    status: 'paid',
+  };
+  if (startDate && endDate) {
+    settlementFilter.$or = [
+      { paymentDate: { $gte: startDate, $lte: endDate } },
+      { createdAt: { $gte: startDate, $lte: endDate } },
+    ];
+  }
+
+  // Load commission splits, client payments and settlement items for every allocated project in
+  // one round trip each, instead of three sequential queries per project inside the loop below.
+  const allocatedProjectIds = allocations
+    .map((a) => (a.projectId as any)?._id)
+    .filter(Boolean);
+  const [commissions, projectPayments, settlementItems, paidSettlements] = await Promise.all([
+    ProjectCommission.find({ projectId: { $in: allocatedProjectIds } }),
+    ClientPayment.find({ projectId: { $in: allocatedProjectIds } }),
+    SettlementItem.find({ employeeId: { $in: allEmpIds }, projectId: { $in: allocatedProjectIds } }),
+    Settlement.find(settlementFilter),
+  ]);
+  const itemSettlementIds = Array.from(
+    new Set(settlementItems.map((item) => item.settlementId?.toString()).filter(Boolean))
+  );
+  const itemSettlements = itemSettlementIds.length
+    ? await Settlement.find({ _id: { $in: itemSettlementIds } })
+    : [];
+
+  const commissionByProject = new Map<string, (typeof commissions)[number]>();
+  for (const c of commissions) {
+    const key = c.projectId?.toString();
+    if (key && !commissionByProject.has(key)) commissionByProject.set(key, c);
+  }
+  const groupByProject = <T extends { projectId?: any }>(docs: T[]) => {
+    const grouped = new Map<string, T[]>();
+    for (const doc of docs) {
+      const key = doc.projectId?.toString();
+      if (!key) continue;
+      const list = grouped.get(key);
+      if (list) list.push(doc);
+      else grouped.set(key, [doc]);
+    }
+    return grouped;
+  };
+  const paymentsByProject = groupByProject(projectPayments);
+  const itemsByProject = groupByProject(settlementItems);
+  const settlementById = new Map(itemSettlements.map((s) => [String(s._id), s]));
+
   for (const alloc of allocations) {
     const project = alloc.projectId as any;
     if (!project) continue;
@@ -201,7 +254,7 @@ export async function calculateEmployeeEarnings(
     const netProjectValue = Math.max(0, round2(grossValue - productionCost));
 
     // Get project commission split
-    const commission = await ProjectCommission.findOne({ projectId: projId });
+    const commission = commissionByProject.get(projId.toString());
     const employeePercent = commission ? commission.employeePercent : 40;
     const officePercent = commission ? commission.officePercent : 10;
     const sharePercent = alloc.sharePercent ?? (alloc as any).sharePercentage ?? 100;
@@ -212,7 +265,7 @@ export async function calculateEmployeeEarnings(
     );
 
     // Sum client payments received for this project
-    const payments = await ClientPayment.find({ projectId: projId });
+    const payments = paymentsByProject.get(projId.toString()) || [];
     const paymentsReceived = round2(
       payments.reduce((sum, p) => sum + fromDecimal(p.amount), 0)
     );
@@ -232,14 +285,11 @@ export async function calculateEmployeeEarnings(
 
     // Paid for this specific project
     // Find all paid settlements for this employee and project
-    const paidItems = await SettlementItem.find({
-      employeeId: { $in: allEmpIds },
-      projectId: projId,
-    });
+    const paidItems = itemsByProject.get(projId.toString()) || [];
 
     let paidForProject = 0;
     for (const item of paidItems) {
-      const settlement = await Settlement.findById(item.settlementId);
+      const settlement = settlementById.get(String(item.settlementId));
       if (settlement && settlement.status === 'paid') {
         if (startDate && endDate) {
           const sDate = new Date(settlement.paymentDate || settlement.createdAt);
@@ -295,18 +345,7 @@ export async function calculateEmployeeEarnings(
     });
   }
 
-  // 2. Compute total paid across all settlements for this employee (month filtered if specified)
-  const settlementFilter: any = {
-    employeeId: { $in: allEmpIds },
-    status: 'paid',
-  };
-  if (startDate && endDate) {
-    settlementFilter.$or = [
-      { paymentDate: { $gte: startDate, $lte: endDate } },
-      { createdAt: { $gte: startDate, $lte: endDate } },
-    ];
-  }
-  const paidSettlements = await Settlement.find(settlementFilter);
+  // 2. Total paid across all settlements for this employee (fetched above)
   const totalPaid = round2(
     paidSettlements.reduce((sum, s) => sum + fromDecimal(s.finalPayable), 0)
   );

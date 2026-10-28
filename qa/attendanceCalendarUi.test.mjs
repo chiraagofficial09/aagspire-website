@@ -103,14 +103,15 @@ try {
     assert.equal(await employee.calendar.count(), 1);
     assert.equal(await employee.calendar.getByRole('button', { name: 'Add Holiday', exact: true }).count(), 0);
   });
-  await check('All five saved status colors are distinct; unrecorded dates are transparent', async () => {
+  await check('All five saved status colors are distinct; past working days without a record show absent; future dates are transparent', async () => {
     const colors = [];
     for (const label of ['1 October 2026, Present', '2 October 2026, Absent', '3 October 2026, Half Day', '5 October 2026, Late', '6 October 2026, Leave']) {
       colors.push(await (await day(employee.calendar, label)).evaluate((node) => getComputedStyle(node).backgroundColor));
     }
     assert.equal(new Set(colors).size, 5);
     assert.ok(colors.every((color) => color !== 'rgba(0, 0, 0, 0)'));
-    assert.equal(await (await day(employee.calendar, '7 October 2026, No attendance record')).evaluate((node) => getComputedStyle(node).backgroundColor), 'rgba(0, 0, 0, 0)');
+    assert.equal(await (await day(employee.calendar, '7 October 2026, Absent')).evaluate((node) => getComputedStyle(node).backgroundColor), colors[1]);
+    assert.equal(await (await day(employee.calendar, '13 October 2026, No attendance record')).evaluate((node) => getComputedStyle(node).backgroundColor), 'rgba(0, 0, 0, 0)');
   });
   await check('Only Sundays show weekly off; attendance on a Sunday retains its status', async () => {
     await (await day(employee.calendar, '4 October 2026, No attendance record, Sunday Off')).waitFor();
@@ -127,14 +128,15 @@ try {
     await admin.calendar.getByLabel('Employee', { exact: true }).click();
     await admin.page.getByRole('option', { name: /Dev Shah/ }).click();
     await admin.calendar.getByRole('button', { name: '1 October 2026, Absent', exact: true }).waitFor();
-    assert.equal(await admin.calendar.getByRole('button', { name: '2 October 2026, No attendance record', exact: true }).count(), 1);
+    // Dev Shah has no record on 3 Oct, so it shows as absent rather than Asha's half day
+    assert.equal(await admin.calendar.getByRole('button', { name: '3 October 2026, Absent', exact: true }).count(), 1);
     await admin.calendar.getByLabel('Employee', { exact: true }).click();
     await admin.page.getByRole('option', { name: /Asha Patel/ }).click();
     await admin.calendar.getByRole('button', { name: '1 October 2026, Present', exact: true }).waitFor();
   });
   await check('Month navigation requests correct full month ranges and returns to current month', async () => {
     await employee.calendar.getByRole('button', { name: 'Previous attendance month' }).click();
-    await employee.calendar.getByRole('button', { name: '30 September 2026, No attendance record', exact: true }).waitFor();
+    await employee.calendar.getByRole('button', { name: '30 September 2026, Absent', exact: true }).waitFor();
     assert.ok(requests.some((request) => request.role === 'employee' && request.path.endsWith('/attendance') && request.query.startDate === '2026-09-01' && request.query.endDate === '2026-09-30'));
     await employee.calendar.getByRole('button', { name: 'Next attendance month' }).click();
     await employee.calendar.getByRole('button', { name: '1 October 2026, Present', exact: true }).waitFor();

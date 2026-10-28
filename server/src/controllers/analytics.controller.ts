@@ -94,6 +94,37 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
     const startDate = monthRange?.startOfMonth;
     const endDate = monthRange?.endOfMonth;
 
+    // 3. Hours, today's attendance, recent logs and receipts don't depend on projects or earnings,
+    // so start them now and let them overlap the earnings chain below.
+    const workLogQuery: any = { employeeId };
+    if (startDate && endDate) {
+      workLogQuery.$or = [
+        { workDate: { $gte: startDate, $lte: endDate } },
+        { createdAt: { $gte: startDate, $lte: endDate } },
+      ];
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const receiptQuery: any = { employeeId };
+    if (startDate && endDate) {
+      receiptQuery.issuedAt = { $gte: startDate, $lte: endDate };
+    }
+
+    const independentReads = Promise.all([
+      WorkLog.find(workLogQuery),
+      Attendance.findOne({ employeeId, date: today }),
+      WorkLog.find(workLogQuery)
+        .populate('projectId', 'projectName projectCode')
+        .sort({ workDate: -1, createdAt: -1 })
+        .limit(5),
+      Receipt.find(receiptQuery)
+        .sort({ issuedAt: -1 })
+        .limit(5),
+    ]);
+    // Awaited below; this only prevents an unhandled rejection if the earnings chain fails first.
+    independentReads.catch(() => {});
+
     // 1. Personal Earnings Breakdown (month-filtered)
     // 2. Assigned Projects (strictly projects where employee is in assignedEmployees)
     const possibleEmpIds = [employeeId, req.employee?.userId].filter(Boolean);
@@ -198,35 +229,9 @@ export async function getEmployeeDashboard(req: AuthenticatedRequest, res: Respo
       ['completed', 'delivered'].includes(p.status)
     );
 
-    // 3. Approved Hours & Logged Hours from WorkLog (filtered by month)
-    const workLogQuery: any = { employeeId };
-    if (startDate && endDate) {
-      workLogQuery.$or = [
-        { workDate: { $gte: startDate, $lte: endDate } },
-        { createdAt: { $gte: startDate, $lte: endDate } },
-      ];
-    }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const receiptQuery: any = { employeeId };
-    if (startDate && endDate) {
-      receiptQuery.issuedAt = { $gte: startDate, $lte: endDate };
-    }
-
-    // Independent reads for hours, attendance, recent logs and receipts run concurrently
-    const [approvedLogs, allLogs, todayAttendance, recentWorkLogs, recentReceipts] = await Promise.all([
-      WorkLog.find({ ...workLogQuery, status: 'approved' }),
-      WorkLog.find(workLogQuery),
-      Attendance.findOne({ employeeId, date: today }),
-      WorkLog.find(workLogQuery)
-        .populate('projectId', 'projectName projectCode')
-        .sort({ workDate: -1, createdAt: -1 })
-        .limit(5),
-      Receipt.find(receiptQuery)
-        .sort({ issuedAt: -1 })
-        .limit(5),
-    ]);
+    // 3. Approved Hours & Logged Hours from WorkLog (filtered by month, fetched above)
+    const [allLogs, todayAttendance, recentWorkLogs, recentReceipts] = await independentReads;
+    const approvedLogs = allLogs.filter((log) => log.status === 'approved');
 
     const approvedMinutes = approvedLogs.reduce((sum, log) => sum + (log.totalMinutes || 0), 0);
     const approvedHours = round2(approvedMinutes / 60);

@@ -78,6 +78,11 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
       }
     }
 
+    // Employee earnings don't depend on the project list, so start them alongside it.
+    const employeeEarningsPromise = req.employee ? calculateEmployeeEarnings(req.employee._id) : null;
+    // Awaited below; this only prevents an unhandled rejection if an earlier query fails first.
+    employeeEarningsPromise?.catch(() => {});
+
     const projects = await Project.find(filter)
       .populate('clientId', 'name companyName clientCode')
       .populate('assignedEmployees', 'fullName employeeCode designation')
@@ -91,7 +96,8 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
       .filter(Boolean);
 
     // 1. Batch fetch all payments and commissions for these projects in ONE single query
-    const [allPayments, allCommissions] = await Promise.all([
+    // (plus the employee's own allocations, which only depend on the project ids)
+    const [allPayments, allCommissions, peAllocations] = await Promise.all([
       ClientPayment.find({
         $or: [
           { projectId: { $in: projectIds } },
@@ -99,6 +105,12 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
         ],
       }).sort({ paymentDate: 1, createdAt: 1 }).lean(),
       ProjectCommission.find({ projectId: { $in: projectIds } }).lean(),
+      req.employee && projectIds.length > 0
+        ? ProjectEmployee.find({
+            employeeId: req.employee._id,
+            projectId: { $in: projectIds },
+          }).lean()
+        : Promise.resolve([]),
     ]);
 
     const paymentsByProject: Record<string, number> = {};
@@ -166,14 +178,8 @@ export async function listProjects(req: AuthenticatedRequest, res: Response): Pr
     // 2. If employee, batch fetch allocations and pre-calculate earnings ONCE
     const allocMap = new Map<string, any>();
     const earningsMap = new Map<string, any>();
-    if (req.employee && projectIds.length > 0) {
-      const [peAllocations, employeeEarnings] = await Promise.all([
-        ProjectEmployee.find({
-          employeeId: req.employee._id,
-          projectId: { $in: projectIds },
-        }).lean(),
-        calculateEmployeeEarnings(req.employee._id),
-      ]);
+    if (req.employee && projectIds.length > 0 && employeeEarningsPromise) {
+      const employeeEarnings = await employeeEarningsPromise;
 
       for (const a of peAllocations) {
         allocMap.set(a.projectId.toString(), a);
