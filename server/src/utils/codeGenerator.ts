@@ -8,6 +8,11 @@ export function generateClientCode(seq: number): string {
   return `AAG-CLI-${pad}`;
 }
 
+export function generateVendorCode(seq: number): string {
+  const pad = seq.toString().padStart(4, '0');
+  return `AAG-VEN-${pad}`;
+}
+
 export function generateProjectCode(seq: number, year: number = new Date().getFullYear()): string {
   const pad = seq.toString().padStart(4, '0');
   return `AAG-PRJ-${year}-${pad}`;

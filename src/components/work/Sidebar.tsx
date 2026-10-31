@@ -21,6 +21,7 @@ import {
   Calendar,
   User,
   IndianRupee,
+  Store,
 } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 
@@ -123,6 +124,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ role }) => {
                 label: "Clients",
                 path: "/admin/clients",
                 icon: Building2,
+              }}
+              onNavigate={() => setMobileOpen(false)}
+            />
+            <NavItem
+              item={{
+                label: "Vendors",
+                path: "/admin/vendors",
+                icon: Store,
               }}
               onNavigate={() => setMobileOpen(false)}
             />

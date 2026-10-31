@@ -59,6 +59,8 @@ export const AdminClientDetails: React.FC = () => {
     projectName: string;
     date: string;
     amount: number;
+    // 'vendor' = auto adjustment from the Vendors tab (read-only here)
+    source?: 'manual' | 'vendor';
   }
   const [showDeductionCard, setShowDeductionCard] = useState(false);
   const [deductions, setDeductions] = useState<DeductionEntry[]>([]);
@@ -107,7 +109,7 @@ export const AdminClientDetails: React.FC = () => {
     if (id) {
       try {
         await api.put(`/admin/clients/${id}`, {
-          deductions: updated.map((d) => ({
+          deductions: updated.filter((d) => d.source !== 'vendor').map((d) => ({
             projectName: d.projectName || d.label,
             date: d.date,
             amount: d.amount,
@@ -129,7 +131,7 @@ export const AdminClientDetails: React.FC = () => {
     if (id) {
       try {
         await api.put(`/admin/clients/${id}`, {
-          deductions: updated.map((d) => ({
+          deductions: updated.filter((d) => d.source !== 'vendor').map((d) => ({
             projectName: d.projectName || d.label,
             date: d.date,
             amount: d.amount,
@@ -338,6 +340,7 @@ export const AdminClientDetails: React.FC = () => {
             label: d.projectName || d.label || 'Project Deduction',
             date: d.date ? new Date(d.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             amount: Number(d.amount) || 0,
+            source: d.source === 'vendor' ? 'vendor' : 'manual',
           }));
           setDeductions(loaded);
         } else {
@@ -1162,14 +1165,23 @@ export const AdminClientDetails: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-mono font-bold text-[#FF5A1F]">− {formatINR(d.amount)}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDeduction(d.id)}
-                        className="p-1 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-colors cursor-pointer"
-                        title="Remove deduction"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      {d.source === 'vendor' ? (
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-[#FF5A1F]/15 text-[#FF5A1F] border border-[#FF5A1F]/30"
+                          title="Auto adjustment from the Vendors tab. Edit it there."
+                        >
+                          VENDOR
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDeduction(d.id)}
+                          className="p-1 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-colors cursor-pointer"
+                          title="Remove deduction"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

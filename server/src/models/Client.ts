@@ -5,6 +5,10 @@ export interface IClientDeduction {
   projectName: string;
   date: Date;
   amount: number;
+  // 'vendor' entries are generated from what we owe this client as a vendor; never edited by hand
+  source?: 'manual' | 'vendor';
+  vendorId?: Types.ObjectId;
+  vendorWorkId?: Types.ObjectId;
 }
 
 export interface IClientBadDebt {
@@ -55,6 +59,9 @@ const ClientSchema = new Schema<IClient>(
         projectName: { type: String, required: true },
         date: { type: Date, default: Date.now },
         amount: { type: Number, required: true },
+        source: { type: String, enum: ['manual', 'vendor'], default: 'manual' },
+        vendorId: { type: Schema.Types.ObjectId, ref: 'Vendor' },
+        vendorWorkId: { type: Schema.Types.ObjectId, ref: 'VendorWork' },
       },
     ],
     badDebts: [

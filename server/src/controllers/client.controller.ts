@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { Client } from '../models/Client.js';
 import { Project } from '../models/Project.js';
 import { ClientPayment } from '../models/ClientPayment.js';
+import { Vendor } from '../models/Vendor.js';
 import { generateClientCode } from '../utils/codeGenerator.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { logAudit } from '../services/audit.service.js';
@@ -423,13 +424,19 @@ export async function updateClient(req: AuthenticatedRequest, res: Response): Pr
     }
 
     if (req.body.deductions !== undefined) {
-      client.deductions = Array.isArray(req.body.deductions)
-        ? req.body.deductions.map((d: any) => ({
-            projectName: d.projectName || d.label || 'Project Deduction',
-            date: d.date ? new Date(d.date) : new Date(),
-            amount: Number(d.amount) || 0,
-          }))
+      // Vendor adjustments are managed from the Vendors tab: keep them and ignore any sent back by the client page
+      const vendorDeductions = (oldValue.deductions || []).filter((d: any) => d.source === 'vendor');
+      const manualDeductions = Array.isArray(req.body.deductions)
+        ? req.body.deductions
+            .filter((d: any) => d.source !== 'vendor' && !d.vendorId)
+            .map((d: any) => ({
+              projectName: d.projectName || d.label || 'Project Deduction',
+              date: d.date ? new Date(d.date) : new Date(),
+              amount: Number(d.amount) || 0,
+              source: 'manual',
+            }))
         : [];
+      client.deductions = [...manualDeductions, ...vendorDeductions];
       client.markModified('deductions');
     }
 
@@ -470,6 +477,8 @@ export async function deleteClient(req: AuthenticatedRequest, res: Response): Pr
 
     const oldValue = client.toObject();
     await Client.findByIdAndDelete(client._id);
+    // A vendor linked to this client stays as a standalone vendor
+    await Vendor.updateMany({ clientId: client._id }, { $unset: { clientId: 1 } });
 
     await logAudit({
       userId: req.user!._id,

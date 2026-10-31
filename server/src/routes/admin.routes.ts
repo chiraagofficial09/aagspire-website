@@ -52,6 +52,18 @@ import {
 } from '../controllers/commission.controller.js';
 
 import { listPayments, createPayment, updatePayment, deletePayment } from '../controllers/payment.controller.js';
+import {
+  listVendors,
+  createVendor,
+  getVendorById,
+  updateVendor,
+  deleteVendor,
+  addVendorWork,
+  updateVendorWork,
+  deleteVendorWork,
+  addVendorPayment,
+  deleteVendorPayment,
+} from '../controllers/vendor.controller.js';
 import { listWorkLogs, reviewWorkLog, deleteWorkLog } from '../controllers/workLog.controller.js';
 import {
   listAttendance,
@@ -142,6 +154,19 @@ router.get('/clients/:id/statement-pdf', downloadClientStatementPdf);
 router.put('/clients/:id', updateClient);
 router.patch('/clients/:id', updateClient);
 router.delete('/clients/:id', deleteClient);
+
+// Vendors (people we have to pay)
+router.get('/vendors', listVendors);
+router.post('/vendors', createVendor);
+router.get('/vendors/:id', getVendorById);
+router.put('/vendors/:id', updateVendor);
+router.patch('/vendors/:id', updateVendor);
+router.delete('/vendors/:id', deleteVendor);
+router.post('/vendors/:id/works', addVendorWork);
+router.patch('/vendors/:id/works/:workId', updateVendorWork);
+router.delete('/vendors/:id/works/:workId', deleteVendorWork);
+router.post('/vendors/:id/payments', addVendorPayment);
+router.delete('/vendors/:id/payments/:paymentId', deleteVendorPayment);
 
 // Projects
 router.get('/projects', listProjects);

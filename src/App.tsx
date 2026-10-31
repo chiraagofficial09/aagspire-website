@@ -61,6 +61,8 @@ const AdminEmployees = lazy(() => import('./pages/admin/Employees').then((m) => 
 const AdminEmployeeDetails = lazy(() => import('./pages/admin/EmployeeDetails').then((m) => ({ default: m.AdminEmployeeDetails })));
 const AdminClients = lazy(() => import('./pages/admin/Clients').then((m) => ({ default: m.AdminClients })));
 const AdminClientDetails = lazy(() => import('./pages/admin/ClientDetails').then((m) => ({ default: m.AdminClientDetails })));
+const AdminVendors = lazy(() => import('./pages/admin/Vendors').then((m) => ({ default: m.AdminVendors })));
+const AdminVendorDetails = lazy(() => import('./pages/admin/VendorDetails').then((m) => ({ default: m.AdminVendorDetails })));
 const AdminProjects = lazy(() => import('./pages/admin/Projects').then((m) => ({ default: m.AdminProjects })));
 const AdminProjectDetails = lazy(() => import('./pages/admin/ProjectDetails').then((m) => ({ default: m.AdminProjectDetails })));
 const AdminWorkLogs = lazy(() => import('./pages/admin/WorkLogs').then((m) => ({ default: m.AdminWorkLogs })));
@@ -90,6 +92,8 @@ const adminChunkLoaders = [
   () => import('./pages/admin/EmployeeDetails'),
   () => import('./pages/admin/Clients'),
   () => import('./pages/admin/ClientDetails'),
+  () => import('./pages/admin/Vendors'),
+  () => import('./pages/admin/VendorDetails'),
   () => import('./pages/admin/Projects'),
   () => import('./pages/admin/ProjectDetails'),
   () => import('./pages/admin/WorkLogs'),
@@ -286,6 +290,8 @@ export default function App() {
                     <Route path="employees/:id" element={<AdminEmployeeDetails />} />
                     <Route path="clients" element={<AdminClients />} />
                     <Route path="clients/:id" element={<AdminClientDetails />} />
+                    <Route path="vendors" element={<AdminVendors />} />
+                    <Route path="vendors/:id" element={<AdminVendorDetails />} />
                     <Route path="projects" element={<AdminProjects />} />
                     <Route path="projects/:id" element={<AdminProjectDetails />} />
                     <Route path="work-logs" element={<AdminWorkLogs />} />
