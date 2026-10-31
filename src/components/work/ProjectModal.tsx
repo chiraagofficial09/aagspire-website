@@ -87,8 +87,10 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       return Boolean(emp?.isStar);
     });
 
-    if (vals.length === 0) {
-      if (!hasStarEmployee && formData.assignedEmployees.length > 0) {
+    const wasAdmin100 = hasStarEmployee || formData.assignedEmployees.length === 0;
+
+    if (vals.length === 0 || starSelected) {
+      if (!wasAdmin100) {
         setSavedNonStarSplit(commissionSplit);
       }
       setCommissionSplit({
@@ -98,18 +100,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         adminPercent: 100,
         settlementPercent: 0,
       });
-    } else if (starSelected) {
-      if (!hasStarEmployee && formData.assignedEmployees.length > 0) {
-        setSavedNonStarSplit(commissionSplit);
-      }
-      setCommissionSplit({
-        brokerPercent: 0,
-        employeePercent: 0,
-        officePercent: 0,
-        adminPercent: 100,
-        settlementPercent: 0,
-      });
-    } else {
+    } else if (wasAdmin100) {
+      // Leaving the 100% Admin state: restore the last non-star split
       setCommissionSplit(savedNonStarSplit || {
         brokerPercent: 10,
         employeePercent: 40,
@@ -118,12 +110,53 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         settlementPercent: 5,
       });
     }
+    // Non-star -> non-star: keep the split the user is currently editing
 
     setFormData((prev) => ({ ...prev, assignedEmployees: vals }));
   };
 
   useEffect(() => {
     if (!isOpen) return;
+
+    // Load the default preset into savedNonStarSplit (used when a non-star employee gets assigned)
+    const loadDefaultSplit = () => {
+      // 1. Instant load presets into savedNonStarSplit from local storage
+      const cached = localStorage.getItem('default_project_commission_split');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setSavedNonStarSplit({
+            brokerPercent: Number(parsed.brokerPercent ?? parsed.broker ?? 10),
+            employeePercent: Number(parsed.employeePercent ?? parsed.employee ?? 40),
+            officePercent: Number(parsed.officePercent ?? parsed.officeExpense ?? 10),
+            adminPercent: Number(parsed.adminPercent ?? parsed.adminShare ?? 35),
+            settlementPercent: Number(parsed.settlementPercent ?? parsed.settlementReserve ?? 5),
+          });
+        } catch (_) {
+          setSavedNonStarSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
+        }
+      } else {
+        setSavedNonStarSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
+      }
+
+      // 2. Fetch server default preset to ensure perfect synchronization
+      api.get('/admin/commissions/presets/default')
+        .then((res) => {
+          if (res.data?.success && res.data?.preset) {
+            const p = res.data.preset;
+            const updated = {
+              brokerPercent: Number(p.brokerPercent ?? 10),
+              employeePercent: Number(p.employeePercent ?? 40),
+              officePercent: Number(p.officePercent ?? 10),
+              adminPercent: Number(p.adminPercent ?? 35),
+              settlementPercent: Number(p.settlementPercent ?? 5),
+            };
+            setSavedNonStarSplit(updated);
+            localStorage.setItem('default_project_commission_split', JSON.stringify(updated));
+          }
+        })
+        .catch(() => {});
+    };
 
     if (project) {
       const clientId =
@@ -181,6 +214,8 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
           adminPercent: 100,
           settlementPercent: 0,
         });
+        // Don't carry over the split of a previously edited project
+        loadDefaultSplit();
       } else {
         const comm = project.commission || {};
         const loadedSplit = {
@@ -217,44 +252,17 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         settlementPercent: 0,
       });
 
-      // 1. Instant load presets into savedNonStarSplit from local storage
-      const cached = localStorage.getItem('default_project_commission_split');
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          setSavedNonStarSplit({
-            brokerPercent: Number(parsed.brokerPercent ?? parsed.broker ?? 10),
-            employeePercent: Number(parsed.employeePercent ?? parsed.employee ?? 40),
-            officePercent: Number(parsed.officePercent ?? parsed.officeExpense ?? 10),
-            adminPercent: Number(parsed.adminPercent ?? parsed.adminShare ?? 35),
-            settlementPercent: Number(parsed.settlementPercent ?? parsed.settlementReserve ?? 5),
-          });
-        } catch (_) {
-          setSavedNonStarSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
-        }
-      } else {
-        setSavedNonStarSplit({ brokerPercent: 10, employeePercent: 40, officePercent: 10, adminPercent: 35, settlementPercent: 5 });
-      }
-
-      // 2. Fetch server default preset to ensure perfect synchronization
-      api.get('/admin/commissions/presets/default')
-        .then((res) => {
-          if (res.data?.success && res.data?.preset) {
-            const p = res.data.preset;
-            const updated = {
-              brokerPercent: Number(p.brokerPercent ?? 10),
-              employeePercent: Number(p.employeePercent ?? 40),
-              officePercent: Number(p.officePercent ?? 10),
-              adminPercent: Number(p.adminPercent ?? 35),
-              settlementPercent: Number(p.settlementPercent ?? 5),
-            };
-            setSavedNonStarSplit(updated);
-            localStorage.setItem('default_project_commission_split', JSON.stringify(updated));
-          }
-        })
-        .catch(() => {});
+      loadDefaultSplit();
     }
-  }, [isOpen, project, clients, defaultClientId]);
+    // `clients` is intentionally left out: a quick-added client must not reset the form being edited
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, project, defaultClientId]);
+
+  // Pick a default client for a new project once clients have loaded
+  useEffect(() => {
+    if (!isOpen || project || formData.clientId || !clients?.length) return;
+    setFormData((prev) => ({ ...prev, clientId: defaultClientId || clients[0]?._id || clients[0]?.id || '' }));
+  }, [isOpen, project, clients, defaultClientId, formData.clientId]);
 
   // Escape key handler
   useEffect(() => {
